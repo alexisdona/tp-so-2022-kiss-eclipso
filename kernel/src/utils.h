@@ -13,7 +13,7 @@
 
 #define IP "127.0.0.1"
 #define PUERTO "8000"
-#define SIN_CLIENTES -1
+#define SIN_CONSOLAS -1
 
 typedef enum
 {
@@ -25,8 +25,8 @@ t_log* logger;
 
 void* recibir_buffer(int*, int);
 
-int iniciar_servidor(void);
-int esperar_cliente(int);
+int iniciar_kernel(void);
+int esperar_consola(int);
 t_list* recibir_paquete(int);
 void recibir_mensaje(int);
 int recibir_operacion(int);

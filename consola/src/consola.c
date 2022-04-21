@@ -3,68 +3,51 @@
 int main(void) {
 
 	int conexion;
-	char* ip;
-	int puerto;
-	char* valor;
 
 	t_log* logger;
-	t_config* config;
-
-	/* ---------------- LOGGING ---------------- */
+	t_config* config = NULL;
 
 	logger = iniciar_logger();
-
-	log_info(logger, "Logueando...");
-
-	/* ---------------- ARCHIVOS DE CONFIGURACION ---------------- */
-
-	config = iniciar_config();
-
-	ip = config_get_string_value(config,"IP_KERNEL");
-	puerto = config_get_int_value(config,"PUERTO_KERNEL");
-	valor = config_get_string_value(config, "CLAVE");
-
-	log_info(logger, "IP:%s", ip);
-	log_info(logger, "PUERTO:%d",puerto);
-	log_info(logger, "VALOR:%s", valor);
-
-/* ---------------- LEER DE CONSOLA ---------------- */
-	printf("Log del cliente\n");
-	leer_consola(logger);
-
-	// conexion con el servidor
-	conexion = crear_conexion(ip, puerto);
+	conexion = conectar_al_kernel(config);
 
 	enviar_mensaje("Cliente conectado.", conexion );
 
-	enviar_mensaje(valor,conexion);
-
 	printf("Paquete a enviar al servidor:\n");
-
 	armarPaquete(conexion);
-
 	terminar_programa(conexion, logger, config);
+
+}
+
+int conectar_al_kernel(t_config* config){
+	char* ip;
+	int puerto;
+
+	config = iniciar_config();
+	ip = config_get_string_value(config,"IP_KERNEL");
+	puerto = config_get_int_value(config,"PUERTO_KERNEL");
+
+	return crear_conexion(ip, puerto);
 }
 
 t_log* iniciar_logger(void) {
-	t_log* nuevo_logger = log_create(LOG_FILE, LOG_NAME, false, LOG_LEVEL_INFO );
 
+	t_log* nuevo_logger = log_create(LOG_FILE, LOG_NAME, false, LOG_LEVEL_INFO );
 	return nuevo_logger;
+
 }
 
 t_config* iniciar_config(void) {
 	t_config* nuevo_config;
-	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
 
+	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
 		printf("No se pudo leer la configuracion.\n");
 		exit(2);
 	}
-
 	return nuevo_config;
+
 }
 
 void leer_consola(t_log* logger) {
-
 	char* leido;
 	int leiCaracterSalida;
 
@@ -92,13 +75,15 @@ void armarPaquete(int conexion) {
 	} while(leiCaracterSalida);
 
 	enviar_paquete(paquete,conexion);
-
 	eliminar_paquete(paquete);
+
 }
 
 void terminar_programa(int conexion, t_log* logger, t_config* config) {
-	log_info(logger, "Terminando programa cliente");
+
+	log_info(logger, "Consola: Terminando programa...");
 	log_destroy(logger);
 	if(config!=NULL) config_destroy(config);
 	liberar_conexion(conexion);
+
 }
