@@ -10,9 +10,9 @@ int main(void) {
 	logger = iniciar_logger();
 	conexion = conectar_al_kernel(config);
 
-	enviar_mensaje("Cliente conectado.", conexion );
+	enviar_mensaje("Consola conectada.", conexion );
 
-	printf("Paquete a enviar al servidor:\n");
+	printf("Paquete a enviar al kernel:\n");
 	armarPaquete(conexion);
 	terminar_programa(conexion, logger, config);
 
@@ -25,8 +25,9 @@ int conectar_al_kernel(t_config* config){
 	config = iniciar_config();
 	ip = config_get_string_value(config,"IP_KERNEL");
 	puerto = config_get_int_value(config,"PUERTO_KERNEL");
-
-	return crear_conexion(ip, puerto);
+	int conexion = crear_conexion(ip, puerto);
+	free(ip);
+	return conexion;
 }
 
 t_log* iniciar_logger(void) {
@@ -52,9 +53,9 @@ void leer_consola(t_log* logger) {
 	int leiCaracterSalida;
 
 	do {
-		leido = readline("cli> ");
+		leido = readline("> ");
 		leiCaracterSalida = strcmp(leido, CARACTER_SALIDA);
-		if(leiCaracterSalida!=0) log_info(logger,"cli:> %s",leido);
+		if(leiCaracterSalida!=0) log_info(logger,"> %s",leido);
 		free(leido);
 
 	} while(leiCaracterSalida);
@@ -68,7 +69,7 @@ void armarPaquete(int conexion) {
 	int leiCaracterSalida;
 
 	do {
-		leido = readline("cli> ");
+		leido = readline("> ");
 		leiCaracterSalida = strcmp(leido, CARACTER_SALIDA);
 		if(leiCaracterSalida!=0) agregar_a_paquete(paquete,leido,strlen(leido)+1);
 		free(leido);

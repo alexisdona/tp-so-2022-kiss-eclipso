@@ -21,9 +21,8 @@ int main(void) {
 				list_iterate(lista, (void*) iterator);
 				break;
 			case -1:
-				log_info(logger, "El cliente se desconecto.");
-				accion_kernel(consola_fd, kernel_fd);
-
+				log_info(logger, "La consola se desconecto.");
+				return accion_kernel(consola_fd, kernel_fd);
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
@@ -34,41 +33,47 @@ int main(void) {
 }
 
 int recibir_opcion() {
-	char* opcion = NULL;
+	char* opcion = malloc(5);
 	log_info(logger, "Ingrese una opcion: ");
-	scanf("%s", opcion);
-	return atoi(opcion);
+	scanf("%s",opcion);
+	int op = atoi(opcion);
+	free(opcion);
+	return op;
 }
 
-void validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd) {
+int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd) {
 
   switch(opcion) {
 	  case 1:
-		  log_info(logger,"kernel continua corriendo...");
+		  log_info(logger,"kernel continua corriendo, esperando nueva consola.");
 		  consola_fd = esperar_consola(kernel_fd);
 		  break;
 	  case 0:
 		  log_info(logger,"Terminando kernel...");
 		  close(kernel_fd);
 		  break;
-	  default: log_error(logger,"Opcion invalida. Volve a intentarlo");
-			   recibir_opcion();
-    }
+	  default:
+		  log_error(logger,"Opcion invalida. Volve a intentarlo");
+		  recibir_opcion();
+  }
+  return EXIT_SUCCESS;
 }
 
 
-void accion_kernel(int consola_fd, int kernel_fd) {
-	printf("¿Desea mantener el kernel corriendo? 1- Si 0- No\n");
+int accion_kernel(int consola_fd, int kernel_fd) {
 
+	log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
 	int opcion = recibir_opcion();
 
-	validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
-
 	if (recibir_operacion(consola_fd) == SIN_CONSOLAS) {
-	  log_info(logger, "No hay mas clientes conectados, desea continuar corriendo el server?.");
+	  log_info(logger, "No hay mas clientes conectados.");
+	  log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
 	  opcion = recibir_opcion();
-	  validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
+	  return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
+	}else{
+		return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
 	}
+
 }
 
 void iterator(char* value) {

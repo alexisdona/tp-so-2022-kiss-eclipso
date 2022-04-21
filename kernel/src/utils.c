@@ -2,9 +2,9 @@
 
 int iniciar_kernel(void)
 {
-	int socket_kernel, socket_conexion;
+	int socket_kernel;
 
-	struct addrinfo hints, *kernelinfo, *p;
+	struct addrinfo hints, *kernelinfo;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
