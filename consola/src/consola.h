@@ -16,7 +16,7 @@
 #define CONFIG_FILE "../src/consola.config"
 #define CARACTER_SALIDA ""
 
-int conectar_al_kernel(t_config*);
+int conectar_al_kernel();
 t_log* iniciar_logger(void);
 t_config* iniciar_config(void);
 void leer_consola(t_log*);

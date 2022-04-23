@@ -1,11 +1,12 @@
 #include "consola.h"
 
+t_config* config;
+
 int main(void) {
 
 	int conexion;
 
 	t_log* logger;
-	t_config* config = NULL;
 
 	logger = iniciar_logger();
 	conexion = conectar_al_kernel(config);
@@ -18,7 +19,7 @@ int main(void) {
 
 }
 
-int conectar_al_kernel(t_config* config){
+int conectar_al_kernel(){
 	char* ip;
 	int puerto;
 
@@ -26,7 +27,6 @@ int conectar_al_kernel(t_config* config){
 	ip = config_get_string_value(config,"IP_KERNEL");
 	puerto = config_get_int_value(config,"PUERTO_KERNEL");
 	int conexion = crear_conexion(ip, puerto);
-	free(ip);
 	return conexion;
 }
 
@@ -84,7 +84,10 @@ void terminar_programa(int conexion, t_log* logger, t_config* config) {
 
 	log_info(logger, "Consola: Terminando programa...");
 	log_destroy(logger);
-	if(config!=NULL) config_destroy(config);
+	if(config!=NULL) {
+		printf("Config != Null");
+		config_destroy(config);
+	}
 	liberar_conexion(conexion);
 
 }

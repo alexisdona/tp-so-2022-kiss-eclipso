@@ -20,7 +20,7 @@ int main(void) {
 				lista = recibir_paquete(consola_fd);
 				log_info(logger, "Me llegaron los siguientes valores:\n");
 				list_iterate(lista, (void*) iterator);
-				free(lista);
+				list_destroy_and_destroy_elements(lista,free);
 				break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
