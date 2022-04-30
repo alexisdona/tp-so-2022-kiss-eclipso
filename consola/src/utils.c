@@ -66,7 +66,7 @@ t_paquete* crear_paquete(void)
 {
 
 	t_paquete* paquete = malloc(sizeof(t_paquete));
-	paquete->codigo_operacion = PAQUETE;
+	//paquete->codigo_operacion = PAQUETE;
 	crear_buffer(paquete);
 	return paquete;
 
@@ -103,3 +103,4 @@ void liberar_conexion(int socket_consola)
 {
 	close(socket_consola);
 }
+

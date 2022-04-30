@@ -9,6 +9,7 @@
 #include<netdb.h>
 #include<string.h>
 #include<commons/log.h>
+#include<commons/string.h>
 
 typedef enum
 {
@@ -27,8 +28,6 @@ typedef struct
 	op_code codigo_operacion;
 	t_buffer* buffer;
 } t_paquete;
-
-
 
 int crear_conexion(char* ip, int puerto);
 void enviar_mensaje(char* mensaje, int socket_consola);
