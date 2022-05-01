@@ -29,18 +29,18 @@ typedef enum
 
 typedef struct{
 	instr_code codigo_operacion;
-	uint paramteros[2];
+	uint32_t parametros[2];
 } t_instruccion;
 
 instr_code obtener_cop(char*);
 void generar_lista_instrucciones(t_list**,char**);
 void agregar_instrucciones(t_list**, char*);
 char** leer_archivo_pseudocodigo(char*,t_log*);
-int conectar_al_kernel();
+uint32_t conectar_al_kernel();
 t_log* iniciar_logger(void);
 t_config* iniciar_config(void);
 void leer_consola(t_log*);
-void armarPaquete(int,t_list*);
-void terminar_programa(int, t_log*, t_config*);
+void armarPaquete(uint32_t,t_list*);
+void terminar_programa(uint32_t, t_log*, t_config*);
 
 #endif /* CONSOLA_H_ */
