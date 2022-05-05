@@ -12,6 +12,7 @@ int main(void) {
 
 	while (continuar) {
 		int cod_op = recibir_operacion(consola_fd);
+		printf("cod_op: %d", cod_op);
 		switch (cod_op) {
 			case MENSAJE:
 				recibir_mensaje(consola_fd);

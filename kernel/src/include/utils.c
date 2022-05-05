@@ -38,8 +38,10 @@ int esperar_consola(int socket_kernel)
 int recibir_operacion(int socket_consola)
 {
 	int cod_op;
-	if(recv(socket_consola, &cod_op, sizeof(int), MSG_WAITALL) > 0)
+
+	if(recv(socket_consola, &cod_op, sizeof(int), MSG_WAITALL) > 0) {
 		return cod_op;
+	}
 	else
 	{
 		close(socket_consola);

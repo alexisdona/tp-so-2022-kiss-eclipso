@@ -10,11 +10,11 @@
 #include<readline/readline.h>
 #include<commons/collections/list.h>
 
-#include "utils.h"
+#include "include/utils.h"
 
 #define LOG_NAME "CONSOLA_LOG"
 #define LOG_FILE "consola.log"
-#define CONFIG_FILE "../src/consola.config"
+#define CONFIG_FILE "../src/config/consola.config"
 #define CARACTER_SALIDA ""
 
 typedef enum
@@ -40,7 +40,7 @@ uint32_t conectar_al_kernel();
 t_log* iniciar_logger(void);
 t_config* iniciar_config(void);
 void leer_consola(t_log*);
-void armarPaquete(uint32_t,t_list*);
+void enviarAKernel(uint32_t,t_list*);
 void terminar_programa(uint32_t, t_log*, t_config*);
 
 #endif /* CONSOLA_H_ */

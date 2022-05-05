@@ -15,8 +15,9 @@ int main(int argc, char* argv[]) {
 	t_log* logger;
 	logger = iniciar_logger();
 	t_list* listaInstrucciones = list_create();
-
-	char** lineasPseudocodigo = leer_archivo_pseudocodigo(argv[1],logger);
+	char* rutaArchivo = argv[1];
+//	rutaArchivo = "programs/program1.txt";
+	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo,logger);
 	if(lineasPseudocodigo==NULL) {
 		log_error(logger,"Lineas Pseudocodigo -> NULL");
 		return EXIT_FAILURE;
@@ -30,15 +31,15 @@ int main(int argc, char* argv[]) {
 
 	for(int i=0; i<list_size(listaInstrucciones); i++){
     	t_instruccion* instr = list_get(listaInstrucciones,i);
-    	printf("%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
+    	printf("instrucciones\n%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
     }
 
 	conexion = conectar_al_kernel(config);
 
-	enviar_mensaje("Consola conectada.", conexion );
+	enviar_mensaje("Hola soy la consola ", conexion );
 
 	printf("Paquete a enviar al kernel:\n");
-	//armarPaquete(conexion,listaInstrucciones);
+	enviarAKernel(conexion,listaInstrucciones);
 	string_array_destroy(lineasPseudocodigo);
 	list_destroy(listaInstrucciones);
 	terminar_programa(conexion, logger, config);
@@ -158,7 +159,7 @@ void leer_consola(t_log* logger) {
 
 }
 
-void armarPaquete(uint32_t conexion, t_list* instrucciones) {
+void enviarAKernel(uint32_t conexion, t_list* instrucciones) {
 	t_paquete* paquete = crear_paquete();
 
 	for(uint32_t i=0; i<list_size(instrucciones); i++){

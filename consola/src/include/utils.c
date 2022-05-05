@@ -6,7 +6,7 @@ void* serializar_paquete(t_paquete* paquete, int bytes)
 	void * magic = malloc(bytes);
 	int desplazamiento = 0;
 
-	memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(int));
+	memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(uint32_t));
 	desplazamiento+= sizeof(int);
 	memcpy(magic + desplazamiento, &(paquete->buffer->size), sizeof(int));
 	desplazamiento+= sizeof(int);
