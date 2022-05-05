@@ -10,12 +10,9 @@
 #include<string.h>
 #include<commons/log.h>
 #include<commons/string.h>
+#include "protocolo.h"
 
-typedef enum
-{
-	MENSAJE,
-	PAQUETE
-}op_code;
+
 
 typedef struct
 {
