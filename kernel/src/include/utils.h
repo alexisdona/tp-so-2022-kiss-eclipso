@@ -10,6 +10,7 @@
 #include<commons/collections/list.h>
 #include<string.h>
 #include<assert.h>
+#include<errno.h>
 #include "protocolo.h"
 
 #define IP "127.0.0.1"
@@ -17,6 +18,8 @@
 #define SIN_CONSOLAS -1
 
 t_log* logger;
+extern int errno;
+
 
 void* recibir_buffer(int*, int);
 

@@ -138,8 +138,8 @@ t_config* iniciar_config(void) {
 	t_config* nuevo_config;
 
 	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
-		printf("No se pudo leer la configuracion.\n");
-		exit(2);
+		perror("No se pudo leer la configuracion: ");
+		exit(-1);
 	}
 	return nuevo_config;
 

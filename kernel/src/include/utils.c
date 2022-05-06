@@ -1,5 +1,9 @@
 #include "utils.h"
 
+void verificarBind(int socket_kernel, const struct addrinfo *kernelinfo);
+
+void verificarListen(int socket_kernel);
+
 int iniciar_kernel(void)
 {
 	int socket_kernel;
@@ -16,22 +20,43 @@ int iniciar_kernel(void)
 	// Creamos el socket de escucha del kernel
 	socket_kernel = socket(kernelinfo->ai_family,kernelinfo->ai_socktype,kernelinfo->ai_protocol);
 	// Asociamos el socket a un puerto
-	bind(socket_kernel,kernelinfo->ai_addr,kernelinfo->ai_addrlen);
-	// Escuchamos las conexiones entrantes
-	listen(socket_kernel,SOMAXCONN);
+    verificarBind(socket_kernel, kernelinfo);
+    // Escuchamos las conexiones entrantes
+    verificarListen(socket_kernel);
 
-	freeaddrinfo(kernelinfo);
+    freeaddrinfo(kernelinfo);
 	log_trace(logger, "Listo para escuchar a mi consola");
 
 	return socket_kernel;
 }
 
+void verificarListen(int socket_kernel) {
+    if (listen(socket_kernel, SOMAXCONN) == -1) {
+        perror("Hubo un error en el listen: ");
+        close(socket_kernel);
+        exit(-1);
+    }
+}
+
+void verificarBind(int socket_kernel, const struct addrinfo *kernelinfo) {
+    if( bind(socket_kernel, kernelinfo->ai_addr, kernelinfo->ai_addrlen) == -1) {
+        perror("Hubo un error en el bind: ");
+        close(socket_kernel);
+        exit(-1);
+    } }
+
 int esperar_consola(int socket_kernel)
 {
 	// Aceptamos un nuevo consola
-	int socket_consola = accept(socket_kernel, NULL, NULL);
-	log_info(logger, "Se conecto una consola!");
+    int socket_consola = accept(socket_kernel, NULL, NULL);
 
+	if (socket_consola == -1) {
+	    perror("Hubo un error en aceptar una conexión de la consola: ");
+	    close(socket_kernel);
+	    exit(-1);
+	}
+
+	log_info(logger, "Se conecto una consola!");
 	return socket_consola;
 }
 

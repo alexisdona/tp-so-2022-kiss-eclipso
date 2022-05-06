@@ -6,13 +6,15 @@
 #include<signal.h>
 #include<unistd.h>
 #include<sys/socket.h>
+#include <arpa/inet.h>
 #include<netdb.h>
 #include<string.h>
 #include<commons/log.h>
 #include<commons/string.h>
 #include "protocolo.h"
+#include<errno.h>
 
-
+extern int errno;
 
 typedef struct
 {
