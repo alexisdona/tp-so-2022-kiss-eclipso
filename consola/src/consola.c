@@ -3,6 +3,8 @@
 t_config* config;
 t_instruccion* instruccion;
 
+int tamanioCodigoOperacion(instr_code operacion);
+
 int main(int argc, char* argv[]) {
 
     if(argc<3){
@@ -16,7 +18,6 @@ int main(int argc, char* argv[]) {
 	logger = iniciar_logger();
 	t_list* listaInstrucciones = list_create();
 	char* rutaArchivo = argv[1];
-//	rutaArchivo = "programs/program1.txt";
 	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo,logger);
 	if(lineasPseudocodigo==NULL) {
 		log_error(logger,"Lineas Pseudocodigo -> NULL");
@@ -39,7 +40,7 @@ int main(int argc, char* argv[]) {
 	enviar_mensaje("Hola soy la consola ", conexion );
 
 	printf("Paquete a enviar al kernel:\n");
-	enviarAKernel(conexion,listaInstrucciones);
+    enviarListaInstrucciones(conexion, listaInstrucciones);
 	string_array_destroy(lineasPseudocodigo);
 	list_destroy(listaInstrucciones);
 	terminar_programa(conexion, logger, config);
@@ -88,7 +89,6 @@ char** leer_archivo_pseudocodigo(char* ruta, t_log* logger){
 	uint32_t tamMaximo = 18;
 	char** lineas = string_array_new();
 	char linea[tamMaximo];
-
 	FILE* archivo = fopen(ruta,"r");
 	if(archivo!=NULL){
 		log_info(logger,"Archivo abierto exitosamente");
@@ -159,17 +159,33 @@ void leer_consola(t_log* logger) {
 
 }
 
-void enviarAKernel(uint32_t conexion, t_list* instrucciones) {
+void enviarListaInstrucciones(uint32_t conexion, t_list* instrucciones) {
 	t_paquete* paquete = crear_paquete();
-
+    int tamanio;
 	for(uint32_t i=0; i<list_size(instrucciones); i++){
-		agregar_a_paquete(paquete,list_get(instrucciones,i),3*sizeof(uint32_t));
+	    t_instruccion *instr = list_get(instrucciones, i);
+        tamanio = tamanioCodigoOperacion(instr->codigo_operacion);
+        agregarInstruccion(paquete, (void *) instr, tamanio);
+        printf("agregarInstruccion --> instruccion\n%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
 	}
 
 	enviar_paquete(paquete,conexion);
 	eliminar_paquete(paquete);
 
 }
+
+int tamanioCodigoOperacion(instr_code codigoOperacion) {
+    if (codigoOperacion==NO_OP || codigoOperacion== IO || codigoOperacion == READ) {
+        return sizeof(instr_code) + sizeof(operando);
+    }
+    else if (codigoOperacion==WRITE || codigoOperacion == COPY) {
+        return  sizeof(instr_code)+sizeof(operando)*2;
+    }
+      else {
+          return sizeof(instr_code);
+      }
+}
+
 
 void terminar_programa(uint32_t conexion, t_log* logger, t_config* config) {
 

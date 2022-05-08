@@ -17,7 +17,7 @@ int main(void) {
 			case MENSAJE:
 				recibir_mensaje(consola_fd);
 				break;
-			case PAQUETE:
+			case LISTA_INSTRUCCIONES:
 				lista = recibir_paquete(consola_fd);
 				log_info(logger, "Me llegaron los siguientes valores:\n");
 				list_iterate(lista, (void*) iterator);

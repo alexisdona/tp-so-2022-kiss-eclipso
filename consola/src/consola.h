@@ -18,6 +18,7 @@
 #define CONFIG_FILE "../consola/src/config/consola.config"
 #define CARACTER_SALIDA ""
 
+typedef uint32_t operando;
 typedef enum
 {
 	NO_OP,
@@ -30,7 +31,7 @@ typedef enum
 
 typedef struct{
 	instr_code codigo_operacion;
-	uint32_t parametros[2];
+	operando parametros[2];
 } t_instruccion;
 
 instr_code obtener_cop(char*);
@@ -41,7 +42,7 @@ uint32_t conectar_al_kernel();
 t_log* iniciar_logger(void);
 t_config* iniciar_config(void);
 void leer_consola(t_log*);
-void enviarAKernel(uint32_t,t_list*);
+void enviarListaInstrucciones(uint32_t, t_list*);
 void terminar_programa(uint32_t, t_log*, t_config*);
 
 #endif /* CONSOLA_H_ */

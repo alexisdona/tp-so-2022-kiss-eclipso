@@ -18,7 +18,7 @@ extern int errno;
 
 typedef struct
 {
-	int size;
+	size_t size;
 	void* stream;
 } t_buffer;
 
@@ -31,7 +31,7 @@ typedef struct
 int crear_conexion(char* ip, int puerto);
 void enviar_mensaje(char* mensaje, int socket_consola);
 t_paquete* crear_paquete(void);
-void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio);
+void agregarInstruccion(t_paquete* paqueteInstrucciones, void* instruccion, int tamanio);
 void enviar_paquete(t_paquete* paquete, int socket_consola);
 void liberar_conexion(int socket_consola);
 void eliminar_paquete(t_paquete* paquete);

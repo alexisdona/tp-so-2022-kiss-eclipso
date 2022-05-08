@@ -8,8 +8,8 @@
 typedef enum
 {
     MENSAJE,
-    PAQUETE
-}op_code;
+    LISTA_INSTRUCCIONES
+} op_code;
 
 //TODO acá van todas las funciones del protocolo que definamos entre consola y kernel, crear PCB por ejemplo
 #endif //TP_2022_1C_ECLIPSO_PROTOCOLO_H

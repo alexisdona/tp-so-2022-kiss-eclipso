@@ -8,7 +8,7 @@
 typedef enum
 {
     MENSAJE,
-    PAQUETE
+    LISTA_INSTRUCCIONES
 } op_code;
 
 //TODO acá van todas las estructuras y funciones para la comunicación entre kernel con CPU y MEMORIA
