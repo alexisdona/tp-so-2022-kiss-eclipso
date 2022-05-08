@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     	printf("%s",lineasPseudocodigo[i]);
     }
 
-	generar_lista_instrucciones(&listaInstrucciones,lineasPseudocodigo);
+    generarListaInstrucciones(&listaInstrucciones, lineasPseudocodigo);
 
 	for(int i=0; i<list_size(listaInstrucciones); i++){
     	t_instruccion* instr = list_get(listaInstrucciones,i);
@@ -47,15 +47,15 @@ int main(int argc, char* argv[]) {
 }
 
 
-void generar_lista_instrucciones(t_list** instrucciones,char** pseudocodigo){
+void generarListaInstrucciones(t_list** instrucciones, char** pseudocodigo){
 	while(!string_array_is_empty(pseudocodigo)){
 		char* instr = string_array_pop(pseudocodigo);
-	    agregar_instrucciones(instrucciones,instr);
+        agregarInstrucciones(instrucciones, instr);
 	    free(instr);
 	}
 }
 
-void agregar_instrucciones(t_list** instrucciones, char* itr){
+void agregarInstrucciones(t_list** instrucciones, char* itr){
 	t_instruccion* instruccion = malloc(sizeof(t_instruccion));
 	char* operacion = strtok_r(itr," ",&itr);
 	instruccion->codigo_operacion = obtener_cop(operacion);
@@ -161,16 +161,16 @@ void leer_consola(t_log* logger) {
 
 void enviarListaInstrucciones(uint32_t conexion, t_list* instrucciones) {
 	t_paquete* paquete = crear_paquete();
-    int tamanio;
+	paquete->codigo_operacion = LISTA_INSTRUCCIONES;
+
 	for(uint32_t i=0; i<list_size(instrucciones); i++){
 	    t_instruccion *instr = list_get(instrucciones, i);
-        tamanio = tamanioCodigoOperacion(instr->codigo_operacion);
-        agregarInstruccion(paquete, (void *) instr, tamanio);
+        agregarInstruccion(paquete, (void *) instr);
         printf("agregarInstruccion --> instruccion\n%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
 	}
 
-	enviar_paquete(paquete,conexion);
-	eliminar_paquete(paquete);
+    enviarPaquete(paquete, conexion);
+    eliminarPaquete(paquete);
 
 }
 

@@ -35,8 +35,8 @@ typedef struct{
 } t_instruccion;
 
 instr_code obtener_cop(char*);
-void generar_lista_instrucciones(t_list**,char**);
-void agregar_instrucciones(t_list**, char*);
+void generarListaInstrucciones(t_list **instrucciones, char **pseudocodigo);
+void agregarInstrucciones(t_list **instrucciones, char *itr);
 char** leer_archivo_pseudocodigo(char*,t_log*);
 uint32_t conectar_al_kernel();
 t_log* iniciar_logger(void);
