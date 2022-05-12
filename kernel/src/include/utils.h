@@ -13,7 +13,7 @@
 #include<assert.h>
 #include<errno.h>
 #include "protocolo.h"
-#include "../../shared/sharedUtils.h"
+#include "../../../shared/sharedUtils.h"
 
 #define IP "127.0.0.1"
 #define PUERTO "8000"
@@ -27,6 +27,7 @@ void* recibirBuffer(size_t, int);
 int iniciar_kernel(void);
 int esperar_consola(int);
 t_list* recibirListaInstrucciones(int);
+int recibirTamanioProceso(int);
 void recibirMensaje(int);
 op_code recibirOperacion(int);
 void verificarBind(int, const struct addrinfo *);

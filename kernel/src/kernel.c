@@ -28,6 +28,8 @@ int main(void) {
                            instruccion->parametros[1]);
                 }
 
+                int tamanioProceso = recibirTamanioProceso(consola_fd);
+                printf("\nTamano del proceso -->: %d", tamanioProceso);
                 /*log_info(logger, "Me llegaron los siguientes valores:\n");
 				list_iterate(listaInstrucciones, (void*) iterator);
 				list_destroy_and_destroy_elements(listaInstrucciones,free);*/

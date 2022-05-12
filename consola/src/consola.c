@@ -13,11 +13,16 @@ int main(int argc, char* argv[]) {
         return argc;
     }
 
+    char* rutaArchivo = argv[1];
+    int tamanioProceso = atoi(argv[2]);
+
 	uint32_t conexion;
 	t_log* logger;
 	logger = iniciar_logger();
 	t_list* listaInstrucciones = list_create();
-	char* rutaArchivo = argv[1];
+
+
+
 	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo,logger);
 	if(lineasPseudocodigo==NULL) {
 		log_error(logger,"Lineas Pseudocodigo -> NULL");
@@ -40,7 +45,7 @@ int main(int argc, char* argv[]) {
 	//enviar_mensaje("Hola soy la consola ", conexion );
 
 
-    enviarListaInstrucciones(conexion, listaInstrucciones);
+    enviarListaInstrucciones(conexion, tamanioProceso, listaInstrucciones);
 	string_array_destroy(lineasPseudocodigo);
 	list_destroy(listaInstrucciones);
 	terminar_programa(conexion, logger, config);
@@ -159,7 +164,7 @@ void leer_consola(t_log* logger) {
 
 }
 
-void enviarListaInstrucciones(uint32_t conexion, t_list* instrucciones) {
+void enviarListaInstrucciones(uint32_t conexion, int tamanioProceso, t_list* instrucciones) {
 	t_paquete* paquete = crear_paquete();
 	paquete->codigo_operacion = LISTA_INSTRUCCIONES;
 
@@ -170,7 +175,7 @@ void enviarListaInstrucciones(uint32_t conexion, t_list* instrucciones) {
                instruccion->codigo_operacion,
                instruccion->parametros[0],
                instruccion->parametros[1]);	}
-
+    agregarTamanioProceso(paquete, tamanioProceso);
     enviarPaquete(paquete, conexion);
     eliminarPaquete(paquete);
 

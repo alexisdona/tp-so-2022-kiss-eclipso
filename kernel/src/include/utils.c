@@ -126,16 +126,26 @@ bool recibirListaInstrucciones2(int socket_consola, t_list* listaInstrucciones) 
 }
 */
 
+int recibirTamanioProceso(int socket_consola) {
+    printf("\nentra en recibirTamanioProceso");
+    int tamanioProceso;
+    recv(socket_consola, &tamanioProceso, sizeof(int), 0);
+    return tamanioProceso;
+}
 
 t_list* recibirListaInstrucciones(int socket_consola) {
-    printf("entra en recibirListaInstrucciones");
-    size_t tamanoListaInstrucciones;
-    t_list * listaInstrucciones = list_create();
-    recv(socket_consola, &tamanoListaInstrucciones, sizeof(size_t), 0);
-    void *stream = malloc(tamanoListaInstrucciones);
-    recv(socket_consola, stream, tamanoListaInstrucciones, 0);
+    printf("\nentra en recibirListaInstrucciones");
 
-    listaInstrucciones = deserializarListaInstrucciones(stream, tamanoListaInstrucciones, listaInstrucciones);
+    t_list * listaInstrucciones = list_create();
+    int tamanioProceso = sizeof(int);
+    size_t tamanioTotalStream;
+    size_t tamanioListaInstrucciones;
+    recv(socket_consola, &tamanioTotalStream, sizeof(size_t), 0);
+    tamanioListaInstrucciones = tamanioTotalStream - tamanioProceso;
+
+    void *stream = malloc(tamanioListaInstrucciones);
+    recv(socket_consola, stream, tamanioListaInstrucciones, 0); //le pido la cantidad de bytes que ocupa la lista de instrucciones nada mas
+    listaInstrucciones = deserializarListaInstrucciones(stream, tamanioListaInstrucciones, listaInstrucciones);
     return listaInstrucciones;
 }
 

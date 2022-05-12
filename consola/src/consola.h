@@ -29,7 +29,7 @@ uint32_t conectar_al_kernel();
 t_log* iniciar_logger(void);
 t_config* iniciar_config(void);
 void leer_consola(t_log*);
-void enviarListaInstrucciones(uint32_t, t_list*);
+void enviarListaInstrucciones(uint32_t, int, t_list*);
 void terminar_programa(uint32_t, t_log*, t_config*);
 
 #endif /* CONSOLA_H_ */

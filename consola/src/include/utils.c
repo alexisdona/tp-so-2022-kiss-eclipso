@@ -83,7 +83,17 @@ t_paquete* crear_paquete(void)
 
 }
 
-void agregarInstruccion(t_paquete* paqueteInstrucciones, void* instruccion)
+void agregarTamanioProceso(t_paquete* paquete, int tamanioProceso) {
+
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(tamanioProceso));
+
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanioProceso,
+           sizeof(tamanioProceso));
+
+    paquete->buffer->size += sizeof(tamanioProceso);
+}
+
+    void agregarInstruccion(t_paquete* paqueteInstrucciones, void* instruccion)
 {   size_t tamanioOperandos = sizeof(operando)*2;
     int tamanio = sizeof(instr_code)+tamanioOperandos;
     paqueteInstrucciones->buffer->stream =
@@ -96,13 +106,15 @@ void agregarInstruccion(t_paquete* paqueteInstrucciones, void* instruccion)
 
 }
 
-int enviarPaquete(t_paquete* listaInstrucciones, int socket_consola)
+int enviarPaquete(t_paquete* paquete, int socket_consola)
 {
     int tamanioCodigoOperacion = sizeof(op_code);
-	int tamanioStream = listaInstrucciones->buffer->size;
+	int tamanioStream = paquete->buffer->size;
 	size_t tamanioPayload = sizeof(size_t);
+
+
     size_t tamanioPaquete = tamanioCodigoOperacion + tamanioStream + tamanioPayload;
-    void* a_enviar = serializar_paquete(listaInstrucciones, tamanioPaquete);
+    void* a_enviar = serializar_paquete(paquete, tamanioPaquete);
 
 	if(send(socket_consola, a_enviar, tamanioPaquete, 0) == -1){
 	    perror("Hubo un error enviando la lista de instrucciones: ");
