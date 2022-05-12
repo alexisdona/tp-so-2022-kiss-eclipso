@@ -12,21 +12,11 @@
 #include<commons/log.h>
 #include<commons/string.h>
 #include "protocolo.h"
+#include "../../../shared/sharedUtils.h"
 #include<errno.h>
 
 extern int errno;
 
-typedef struct
-{
-	size_t size;
-	void* stream;
-} t_buffer;
-
-typedef struct
-{
-	op_code codigo_operacion;
-	t_buffer* buffer;
-} t_paquete;
 
 int crear_conexion(char* ip, int puerto);
 void enviar_mensaje(char* mensaje, int socket_consola);

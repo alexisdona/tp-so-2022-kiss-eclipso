@@ -11,8 +11,8 @@ void* serializar_paquete(t_paquete* paquete, int bytes)
 
 	memcpy(paqueteSerializado + desplazamiento, &(paquete->codigo_operacion), sizeof(op_code)); //OP_CODE = LISTA_INSTRUCCIONES
 	desplazamiento+= sizeof(op_code);
-	memcpy(paqueteSerializado + desplazamiento, &(paquete->buffer->size), sizeof(int)); // TAMAÑO DEL STREAM A ENVIAR
-	desplazamiento+= sizeof(int);
+	memcpy(paqueteSerializado + desplazamiento, &(paquete->buffer->size), sizeof(size_t)); // TAMAÑO DEL STREAM A ENVIAR
+	desplazamiento+= sizeof(size_t);
 	memcpy(paqueteSerializado + desplazamiento, paquete->buffer->stream, paquete->buffer->size);
 
 	return paqueteSerializado;
@@ -85,12 +85,13 @@ t_paquete* crear_paquete(void)
 }
 
 void agregarInstruccion(t_paquete* paqueteInstrucciones, void* instruccion)
-{
-    int tamanio = sizeof(instr_code)+sizeof(operando)*2;
-    paqueteInstrucciones->buffer->stream = realloc(paqueteInstrucciones->buffer->stream, paqueteInstrucciones->buffer->size + tamanio + sizeof(int));
+{   size_t tamanioOperandos = sizeof(operando)*2;
+    int tamanio = sizeof(instr_code)+tamanioOperandos;
+    paqueteInstrucciones->buffer->stream =
+            realloc(paqueteInstrucciones->buffer->stream, paqueteInstrucciones->buffer->size + tamanio + sizeof(int));
 
-	memcpy(paqueteInstrucciones->buffer->stream + paqueteInstrucciones->buffer->size, &tamanio, sizeof(int));
-	memcpy(paqueteInstrucciones->buffer->stream + paqueteInstrucciones->buffer->size + sizeof(int), instruccion, tamanio);
+	memcpy(paqueteInstrucciones->buffer->stream + paqueteInstrucciones->buffer->size, instruccion, sizeof(instr_code));
+	memcpy(paqueteInstrucciones->buffer->stream + paqueteInstrucciones->buffer->size + sizeof(instr_code), instruccion + sizeof(instr_code), tamanioOperandos);
 
     paqueteInstrucciones->buffer->size += tamanio;
 
@@ -100,9 +101,11 @@ int enviarPaquete(t_paquete* listaInstrucciones, int socket_consola)
 {
     int tamanioCodigoOperacion = sizeof(op_code);
 	int tamanioStream = listaInstrucciones->buffer->size;
-	void* a_enviar = serializar_paquete(listaInstrucciones, tamanioCodigoOperacion+tamanioStream);
+	size_t tamanioPayload = sizeof(size_t);
+    size_t tamanioPaquete = tamanioCodigoOperacion + tamanioStream + tamanioPayload;
+    void* a_enviar = serializar_paquete(listaInstrucciones, tamanioPaquete);
 
-	if(send(socket_consola, a_enviar, tamanioCodigoOperacion+tamanioStream, 0)==-1){
+	if(send(socket_consola, a_enviar, tamanioPaquete, 0) == -1){
 	    perror("Hubo un error enviando la lista de instrucciones: ");
 	    free(a_enviar);
 	    return EXIT_FAILURE;

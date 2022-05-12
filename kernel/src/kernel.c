@@ -6,22 +6,31 @@ int main(void) {
 	int kernel_fd = iniciar_kernel();
 	log_info(logger, "Kernel listo para recibir una consola");
 	int consola_fd = esperar_consola(kernel_fd);
-
-	t_list* lista;
 	int continuar=1;
 
-	while (continuar) {
-		int cod_op = recibir_operacion(consola_fd);
-		printf("cod_op: %d", cod_op);
+	while (continuar) { //meter variable para representar por qué va a continuar, hay mas mensajes?
+	    printf("entra en el while\n");
+		op_code cod_op = recibirOperacion(consola_fd);
 		switch (cod_op) {
 			case MENSAJE:
-				recibir_mensaje(consola_fd);
+                recibirMensaje(consola_fd);
 				break;
 			case LISTA_INSTRUCCIONES:
-				lista = recibir_paquete(consola_fd);
-				log_info(logger, "Me llegaron los siguientes valores:\n");
-				list_iterate(lista, (void*) iterator);
-				list_destroy_and_destroy_elements(lista,free);
+                printf("va a entrar en recibirListaInstrucciones\n");
+                t_list* listaInstrucciones = list_create();
+
+                listaInstrucciones = recibirListaInstrucciones(consola_fd);
+                for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
+                    t_instruccion *instruccion = list_get(listaInstrucciones,i);
+                    printf("\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
+                           instruccion->codigo_operacion,
+                           instruccion->parametros[0],
+                           instruccion->parametros[1]);
+                }
+
+                /*log_info(logger, "Me llegaron los siguientes valores:\n");
+				list_iterate(listaInstrucciones, (void*) iterator);
+				list_destroy_and_destroy_elements(listaInstrucciones,free);*/
 				break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
@@ -73,7 +82,7 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 	log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
 	int opcion = recibir_opcion();
 
-	if (recibir_operacion(consola_fd) == SIN_CONSOLAS) {
+	if (recibirOperacion(consola_fd) == SIN_CONSOLAS) {
 	  log_info(logger, "No hay mas clientes conectados.");
 	  log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
 	  opcion = recibir_opcion();

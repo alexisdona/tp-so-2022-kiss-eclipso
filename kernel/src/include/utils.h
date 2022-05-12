@@ -8,10 +8,13 @@
 #include<netdb.h>
 #include<commons/log.h>
 #include<commons/collections/list.h>
+#include <commons/string.h>
 #include<string.h>
 #include<assert.h>
 #include<errno.h>
+#include <include/utils.h>
 #include "protocolo.h"
+#include "../../shared/sharedUtils.h"
 
 #define IP "127.0.0.1"
 #define PUERTO "8000"
@@ -21,12 +24,13 @@ t_log* logger;
 extern int errno;
 
 
-void* recibir_buffer(int*, int);
-
+void* recibirBuffer(size_t, int);
 int iniciar_kernel(void);
 int esperar_consola(int);
-t_list* recibir_paquete(int);
-void recibir_mensaje(int);
-int recibir_operacion(int);
+t_list* recibirListaInstrucciones(int);
+void recibirMensaje(int);
+op_code recibirOperacion(int);
+void verificarBind(int, const struct addrinfo *);
+void verificarListen(int);
 
 #endif /* UTILS_H_ */

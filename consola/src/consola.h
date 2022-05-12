@@ -12,27 +12,14 @@
 
 
 #include "include/utils.h"
+#include "../../shared/sharedUtils.h"
 
 #define LOG_NAME "CONSOLA_LOG"
 #define LOG_FILE "consola.log"
 #define CONFIG_FILE "../consola/src/config/consola.config"
 #define CARACTER_SALIDA ""
 
-typedef uint32_t operando;
-typedef enum
-{
-	NO_OP,
-	IO,
-	READ,
-	COPY,
-	WRITE,
-	EXIT
-} instr_code;
 
-typedef struct{
-	instr_code codigo_operacion;
-	operando parametros[2];
-} t_instruccion;
 
 instr_code obtener_cop(char*);
 void generarListaInstrucciones(t_list **instrucciones, char **pseudocodigo);

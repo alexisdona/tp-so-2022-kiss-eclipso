@@ -37,9 +37,9 @@ int main(int argc, char* argv[]) {
 
 	conexion = conectar_al_kernel(config);
 
-	enviar_mensaje("Hola soy la consola ", conexion );
+	//enviar_mensaje("Hola soy la consola ", conexion );
 
-	printf("Paquete a enviar al kernel:\n");
+
     enviarListaInstrucciones(conexion, listaInstrucciones);
 	string_array_destroy(lineasPseudocodigo);
 	list_destroy(listaInstrucciones);
@@ -164,10 +164,12 @@ void enviarListaInstrucciones(uint32_t conexion, t_list* instrucciones) {
 	paquete->codigo_operacion = LISTA_INSTRUCCIONES;
 
 	for(uint32_t i=0; i<list_size(instrucciones); i++){
-	    t_instruccion *instr = list_get(instrucciones, i);
-        agregarInstruccion(paquete, (void *) instr);
-        printf("agregarInstruccion --> instruccion\n%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
-	}
+	    t_instruccion *instruccion = list_get(instrucciones, i);
+        agregarInstruccion(paquete, (void *) instruccion);
+        printf("instruccion-->codigoInstruccion->%d\toperando1-> %d\toperando2-> %d\n",
+               instruccion->codigo_operacion,
+               instruccion->parametros[0],
+               instruccion->parametros[1]);	}
 
     enviarPaquete(paquete, conexion);
     eliminarPaquete(paquete);

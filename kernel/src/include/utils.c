@@ -1,8 +1,11 @@
+
+
 #include "utils.h"
 
-void verificarBind(int socket_kernel, const struct addrinfo *kernelinfo);
 
-void verificarListen(int socket_kernel);
+//void deserializarListaInstrucciones(void*, t_paquete*);
+
+t_list* deserializarListaInstrucciones(void *pVoid, size_t tamanioListaInstrucciones, t_list *instrucciones);
 
 int iniciar_kernel(void)
 {
@@ -60,11 +63,12 @@ int esperar_consola(int socket_kernel)
 	return socket_consola;
 }
 
-int recibir_operacion(int socket_consola)
+op_code recibirOperacion(int socket_consola)
 {
-	int cod_op;
+	op_code cod_op;
 
-	if(recv(socket_consola, &cod_op, sizeof(int), MSG_WAITALL) > 0) {
+	if(recv(socket_consola, &cod_op, sizeof(op_code), MSG_WAITALL) > 0) {
+        printf("recibirOperacion --> cod_op: %d\n", cod_op);
 		return cod_op;
 	}
 	else
@@ -72,45 +76,85 @@ int recibir_operacion(int socket_consola)
 		close(socket_consola);
 		return -1;
 	}
+
 }
 
-void* recibir_buffer(int* size, int socket_consola)
+size_t recibirTamanioStream(int socket_consola) {
+    size_t tamanioStream;
+    void* stream;
+
+    if(recv(socket_consola, stream, sizeof(size_t), 0) > 0) {
+        memcpy(&tamanioStream, stream, sizeof(size_t));
+        return tamanioStream;
+    }
+    else
+    {
+        close(socket_consola);
+        return -1;
+    }
+}
+
+void* recibirBuffer(size_t size, int socket_consola)
 {
 	void * buffer;
-
-	recv(socket_consola, size, sizeof(int), MSG_WAITALL);
-	buffer = malloc(*size);
-	recv(socket_consola, buffer, *size, MSG_WAITALL);
+	buffer = malloc(size);
+	recv(socket_consola, buffer, size, MSG_WAITALL);
 
 	return buffer;
 }
 
-void recibir_mensaje(int socket_consola)
+void recibirMensaje(int socket_consola)
 {
 	int size;
-	char* buffer = recibir_buffer(&size, socket_consola);
+	char* buffer = recibirBuffer(size, socket_consola);
 	log_info(logger, "Me llego el mensaje %s", buffer);
 	free(buffer);
 }
+/*
+bool recibirListaInstrucciones2(int socket_consola, t_list* listaInstrucciones) {
+    size_t sizePayload;
 
-t_list* recibir_paquete(int socket_consola)
-{
-	int size;
-	int desplazamiento = 0;
-	void * buffer;
-	t_list* valores = list_create();
-	int tamanio;
+    if(recv(socket_consola, &sizePayload, sizeof(size_t), 0) != sizeof(size_t)){
+        return false;
+    }
+    void* stream = malloc(sizePayload);
+    if(recv(socket_consola, stream, sizePayload, 0) != sizePayload ) {
+        free(stream);
+        return false;
+    }
+    deserializarListaInstrucciones(stream, listaInstrucciones);
+}
+*/
 
-	buffer = recibir_buffer(&size, socket_consola);
-	while(desplazamiento < size)
-	{
-		memcpy(&tamanio, buffer + desplazamiento, sizeof(int));
-		desplazamiento+=sizeof(int);
-		char* valor = malloc(tamanio);
-		memcpy(valor, buffer+desplazamiento, tamanio);
-		desplazamiento+=tamanio;
+
+t_list* recibirListaInstrucciones(int socket_consola) {
+    printf("entra en recibirListaInstrucciones");
+    size_t tamanoListaInstrucciones;
+    t_list * listaInstrucciones = list_create();
+    recv(socket_consola, &tamanoListaInstrucciones, sizeof(size_t), 0);
+    void *stream = malloc(tamanoListaInstrucciones);
+    recv(socket_consola, stream, tamanoListaInstrucciones, 0);
+
+    listaInstrucciones = deserializarListaInstrucciones(stream, tamanoListaInstrucciones, listaInstrucciones);
+    return listaInstrucciones;
+}
+
+t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucciones, t_list* listaInstrucciones) {
+    int desplazamiento = 0;
+    char** lineas = string_array_new();
+    size_t tamanioInstruccion = sizeof(instr_code)+sizeof(operando)*2;
+    t_list *valores = list_create();
+    while(desplazamiento < tamanioListaInstrucciones) {
+		char* valor = malloc(tamanioInstruccion);
+		memcpy(valor, stream+desplazamiento, tamanioInstruccion);
+		desplazamiento += tamanioInstruccion;
 		list_add(valores, valor);
 	}
-	free(buffer);
-	return valores;
+    return valores;
 }
+/*
+void deserializarListaInstrucciones(void* stream, t_paquete* listaInstrucciones) {
+    size_t sizeListaInstrucciones;
+    memcpy(sizeListaInstrucciones,stream,sizeof);
+}
+*/
