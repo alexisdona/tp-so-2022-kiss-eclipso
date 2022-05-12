@@ -12,7 +12,6 @@
 #include<string.h>
 #include<assert.h>
 #include<errno.h>
-#include <include/utils.h>
 #include "protocolo.h"
 #include "../../shared/sharedUtils.h"
 
