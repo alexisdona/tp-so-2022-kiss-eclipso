@@ -32,5 +32,6 @@ void recibirMensaje(int);
 op_code recibirOperacion(int);
 void verificarBind(int, const struct addrinfo *);
 void verificarListen(int);
+void cerrar_programa(t_log* logger);
 
 #endif /* UTILS_H_ */

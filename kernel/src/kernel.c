@@ -1,16 +1,23 @@
 #include "kernel.h"
 
-int main(void) {
-	logger = log_create("kernel.log", "Kernel", 1, LOG_LEVEL_DEBUG);
+static void procesar_conexion(void* void_args) {
+	t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
+	t_log* logger = attrs->log;
+    int consola_fd = attrs->fd;
+    char* nombre_kernel = attrs->nombre_kernel;
+    free(attrs);
 
-	int kernel_fd = iniciar_kernel();
-	log_info(logger, "Kernel listo para recibir una consola");
-	int consola_fd = esperar_consola(kernel_fd);
-	int continuar=1;
+    op_code cop;
 
-	while (continuar) { //meter variable para representar por qué va a continuar, hay mas mensajes?
-	    printf("entra en el while\n");
+	while (consola_fd != -1) { 
+	    
+	   if (recv(consola_fd, &cop, sizeof(op_code), 0) != sizeof(op_code)) {
+            log_info(logger, "CONSOLA DESCONECTADA");
+            return;
+        }
+
 		op_code cod_op = recibirOperacion(consola_fd);
+
 		switch (cod_op) {
 			case MENSAJE:
                 recibirMensaje(consola_fd);
@@ -45,6 +52,7 @@ int main(void) {
 	}
 	return EXIT_SUCCESS;
 }
+
 
 int recibir_opcion() {
 	char* opcion = malloc(4);
@@ -93,6 +101,21 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 
 	return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
 
+}
+
+int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
+    int consola_fd = esperar_consola(kernel_fd);
+    if (consola_fd != -1) {
+        pthread_t hilo;
+        t_procesar_conexion_attrs* args = malloc(sizeof(t_procesar_conexion_attrs));
+        args->log = logger;
+        args->fd = consola_fd;
+        args->nombre_kernel = nombre_kernel;
+        pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
+        pthread_detach(hilo);
+        return 1;
+    }
+    return 0;
 }
 
 void iterator(char* value) {

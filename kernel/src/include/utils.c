@@ -48,7 +48,7 @@ void verificarBind(int socket_kernel, const struct addrinfo *kernelinfo) {
         exit(-1);
     } }
 
-int esperar_consola(int socket_kernel)
+int escuchar_consola(int socket_kernel)
 {
 	// Aceptamos un nuevo consola
     int socket_consola = accept(socket_kernel, NULL, NULL);
@@ -162,6 +162,7 @@ t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucc
 	}
     return valores;
 }
+
 /*
 void deserializarListaInstrucciones(void* stream, t_paquete* listaInstrucciones) {
     size_t sizeListaInstrucciones;
