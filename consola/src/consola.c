@@ -5,26 +5,12 @@ t_instruccion* instruccion;
 
 int tamanioCodigoOperacion(instr_code operacion);
 
-int main(int argc, char* argv[]) {
+int recibirInstrucciones(uint32_t conexion, int rutaArchivo, int tamanioProceso) {
 
-    if(argc<3){
-        printf("Cantidad de parametros incorrectos. Debe informar 2 parametros.\n");
-        printf("1- Ruta al archivo con instrucciones a ejecutar.\n2- Tamaño del proceso\n");
-        return argc;
-    }
-
-    char* rutaArchivo = argv[1];
-    int tamanioProceso = atoi(argv[2]);
-
-	uint32_t conexion;
-	t_log* logger;
-	logger = iniciar_logger();
 	t_list* listaInstrucciones = list_create();
 
-
-
 	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo,logger);
-	if(lineasPseudocodigo==NULL) {
+	if(lineasPseudocodigo == NULL) {
 		log_error(logger,"Lineas Pseudocodigo -> NULL");
 		return EXIT_FAILURE;
 	}
@@ -39,11 +25,6 @@ int main(int argc, char* argv[]) {
     	t_instruccion* instr = list_get(listaInstrucciones,i);
     	printf("instrucciones\n%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
     }
-
-	conexion = conectar_al_kernel(config);
-
-	//enviar_mensaje("Hola soy la consola ", conexion );
-
 
     enviarListaInstrucciones(conexion, tamanioProceso, listaInstrucciones);
 	string_array_destroy(lineasPseudocodigo);
