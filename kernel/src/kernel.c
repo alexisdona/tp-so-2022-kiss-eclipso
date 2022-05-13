@@ -16,24 +16,23 @@ int main(void) {
                 recibirMensaje(consola_fd);
 				break;
 			case LISTA_INSTRUCCIONES:
-                printf("va a entrar en recibirListaInstrucciones\n");
+			    ;
                 t_list* listaInstrucciones = list_create();
-
                 listaInstrucciones = recibirListaInstrucciones(consola_fd);
+                int tamanioProceso = recibirTamanioProceso(consola_fd);
+                t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso);
+                printf("\nPCB->idProceso:%d", pcb->idProceso);
+                printf("\nPCB->tamanioProceso:%d", pcb->tamanioProceso);
                 for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
-                    t_instruccion *instruccion = list_get(listaInstrucciones,i);
-                    printf("\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
+                    t_instruccion *instruccion = list_get(pcb->listaInstrucciones,i);
+                    printf("\nEN EL PCB\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
                            instruccion->codigo_operacion,
                            instruccion->parametros[0],
                            instruccion->parametros[1]);
                 }
+                printf("\nPCB->programCounter:%d", pcb->programCounter);
 
-                int tamanioProceso = recibirTamanioProceso(consola_fd);
-                printf("\nTamano del proceso -->: %d", tamanioProceso);
-                /*log_info(logger, "Me llegaron los siguientes valores:\n");
-				list_iterate(listaInstrucciones, (void*) iterator);
-				list_destroy_and_destroy_elements(listaInstrucciones,free);*/
-				break;
+                break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
 				continuar = accion_kernel(consola_fd, kernel_fd);
@@ -97,4 +96,17 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 
 void iterator(char* value) {
 	log_info(logger,"%s", value);
+}
+
+t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
+
+    t_pcb *pcb =  malloc(sizeof(t_pcb));
+    t_instruccion *instruccion = list_get(listaInstrucciones,0);
+
+    pcb->idProceso = process_get_thread_id();
+    pcb->tamanioProceso = tamanioProceso;
+    pcb->listaInstrucciones = listaInstrucciones;
+    pcb->programCounter= instruccion->codigo_operacion;
+    pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
+
 }
