@@ -1,4 +1,4 @@
-#include "src/include/main.h"
+#include "src/main.h"
 
 t_log* logger;
 int kernel_fd;

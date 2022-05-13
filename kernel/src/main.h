@@ -7,9 +7,9 @@
 
 #include <commons/log.h>
 
-#include "init.h"
+#include "include/utils.h"
 #include "kernel.h"
-#include "protocolo.h"
-#include "../../../shared/sharedUtils.h"
+#include "include/protocolo.h"
+#include "../../shared/sharedUtils.h"
 
 #endif

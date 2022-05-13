@@ -5,7 +5,7 @@ t_instruccion* instruccion;
 
 int tamanioCodigoOperacion(instr_code operacion);
 
-int recibirInstrucciones(uint32_t conexion, int rutaArchivo, int tamanioProceso) {
+int recibirInstrucciones(uint32_t conexion, t_log* logger, int rutaArchivo, int tamanioProceso) {
 
 	t_list* listaInstrucciones = list_create();
 

@@ -31,6 +31,6 @@ t_config* iniciar_config(void);
 void leer_consola(t_log*);
 void enviarListaInstrucciones(uint32_t, int, t_list*);
 void terminar_programa(uint32_t, t_log*, t_config*);
-int recibirInstrucciones(uint32_t, int, int);
+int recibirInstrucciones(uint32_t, t_log*, int, int);
 
 #endif /* CONSOLA_H_ */

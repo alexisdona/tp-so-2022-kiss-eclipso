@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <pthread.h>
+#include <inttypes.h>
 #include <commons/log.h>
 #include "include/utils.h"
 

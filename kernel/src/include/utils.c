@@ -48,7 +48,7 @@ void verificarBind(int socket_kernel, const struct addrinfo *kernelinfo) {
         exit(-1);
     } }
 
-int escuchar_consola(int socket_kernel)
+int esperar_consola(int socket_kernel)
 {
 	// Aceptamos un nuevo consola
     int socket_consola = accept(socket_kernel, NULL, NULL);

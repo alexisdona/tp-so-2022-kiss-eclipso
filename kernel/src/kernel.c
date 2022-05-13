@@ -43,7 +43,7 @@ static void procesar_conexion(void* void_args) {
 				break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
-				continuar = accion_kernel(consola_fd, kernel_fd);
+				//continuar = accion_kernel(consola_fd, kernel_fd);
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
@@ -65,7 +65,7 @@ int recibir_opcion() {
 
 int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd) {
 
-	int continuar=1;
+	int continuar = 1;
 
 	switch(opcion) {
 		case 1:
@@ -107,10 +107,10 @@ int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
     int consola_fd = esperar_consola(kernel_fd);
     if (consola_fd != -1) {
         pthread_t hilo;
-        t_procesar_conexion_attrs* args = malloc(sizeof(t_procesar_conexion_attrs));
-        args->log = logger;
-        args->fd = consola_fd;
-        args->nombre_kernel = nombre_kernel;
+        t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
+        attrs->log = logger;
+        attrs->fd = consola_fd;
+        attrs->nombre_kernel = nombre_kernel;
         pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
         pthread_detach(hilo);
         return 1;
