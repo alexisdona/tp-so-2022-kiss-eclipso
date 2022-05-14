@@ -12,7 +12,7 @@
 #include<commons/log.h>
 #include<commons/string.h>
 #include "protocolo.h"
-#include "../../../shared/sharedUtils.h"
+#include "../../../shared/headers/sharedUtils.h"
 #include<errno.h>
 
 extern int errno;

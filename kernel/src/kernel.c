@@ -7,6 +7,7 @@ int main(void) {
 	log_info(logger, "Kernel listo para recibir una consola");
 	int consola_fd = esperar_consola(kernel_fd);
 	int continuar=1;
+    t_queue * colaProcesosNew = queue_create();
 
 	while (continuar) { //meter variable para representar por qué va a continuar, hay mas mensajes?
 	    printf("entra en el while\n");
@@ -30,8 +31,8 @@ int main(void) {
                            instruccion->parametros[0],
                            instruccion->parametros[1]);
                 }
-                printf("\nPCB->programCounter:%d", pcb->programCounter);
-
+                printf("PCB->programCounter:%d", pcb->programCounter);
+                queue_push(colaProcesosNew, pcb);
                 break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
