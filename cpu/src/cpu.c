@@ -1,6 +1,6 @@
 #include "cpu.h"
 
-int main(int argc, char* argv[]) {
+int main(void) {
 	logger = log_create("cpu.log", "CPU", 1, LOG_LEVEL_DEBUG);
 
 	int cpu_fd = iniciar_cpu();
@@ -9,14 +9,14 @@ int main(int argc, char* argv[]) {
 	int continuar=1;
 
 	while(continuar) {
-		op_code cod_op = recibirOperacion(consola_fd);
+		op_code cod_op = recibirOperacion(memoria_fd);
 		switch (cod_op) {
 			case MENSAJE:
 				recibirMensaje(memoria_fd);
 				break;
 			case -1:
 				log_info(logger, "La memoria se desconecto.");
-				continuar = accion_kernel(memoria_fd, cpu_fd);
+				continuar = accion_cpu(memoria_fd, cpu_fd);
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");

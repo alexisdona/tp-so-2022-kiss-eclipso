@@ -55,3 +55,16 @@ int esperar_memoria(int socket_cpu)
 	log_info(logger, "Se conecto una memoria!");
 	return socket_memoria;
 }
+
+op_code recibirOperacion(int socket_memoria) {
+    op_code cod_op;
+
+    if(recv(socket_memoria, &cod_op, sizeof(op_code), MSG_WAITALL) > 0) {
+        printf("recibirOperacion --> cod_op: %d\n", cod_op);
+        return cod_op;
+    }
+    else {
+        close(socket_memoria);
+        return -1;
+    }
+}
