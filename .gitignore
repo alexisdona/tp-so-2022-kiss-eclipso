@@ -57,3 +57,9 @@ cmake-build-debug/
 
 consola/Debug/
 kernel/Debug/
+consola/Default/
+kernel/Default/
+
+*.project
+*.project
+*.log
