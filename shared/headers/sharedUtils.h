@@ -6,6 +6,7 @@
 #define TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 
 #include<commons/collections/list.h>
+#include "protocolo.h"
 
 typedef uint32_t operando;
 

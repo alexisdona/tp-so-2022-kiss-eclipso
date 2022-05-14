@@ -61,6 +61,7 @@ void generarListaInstrucciones(t_list** instrucciones, char** pseudocodigo){
 }
 
 void agregarInstrucciones(t_list** instrucciones, char* itr){
+	uint32_t posicion = 0;
 	t_instruccion* instruccion = malloc(sizeof(t_instruccion));
 	char* operacion = strtok_r(itr," ",&itr);
 	instruccion->codigo_operacion = obtener_cop(operacion);
@@ -70,22 +71,22 @@ void agregarInstrucciones(t_list** instrucciones, char* itr){
 			instruccion->parametros[1]=0;
 			char* str = strtok_r(NULL,"\n",&itr);
 			uint32_t repeticiones = atoi(str);
-			for(uint32_t i=0; i<repeticiones; i++) list_add(*instrucciones,instruccion);
+			for(uint32_t i=0; i<repeticiones; i++) list_add_in_index(*instrucciones,posicion,instruccion);
 			break;
 		case IO: case READ:
 			instruccion->parametros[0]=atoi(strtok_r(NULL,"\n",&itr));
 			instruccion->parametros[1]=0;
-			list_add(*instrucciones,instruccion);
+			list_add_in_index(*instrucciones,posicion,instruccion);
 			break;
 		case COPY: case WRITE:
 			instruccion->parametros[0]=atoi(strtok_r(NULL," ",&itr));
 			instruccion->parametros[1]=atoi(strtok_r(NULL,"\n",&itr));
-			list_add(*instrucciones,instruccion);
+			list_add_in_index(*instrucciones,posicion,instruccion);
 			break;
 		case EXIT:
 			instruccion->parametros[0]=0;
 			instruccion->parametros[1]=0;
-			list_add(*instrucciones,instruccion);
+			list_add_in_index(*instrucciones,posicion,instruccion);
 			break;
 	}
 }

@@ -12,8 +12,8 @@
 #include<string.h>
 #include<assert.h>
 #include<errno.h>
-#include "protocolo.h"
-#include "../../../shared/sharedUtils.h"
+#include "../../../shared/headers/sharedUtils.h"
+#include "../../../shared/headers/protocolo.h"
 
 #define IP "127.0.0.1"
 #define PUERTO "8000"
