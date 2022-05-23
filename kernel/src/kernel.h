@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <signal.h>
 #include <inttypes.h>
 #include <commons/log.h>
 #include "include/utils.h"
