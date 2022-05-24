@@ -20,15 +20,15 @@ int main(int argc, char* argv[]) {
 	int tamanioProceso = atoi(argv[2]);
 
 	recibirInstrucciones(conexion, logger, rutaArchivo, tamanioProceso);
-
+	while(true);
 	return EXIT_SUCCESS;
 }
 
-int recibirInstrucciones(uint32_t conexion, t_log* logger, int rutaArchivo, int tamanioProceso) {
+int recibirInstrucciones(uint32_t conexion, t_log* logger, char* rutaArchivo, int tamanioProceso) {
 
 	t_list* listaInstrucciones = list_create();
 
-	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo,logger);
+	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo, logger);
 	if(lineasPseudocodigo == NULL) {
 		log_error(logger,"Lineas Pseudocodigo -> NULL");
 		return EXIT_FAILURE;
@@ -49,6 +49,7 @@ int recibirInstrucciones(uint32_t conexion, t_log* logger, int rutaArchivo, int 
 	string_array_destroy(lineasPseudocodigo);
 	list_destroy(listaInstrucciones);
 	//terminar_programa(conexion, logger, config);
+	return EXIT_SUCCESS;
 }
 
 

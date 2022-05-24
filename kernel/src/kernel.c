@@ -77,7 +77,6 @@ static void procesar_conexion(void* void_args) {
 				break;
 			}
 	}
-	return EXIT_SUCCESS;
 }
 
 
