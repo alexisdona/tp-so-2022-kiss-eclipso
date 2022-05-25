@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 	int tamanioProceso = atoi(argv[2]);
 
 	recibirInstrucciones(conexion, logger, rutaArchivo, tamanioProceso);
-
+    terminar_programa(conexion, logger, config);
 	return EXIT_SUCCESS;
 }
 

@@ -31,17 +31,13 @@ static void procesar_conexion(void* void_args) {
 	t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
 	t_log* logger = attrs->log;
     int consola_fd = attrs->fd;
+    printf("Aranca un hilo de ejecución: %d",consola_fd,"\n");
     //char* nombre_kernel = attrs->nombre_kernel;
     free(attrs);
 
     op_code cop;
 
 	while (consola_fd != -1) {
-
-	   if (recv(consola_fd, &cop, sizeof(op_code), 0) != sizeof(op_code)) {
-            log_info(logger, "CONSOLA DESCONECTADA");
-            return;
-        }
 
 		op_code cod_op = recibirOperacion(consola_fd);
 		switch (cod_op) {
@@ -68,7 +64,7 @@ static void procesar_conexion(void* void_args) {
                 break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
-				//continuar = accion_kernel(consola_fd, kernel_fd);
+				consola_fd = -1;
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");

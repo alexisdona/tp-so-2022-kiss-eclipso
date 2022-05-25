@@ -115,7 +115,7 @@ int enviarPaquete(t_paquete* paquete, int socket_consola)
 
     size_t tamanioPaquete = tamanioCodigoOperacion + tamanioStream + tamanioPayload;
     void* a_enviar = serializar_paquete(paquete, tamanioPaquete);
-
+    printf("paquete->codigo_operacion: %u",paquete->codigo_operacion);
 	if(send(socket_consola, a_enviar, tamanioPaquete, 0) == -1){
 	    perror("Hubo un error enviando la lista de instrucciones: ");
 	    free(a_enviar);
