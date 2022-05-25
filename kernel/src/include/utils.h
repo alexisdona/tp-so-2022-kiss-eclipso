@@ -12,8 +12,8 @@
 #include<string.h>
 #include<assert.h>
 #include<errno.h>
-#include "protocolo.h"
-#include "../../../shared/sharedUtils.h"
+#include "../../../shared/headers/sharedUtils.h"
+#include "../../../shared/headers/protocolo.h"
 
 #define IP "127.0.0.1"
 #define PUERTO "8000"
@@ -25,7 +25,7 @@ extern int errno;
 
 void* recibirBuffer(size_t, int);
 int iniciar_kernel(void);
-int esperar_consola(int);
+int esperarConsola(int);
 t_list* recibirListaInstrucciones(int);
 int recibirTamanioProceso(int);
 void recibirMensaje(int);
@@ -33,5 +33,6 @@ op_code recibirOperacion(int);
 void verificarBind(int, const struct addrinfo *);
 void verificarListen(int);
 void cerrar_programa(t_log* logger);
+
 
 #endif /* UTILS_H_ */

@@ -48,7 +48,7 @@ void verificarBind(int socket_kernel, const struct addrinfo *kernelinfo) {
         exit(-1);
     } }
 
-int esperar_consola(int socket_kernel)
+int esperarConsola(int socket_kernel)
 {
 	// Aceptamos un nuevo consola
     int socket_consola = accept(socket_kernel, NULL, NULL);
@@ -110,21 +110,7 @@ void recibirMensaje(int socket_consola)
 	log_info(logger, "Me llego el mensaje %s", buffer);
 	free(buffer);
 }
-/*
-bool recibirListaInstrucciones2(int socket_consola, t_list* listaInstrucciones) {
-    size_t sizePayload;
 
-    if(recv(socket_consola, &sizePayload, sizeof(size_t), 0) != sizeof(size_t)){
-        return false;
-    }
-    void* stream = malloc(sizePayload);
-    if(recv(socket_consola, stream, sizePayload, 0) != sizePayload ) {
-        free(stream);
-        return false;
-    }
-    deserializarListaInstrucciones(stream, listaInstrucciones);
-}
-*/
 
 int recibirTamanioProceso(int socket_consola) {
     printf("\nentra en recibirTamanioProceso");
@@ -134,8 +120,6 @@ int recibirTamanioProceso(int socket_consola) {
 }
 
 t_list* recibirListaInstrucciones(int socket_consola) {
-    printf("\nentra en recibirListaInstrucciones");
-
     t_list * listaInstrucciones = list_create();
     int tamanioProceso = sizeof(int);
     size_t tamanioTotalStream;
@@ -163,9 +147,3 @@ t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucc
     return valores;
 }
 
-/*
-void deserializarListaInstrucciones(void* stream, t_paquete* listaInstrucciones) {
-    size_t sizeListaInstrucciones;
-    memcpy(sizeListaInstrucciones,stream,sizeof);
-}
-*/

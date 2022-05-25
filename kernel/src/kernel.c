@@ -2,7 +2,7 @@
 
 t_log* logger;
 int kernel_fd;
-
+t_queue * colaProcesosNew;
 void sighandler(int s) {
     cerrar_programa(logger);
     exit(0);
@@ -12,9 +12,9 @@ int main() {
     signal(SIGINT, sighandler);
 
     logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
-
     kernel_fd = iniciar_kernel();
-    log_info(logger, "Kernel listo para recibir una consola");
+	log_info(logger, "Kernel listo para recibir una consola");
+    colaProcesosNew = queue_create();
 
     while (escuchar_consolas(logger, "KERNEL", kernel_fd));
 
@@ -36,15 +36,14 @@ static void procesar_conexion(void* void_args) {
 
     op_code cop;
 
-	while (consola_fd != -1) { 
-	    
+	while (consola_fd != -1) {
+
 	   if (recv(consola_fd, &cop, sizeof(op_code), 0) != sizeof(op_code)) {
             log_info(logger, "CONSOLA DESCONECTADA");
             return;
         }
 
 		op_code cod_op = recibirOperacion(consola_fd);
-
 		switch (cod_op) {
 			case MENSAJE:
                 recibirMensaje(consola_fd);
@@ -52,22 +51,21 @@ static void procesar_conexion(void* void_args) {
 			case LISTA_INSTRUCCIONES:
                 printf("va a entrar en recibirListaInstrucciones\n");
                 t_list* listaInstrucciones = list_create();
-
                 listaInstrucciones = recibirListaInstrucciones(consola_fd);
+                int tamanioProceso = recibirTamanioProceso(consola_fd);
+                t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso);
+                printf("\nPCB->idProceso:%d", pcb->idProceso);
+                printf("\nPCB->tamanioProceso:%d", pcb->tamanioProceso);
                 for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
-                    t_instruccion *instruccion = list_get(listaInstrucciones,i);
-                    printf("\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
+                    t_instruccion *instruccion = list_get(pcb->listaInstrucciones,i);
+                    printf("\nEN EL PCB\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
                            instruccion->codigo_operacion,
                            instruccion->parametros[0],
                            instruccion->parametros[1]);
                 }
-
-                int tamanioProceso = recibirTamanioProceso(consola_fd);
-                printf("\nTamano del proceso -->: %d", tamanioProceso);
-                /*log_info(logger, "Me llegaron los siguientes valores:\n");
-				list_iterate(listaInstrucciones, (void*) iterator);
-				list_destroy_and_destroy_elements(listaInstrucciones,free);*/
-				break;
+                printf("PCB->programCounter:%d", pcb->programCounter);
+                queue_push(colaProcesosNew, pcb);
+                break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
 				//continuar = accion_kernel(consola_fd, kernel_fd);
@@ -78,7 +76,6 @@ static void procesar_conexion(void* void_args) {
 			}
 	}
 }
-
 
 int recibir_opcion() {
 	char* opcion = malloc(4);
@@ -96,7 +93,7 @@ int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd)
 	switch(opcion) {
 		case 1:
 			log_info(logger,"kernel continua corriendo, esperando nueva consola.");
-			consola_fd = esperar_consola(kernel_fd);
+			consola_fd = esperarConsola(kernel_fd);
 			break;
 		case 0:
 			log_info(logger,"Terminando kernel...");
@@ -130,7 +127,7 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 }
 
 int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
-    int consola_fd = esperar_consola(kernel_fd);
+    int consola_fd = esperarConsola(kernel_fd);
     if (consola_fd != -1) {
         pthread_t hilo;
         t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
@@ -146,4 +143,17 @@ int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
 
 void iterator(char* value) {
 	log_info(logger,"%s", value);
+}
+
+t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
+
+    t_pcb *pcb =  malloc(sizeof(t_pcb));
+    t_instruccion *instruccion = list_get(listaInstrucciones,0);
+
+    pcb->idProceso = process_get_thread_id();
+    pcb->tamanioProceso = tamanioProceso;
+    pcb->listaInstrucciones = listaInstrucciones;
+    pcb->programCounter= instruccion->codigo_operacion;
+    pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
+
 }
