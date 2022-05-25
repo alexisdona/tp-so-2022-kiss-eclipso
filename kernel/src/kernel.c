@@ -31,13 +31,12 @@ static void procesar_conexion(void* void_args) {
 	t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
 	t_log* logger = attrs->log;
     int consola_fd = attrs->fd;
-    printf("Aranca un hilo de ejecución: %d",consola_fd,"\n");
-    //char* nombre_kernel = attrs->nombre_kernel;
     free(attrs);
 
     op_code cop;
+    t_list* listaInstrucciones = list_create();
 
-	while (consola_fd != -1) {
+    while (consola_fd != -1) {
 
 		op_code cod_op = recibirOperacion(consola_fd);
 		switch (cod_op) {
@@ -45,22 +44,22 @@ static void procesar_conexion(void* void_args) {
                 recibirMensaje(consola_fd);
 				break;
 			case LISTA_INSTRUCCIONES:
-                printf("va a entrar en recibirListaInstrucciones\n");
-                t_list* listaInstrucciones = list_create();
-                listaInstrucciones = recibirListaInstrucciones(consola_fd);
+			    listaInstrucciones = recibirListaInstrucciones(consola_fd);
                 int tamanioProceso = recibirTamanioProceso(consola_fd);
                 t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso);
-                printf("\nPCB->idProceso:%d", pcb->idProceso);
-                printf("\nPCB->tamanioProceso:%d", pcb->tamanioProceso);
-                for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
+           //     printf("\nPCB->idProceso:%d\n", pcb->idProceso);
+            //    printf("\nPCB->tamanioProceso:%d\n", pcb->tamanioProceso);
+            /*    for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
                     t_instruccion *instruccion = list_get(pcb->listaInstrucciones,i);
                     printf("\nEN EL PCB\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
                            instruccion->codigo_operacion,
                            instruccion->parametros[0],
                            instruccion->parametros[1]);
-                }
-                printf("PCB->programCounter:%d", pcb->programCounter);
+                }*/
+               // printf("PCB->programCounter:%d", pcb->programCounter);
                 queue_push(colaProcesosNew, pcb);
+                printf("\n\ntamanio de la cola de procesos en new: %d\n\n", queue_size(colaProcesosNew));
+                //TODO enviar a la consla que se recibió correctamente la lista de instrucciones por ahora
                 break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");

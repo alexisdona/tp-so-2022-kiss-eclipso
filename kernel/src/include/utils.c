@@ -113,7 +113,6 @@ void recibirMensaje(int socket_consola)
 
 
 int recibirTamanioProceso(int socket_consola) {
-    printf("\nentra en recibirTamanioProceso");
     int tamanioProceso;
     recv(socket_consola, &tamanioProceso, sizeof(int), 0);
     return tamanioProceso;
