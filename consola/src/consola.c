@@ -7,24 +7,29 @@ int tamanioCodigoOperacion(instr_code operacion);
 
 int main(int argc, char* argv[]) {
 
-    if(argc<3){
-        printf("Cantidad de parametros incorrectos. Debe informar 2 parametros.\n");
-        printf("1- Ruta al archivo con instrucciones a ejecutar.\n2- Tamaño del proceso\n");
-        return argc;
-    }
+	t_log* logger = iniciar_logger();
+	uint32_t conexion = conectar_al_kernel(config);
 
-    char* rutaArchivo = argv[1];
-    int tamanioProceso = atoi(argv[2]);
+  if(argc < 3){
+		printf("Cantidad de parametros incorrectos. Debe informar 2 parametros.\n");
+		printf("1- Ruta al archivo con instrucciones a ejecutar.\n2- Tamaño del proceso\n");
+		return argc;
+	}
 
-	uint32_t conexion;
-	t_log* logger;
-	logger = iniciar_logger();
+	char* rutaArchivo = argv[1];
+	int tamanioProceso = atoi(argv[2]);
+
+	recibirInstrucciones(conexion, logger, rutaArchivo, tamanioProceso);
+    terminar_programa(conexion, logger, config);
+	return EXIT_SUCCESS;
+}
+
+int recibirInstrucciones(uint32_t conexion, t_log* logger, char* rutaArchivo, int tamanioProceso) {
+
 	t_list* listaInstrucciones = list_create();
 
-
-
-	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo,logger);
-	if(lineasPseudocodigo==NULL) {
+	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo, logger);
+	if(lineasPseudocodigo == NULL) {
 		log_error(logger,"Lineas Pseudocodigo -> NULL");
 		return EXIT_FAILURE;
 	}
@@ -40,15 +45,11 @@ int main(int argc, char* argv[]) {
     	printf("instrucciones\n%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
     }
 
-	conexion = conectar_al_kernel(config);
-
-	//enviar_mensaje("Hola soy la consola ", conexion );
-
-
     enviarListaInstrucciones(conexion, tamanioProceso, listaInstrucciones);
 	string_array_destroy(lineasPseudocodigo);
 	list_destroy(listaInstrucciones);
-	terminar_programa(conexion, logger, config);
+	//terminar_programa(conexion, logger, config);
+	return EXIT_SUCCESS;
 }
 
 
@@ -202,5 +203,5 @@ void terminar_programa(uint32_t conexion, t_log* logger, t_config* config) {
 	if(config!=NULL) {
 		config_destroy(config);
 	}
-	liberar_conexion(conexion);
+	//liberar_conexion(conexion);
 }

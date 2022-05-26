@@ -1,49 +1,75 @@
 #include "kernel.h"
 
-int main(void) {
-	logger = log_create("kernel.log", "Kernel", 1, LOG_LEVEL_DEBUG);
+t_log* logger;
+int kernel_fd;
+t_queue * colaProcesosNew;
+void sighandler(int s) {
+    cerrar_programa(logger);
+    exit(0);
+}
 
-	int kernel_fd = iniciar_kernel();
+int main() {
+    signal(SIGINT, sighandler);
+
+    logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
+    kernel_fd = iniciar_kernel();
 	log_info(logger, "Kernel listo para recibir una consola");
-	int consola_fd = esperar_consola(kernel_fd);
-	int continuar=1;
-    t_queue * colaProcesosNew = queue_create();
+    colaProcesosNew = queue_create();
 
-	while (continuar) { //meter variable para representar por qué va a continuar, hay mas mensajes?
-	    printf("entra en el while\n");
+    while (escuchar_consolas(logger, "KERNEL", kernel_fd));
+
+    //cerrar_programa(logger);
+
+    return 0;
+}
+
+void cerrar_programa(t_log* logger) {
+	log_destroy(logger);
+}
+
+static void procesar_conexion(void* void_args) {
+	t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
+	t_log* logger = attrs->log;
+    int consola_fd = attrs->fd;
+    free(attrs);
+
+    op_code cop;
+    t_list* listaInstrucciones = list_create();
+
+    while (consola_fd != -1) {
+
 		op_code cod_op = recibirOperacion(consola_fd);
 		switch (cod_op) {
 			case MENSAJE:
                 recibirMensaje(consola_fd);
 				break;
 			case LISTA_INSTRUCCIONES:
-			    ;
-                t_list* listaInstrucciones = list_create();
-                listaInstrucciones = recibirListaInstrucciones(consola_fd);
+			    listaInstrucciones = recibirListaInstrucciones(consola_fd);
                 int tamanioProceso = recibirTamanioProceso(consola_fd);
                 t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso);
-                printf("\nPCB->idProceso:%d", pcb->idProceso);
-                printf("\nPCB->tamanioProceso:%d", pcb->tamanioProceso);
-                for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
+           //     printf("\nPCB->idProceso:%d\n", pcb->idProceso);
+            //    printf("\nPCB->tamanioProceso:%d\n", pcb->tamanioProceso);
+            /*    for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
                     t_instruccion *instruccion = list_get(pcb->listaInstrucciones,i);
                     printf("\nEN EL PCB\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
                            instruccion->codigo_operacion,
                            instruccion->parametros[0],
                            instruccion->parametros[1]);
-                }
-                printf("PCB->programCounter:%d", pcb->programCounter);
+                }*/
+               // printf("PCB->programCounter:%d", pcb->programCounter);
                 queue_push(colaProcesosNew, pcb);
+                printf("\n\ntamanio de la cola de procesos en new: %d\n\n", queue_size(colaProcesosNew));
+                //TODO enviar a la consla que se recibió correctamente la lista de instrucciones por ahora
                 break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
-				continuar = accion_kernel(consola_fd, kernel_fd);
+				consola_fd = -1;
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
 				break;
 			}
 	}
-	return EXIT_SUCCESS;
 }
 
 int recibir_opcion() {
@@ -57,12 +83,12 @@ int recibir_opcion() {
 
 int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd) {
 
-	int continuar=1;
+	int continuar = 1;
 
 	switch(opcion) {
 		case 1:
 			log_info(logger,"kernel continua corriendo, esperando nueva consola.");
-			consola_fd = esperar_consola(kernel_fd);
+			consola_fd = esperarConsola(kernel_fd);
 			break;
 		case 0:
 			log_info(logger,"Terminando kernel...");
@@ -93,6 +119,21 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 
 	return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
 
+}
+
+int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
+    int consola_fd = esperarConsola(kernel_fd);
+    if (consola_fd != -1) {
+        pthread_t hilo;
+        t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
+        attrs->log = logger;
+        attrs->fd = consola_fd;
+        attrs->nombre_kernel = nombre_kernel;
+        pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
+        pthread_detach(hilo);
+        return 1;
+    }
+    return 0;
 }
 
 void iterator(char* value) {

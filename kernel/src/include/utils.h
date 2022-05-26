@@ -25,13 +25,14 @@ extern int errno;
 
 void* recibirBuffer(size_t, int);
 int iniciar_kernel(void);
-int esperar_consola(int);
+int esperarConsola(int);
 t_list* recibirListaInstrucciones(int);
 int recibirTamanioProceso(int);
 void recibirMensaje(int);
 op_code recibirOperacion(int);
 void verificarBind(int, const struct addrinfo *);
 void verificarListen(int);
+void cerrar_programa(t_log* logger);
 
 
 #endif /* UTILS_H_ */

@@ -48,7 +48,7 @@ void verificarBind(int socket_kernel, const struct addrinfo *kernelinfo) {
         exit(-1);
     } }
 
-int esperar_consola(int socket_kernel)
+int esperarConsola(int socket_kernel)
 {
 	// Aceptamos un nuevo consola
     int socket_consola = accept(socket_kernel, NULL, NULL);
@@ -113,7 +113,6 @@ void recibirMensaje(int socket_consola)
 
 
 int recibirTamanioProceso(int socket_consola) {
-    printf("\nentra en recibirTamanioProceso");
     int tamanioProceso;
     recv(socket_consola, &tamanioProceso, sizeof(int), 0);
     return tamanioProceso;
