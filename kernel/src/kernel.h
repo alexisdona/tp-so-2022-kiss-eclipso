@@ -25,26 +25,6 @@ typedef struct {
     char* nombre_kernel;
 } t_procesar_conexion_attrs;
 
-typedef enum {
-    NEW                 = 'N',
-    READY               = 'R',
-    EXEC                = 'X',
-    BLOCKED             = 'B',
-    SUSPENDED_READY     = 'S',
-    SUSPENDED_BLOCKED   = 'L',
-    EXIT                = 'E',
-} t_status;
-
-bool PLANIFICADOR_HABILITADO;
-bool PLANIFICACION_BLOQUEADA;
-
-typedef struct {
-    t_pcb* pcb;
-    pthread_t thread;
-    // ver semaforo;
-    bool blocked;
-}
-
 t_config* iniciar_config(void);
 int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd);
 int recibir_opcion();

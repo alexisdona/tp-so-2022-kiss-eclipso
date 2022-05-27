@@ -183,59 +183,11 @@ int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
     return 0;
 }
 
-void planificador() {
-  PLANIFICADOR_HABILITADO = true;
-  while (1) {
-        if (PLANIFICACION_BLOQUEADA) {}
-           // semaforo que bloquee la planificacion;
-        
-        //checkear de nuevo y continuar
-
-    //t_running_thread* new = pop_cola_consola(); -> esta funcion deberia ser de tipo t_running_thread q contenga el mutex
-     // Preparamos el hilo para correr
-    cambiar_estado(new->p, EXEC);
-        new->blocked = false;
-    //agregar a la lista de hilos y dsp el semaforo
-  }
-  PLANIFICADOR_HABILITADO = false;
-  printf("\nFin planificacion\n");
-}
-
-//mover a utils
-void cambiar_estado(t_pcb* p, t_status nuevo) {
-   // ver de enviar el cambio de estado a memoria ram-
-    p->status = nuevo;
-}
-
-void correr_consola_FIFO(t_running_thread* thread_data) {
-    t_pcb* p = thread_data->p;
-    // ver semaforo para q arranque a correr
-    while(1) {
-        if(PLANIFICACION_BLOQUEADA) {
-            //SEMAFORO en wait que bloquee
-        }
-        if(thread_data->blocked) {
-            //semaforo q pause el hilo y lo ponga en lista
-        }
-    }
-    // tenemos que ver como mandar a CPU 
-    // replanificar
-    // borrar de la lista al hilo, cambiar el estado a exit
-    // destruir semaforo y liberar memoria
-}
-
-void correr_consola_SJF(t_running_thread* thread_data) {
-    t_pcb* p = thread_data->p;
-    // ver semaforo para q arranque a correr
-    // consultar por planificacion bloqueada
-    //checkear en thread_data si necesitamos la estimacion de rafaga . si la necesitamos 
-    // tenemos que checkear por la estimacion anterior y siguiente
-    //agregar funcion replanificar_consola() para mandar a la cola el q corresponda y desaloje al otro proceso
-}
 
 void iterator(char* value) {
     log_info(logger,"%s", value);
 }
+
 t_config* iniciar_config(void) {
 	t_config* nuevo_config;
 
