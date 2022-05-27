@@ -3,6 +3,11 @@
 
 t_log* logger;
 int kernel_fd;
+<<<<<<< HEAD
+=======
+t_queue * colaProcesosNew;
+t_config * config;
+>>>>>>> desarrollo
 
 void sighandler(int s) {
     cerrar_programa(logger);
@@ -13,9 +18,25 @@ int main() {
     signal(SIGINT, sighandler);
 
     logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
+<<<<<<< HEAD
 
     kernel_fd = iniciar_kernel();
     log_info(logger, "Kernel listo para recibir una consola");
+=======
+    config = iniciar_config();
+
+    char* ip= config_get_string_value(config,"IP_MEMORIA");
+    char* puerto= config_get_string_value(config,"PUERTO_MEMORIA");
+
+    kernel_fd = iniciar_kernel(ip,puerto);
+
+    ip= config_get_string_value(config,"IP_CPU");
+    puerto= config_get_string_value(config,"PUERTO_ESCUCHA");
+    kernel_fd = iniciar_kernel(ip,puerto);
+
+	log_info(logger, "Kernel listo para recibir una consola");
+    colaProcesosNew = queue_create();
+>>>>>>> desarrollo
 
     while (escuchar_consolas(logger, "KERNEL", kernel_fd));
 
@@ -214,4 +235,14 @@ void correr_consola_SJF(t_running_thread* thread_data) {
 
 void iterator(char* value) {
     log_info(logger,"%s", value);
+}
+t_config* iniciar_config(void) {
+	t_config* nuevo_config;
+
+	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
+		perror("No se pudo leer la configuracion: ");
+		exit(-1);
+	}
+	return nuevo_config;
+
 }
