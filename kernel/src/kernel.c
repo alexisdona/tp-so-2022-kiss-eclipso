@@ -3,6 +3,8 @@
 t_log* logger;
 int kernel_fd;
 t_queue * colaProcesosNew;
+t_config * config;
+
 void sighandler(int s) {
     cerrar_programa(logger);
     exit(0);
@@ -12,7 +14,17 @@ int main() {
     signal(SIGINT, sighandler);
 
     logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
-    kernel_fd = iniciar_kernel();
+    config = iniciar_config();
+
+    char* ip= config_get_string_value(config,"IP_MEMORIA");
+    char* puerto= config_get_string_value(config,"PUERTO_MEMORIA");
+
+    kernel_fd = iniciar_kernel(ip,puerto);
+
+    ip= config_get_string_value(config,"IP_CPU");
+    puerto= config_get_string_value(config,"PUERTO_ESCUCHA");
+    kernel_fd = iniciar_kernel(ip,puerto);
+
 	log_info(logger, "Kernel listo para recibir una consola");
     colaProcesosNew = queue_create();
 
@@ -150,5 +162,16 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
     pcb->listaInstrucciones = listaInstrucciones;
     pcb->programCounter= instruccion->codigo_operacion;
     pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
+
+}
+
+t_config* iniciar_config(void) {
+	t_config* nuevo_config;
+
+	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
+		perror("No se pudo leer la configuracion: ");
+		exit(-1);
+	}
+	return nuevo_config;
 
 }

@@ -15,16 +15,13 @@
 #include "../../../shared/headers/sharedUtils.h"
 #include "../../../shared/headers/protocolo.h"
 
-#define IP "127.0.0.1"
-#define PUERTO "8000"
 #define SIN_CONSOLAS -1
 
 t_log* logger;
 extern int errno;
 
-
 void* recibirBuffer(size_t, int);
-int iniciar_kernel(void);
+int iniciar_kernel(char*,char*);
 int esperarConsola(int);
 t_list* recibirListaInstrucciones(int);
 int recibirTamanioProceso(int);

@@ -1,13 +1,10 @@
-
-
 #include "utils.h"
-
 
 //void deserializarListaInstrucciones(void*, t_paquete*);
 
 t_list* deserializarListaInstrucciones(void *pVoid, size_t tamanioListaInstrucciones, t_list *instrucciones);
 
-int iniciar_kernel(void)
+int iniciar_kernel(char* ip, char* puerto)
 {
 	int socket_kernel;
 
@@ -18,7 +15,7 @@ int iniciar_kernel(void)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	getaddrinfo(IP, PUERTO, &hints, &kernelinfo);
+	getaddrinfo(ip,puerto, &hints, &kernelinfo);
 
 	// Creamos el socket de escucha del kernel
 	socket_kernel = socket(kernelinfo->ai_family,kernelinfo->ai_socktype,kernelinfo->ai_protocol);
