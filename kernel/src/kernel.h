@@ -16,7 +16,7 @@
 
 #define CONFIG_FILE "../kernel/src/config/kernel.config"
 #define GRADO_MULTIPROGRAMACION
-int validar_y_ejecutar_opcion_consola(int, int, int );
+
 
 typedef struct {
     t_log* log;
@@ -31,5 +31,6 @@ t_pcb* crearEstructuraPcb(t_list*, int);
 void iterator(char*);
 int escuchar_consolas(t_log*, char*, int);
 void iterator(char*);
-
+int validar_y_ejecutar_opcion_consola(int, int, int );
+int inicializarMutex();
 #endif /* KERNEL_H_ */

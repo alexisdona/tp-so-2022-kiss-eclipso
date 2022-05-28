@@ -2,33 +2,8 @@
 
 //void deserializarListaInstrucciones(void*, t_paquete*);
 
-t_list* deserializarListaInstrucciones(void *pVoid, size_t tamanioListaInstrucciones, t_list *instrucciones);
 
-int iniciar_kernel(char* ip, char* puerto)
-{
-	int socketKernel;
 
-	struct addrinfo hints, *kernelInfo;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
-
-	getaddrinfo(ip,puerto, &hints, &kernelInfo);
-
-	// Creamos el socket de escucha del kernel
-	socketKernel = socket(kernelInfo->ai_family, kernelInfo->ai_socktype, kernelInfo->ai_protocol);
-	// Asociamos el socket a un puerto
-    verificarBind(socketKernel, kernelInfo);
-    // Escuchamos las conexiones entrantes
-    verificarListen(socketKernel);
-
-    freeaddrinfo(kernelInfo);
-	log_trace(logger, "Listo para escuchar a mi consola");
-
-	return socketKernel;
-}
 
 int esperarConsola(int socketKernel)
 {
