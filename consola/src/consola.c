@@ -13,24 +13,26 @@ int main(int argc, char* argv[]) {
     char* ip = config_get_string_value(config,"IP_KERNEL");
     uint32_t puerto = config_get_int_value(config,"PUERTO_KERNEL");
 
-    uint32_t conexion = crearConexion(ip, puerto, "Consola");
+    int conexionKernel = crearConexion(ip, puerto, "Consola");
 
 	char* rutaArchivo = argv[1];
 	int tamanioProceso = atoi(argv[2]);
 
-	recibirInstrucciones(conexion, logger, rutaArchivo, tamanioProceso);
-//    terminarPrograma(conexion, logger, config);
+	t_list* listaInstrucciones = parsearInstrucciones(logger, rutaArchivo);
+    enviarListaInstrucciones(conexionKernel, tamanioProceso, listaInstrucciones);
+    recibirMensaje(conexionKernel, logger);
+    list_destroy(listaInstrucciones);
+//    terminarPrograma(conexionKernel, logger, config);
 	return EXIT_SUCCESS;
 }
 
-int recibirInstrucciones(uint32_t conexion, t_log* logger, char* rutaArchivo, int tamanioProceso) {
+t_list* parsearInstrucciones(t_log* logger, char* rutaArchivo) {
 
 	t_list* listaInstrucciones = list_create();
 
 	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo, logger);
 	if(lineasPseudocodigo == NULL) {
 		log_error(logger,"Lineas Pseudocodigo -> NULL");
-		return EXIT_FAILURE;
 	}
 
     for(uint32_t i=0; i< string_array_size(lineasPseudocodigo); i++){
@@ -38,18 +40,8 @@ int recibirInstrucciones(uint32_t conexion, t_log* logger, char* rutaArchivo, in
     }
 
     generarListaInstrucciones(&listaInstrucciones, lineasPseudocodigo);
-
-	for(int i=0; i<list_size(listaInstrucciones); i++){
-    	t_instruccion* instr = list_get(listaInstrucciones,i);
-    	printf("instrucciones\n%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
-    }
-
-    enviarListaInstrucciones(conexion, tamanioProceso, listaInstrucciones);
-	string_array_destroy(lineasPseudocodigo);
-	list_destroy(listaInstrucciones);
-    recibirMensaje(conexion, logger);
-	//terminar_programa(conexion, logger, config);
-	return EXIT_SUCCESS;
+    string_array_destroy(lineasPseudocodigo);
+    return listaInstrucciones;
 }
 
 
@@ -123,19 +115,6 @@ instr_code obtener_cop(char* operacion){
 	else return EXIT;
 }
 
-void leer_consola(t_log* logger) {
-	char* leido;
-	uint32_t leiCaracterSalida;
-
-	do {
-		leido = readline("> ");
-		leiCaracterSalida = strcmp(leido, CARACTER_SALIDA);
-		if(leiCaracterSalida!=0) log_info(logger,"> %s",leido);
-		free(leido);
-
-	} while(leiCaracterSalida);
-
-}
 
 void enviarListaInstrucciones(uint32_t conexion, int tamanioProceso, t_list* instrucciones) {
 	t_paquete* paquete = crearPaquete();
@@ -152,18 +131,6 @@ void enviarListaInstrucciones(uint32_t conexion, int tamanioProceso, t_list* ins
     enviarPaquete(paquete, conexion);
     eliminarPaquete(paquete);
 
-}
-
-int tamanioCodigoOperacion(instr_code codigoOperacion) {
-    if (codigoOperacion==NO_OP || codigoOperacion== IO || codigoOperacion == READ) {
-        return sizeof(instr_code) + sizeof(operando);
-    }
-    else if (codigoOperacion==WRITE || codigoOperacion == COPY) {
-        return  sizeof(instr_code)+sizeof(operando)*2;
-    }
-      else {
-          return sizeof(instr_code);
-      }
 }
 
 
