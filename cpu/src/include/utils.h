@@ -24,7 +24,5 @@ void* recibir_buffer(int*, int);
 int iniciar_cpu(void);
 int esperar_memoria(int);
 op_code recibirOperacion(int);
-void verificarBind(int, const struct addrinfo *);
-void verificarListen(int);
 
 #endif /* UTILS_H_ */

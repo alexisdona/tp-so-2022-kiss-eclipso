@@ -30,21 +30,6 @@ int iniciar_kernel(char* ip, char* puerto)
 	return socket_kernel;
 }
 
-void verificarListen(int socket_kernel) {
-    if (listen(socket_kernel, SOMAXCONN) == -1) {
-        perror("Hubo un error en el listen: ");
-        close(socket_kernel);
-        exit(-1);
-    }
-}
-
-void verificarBind(int socket_kernel, const struct addrinfo *kernelinfo) {
-    if( bind(socket_kernel, kernelinfo->ai_addr, kernelinfo->ai_addrlen) == -1) {
-        perror("Hubo un error en el bind: ");
-        close(socket_kernel);
-        exit(-1);
-    } }
-
 int esperarConsola(int socket_kernel)
 {
 	// Aceptamos un nuevo consola

@@ -1,4 +1,5 @@
 
+#include <netdb.h>
 #include "headers/sharedUtils.h"
 
 t_config* iniciarConfig(char* file) {
@@ -126,4 +127,20 @@ void* recibirBuffer(size_t size, int socket_cliente)
     recv(socket_cliente, buffer, size, MSG_WAITALL);
 
     return buffer;
+}
+
+void verificarListen(int socket) {
+    if (listen(socket, SOMAXCONN) == -1) {
+        perror("Hubo un error en el listen: ");
+        close(socket);
+        exit(-1);
+    }
+}
+
+void verificarBind(int socket_kernel,  struct addrinfo *kernelinfo) {
+    if( bind(socket_kernel, kernelinfo->ai_addr, kernelinfo->ai_addrlen) == -1) {
+        perror("Hubo un error en el bind: ");
+        close(socket_kernel);
+        exit(-1);
+    }
 }

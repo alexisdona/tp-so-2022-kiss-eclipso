@@ -24,15 +24,6 @@ int iniciar_memoria(void) {
 	return socket_memoria;
 }
 
-
-void verificarBind(int socket_memoria, const struct addrinfo *memoriainfo) {
-    if(bind(socket_memoria, memoriainfo->ai_addr, memoriainfo->ai_addrlen) == -1) {
-        perror("Hubo un error en el bind: ");
-        close(socket_memoria);
-        exit(-1);
-    }
-}
-
 void verificarListen(int socket_memoria) {
     if (listen(socket_memoria, SOMAXCONN) == -1) {
         perror("Hubo un error en el listen: ");

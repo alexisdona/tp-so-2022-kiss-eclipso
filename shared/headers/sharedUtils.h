@@ -67,5 +67,7 @@ void recibirMensaje(int, t_log*);
 void liberarConexion(int);
 void terminarPrograma(uint32_t, t_log*, t_config*);
 void* recibirBuffer(size_t, int);
+void verificarListen(int);
+void verificarBind(int, struct addrinfo*);
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H
