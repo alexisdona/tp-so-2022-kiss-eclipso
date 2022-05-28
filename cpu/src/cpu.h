@@ -8,7 +8,7 @@
 #include<commons/string.h>
 #include<commons/config.h>
 #include<commons/collections/list.h>
-
+#include "../../shared/headers/sharedUtils.h"
 #include "include/utils.h"
 
 #define LOG_NAME "CPU_LOG"

@@ -1,37 +1,38 @@
 #include "consola.h"
 
-t_config* config;
-t_instruccion* instruccion;
-
-int tamanioCodigoOperacion(instr_code operacion);
-
 int main(int argc, char* argv[]) {
-
-	t_log* logger = iniciar_logger();
-	uint32_t conexion = conectar_al_kernel(config);
 
   if(argc < 3){
 		printf("Cantidad de parametros incorrectos. Debe informar 2 parametros.\n");
 		printf("1- Ruta al archivo con instrucciones a ejecutar.\n2- Tamaño del proceso\n");
 		return argc;
 	}
+    t_log* logger = iniciarLogger(LOG_FILE, LOG_NAME);
+
+    t_config* config = iniciarConfig(CONFIG_FILE);
+    char* ip = config_get_string_value(config,"IP_KERNEL");
+    uint32_t puerto = config_get_int_value(config,"PUERTO_KERNEL");
+
+    int conexionKernel = crearConexion(ip, puerto, "Consola");
 
 	char* rutaArchivo = argv[1];
 	int tamanioProceso = atoi(argv[2]);
 
-	recibirInstrucciones(conexion, logger, rutaArchivo, tamanioProceso);
-    terminar_programa(conexion, logger, config);
+	t_list* listaInstrucciones = parsearInstrucciones(logger, rutaArchivo);
+    enviarListaInstrucciones(conexionKernel, tamanioProceso, listaInstrucciones);
+    recibirMensaje(conexionKernel, logger);
+    list_destroy(listaInstrucciones);
+//    terminarPrograma(conexionKernel, logger, config);
 	return EXIT_SUCCESS;
 }
 
-int recibirInstrucciones(uint32_t conexion, t_log* logger, char* rutaArchivo, int tamanioProceso) {
+t_list* parsearInstrucciones(t_log* logger, char* rutaArchivo) {
 
 	t_list* listaInstrucciones = list_create();
 
 	char** lineasPseudocodigo = leer_archivo_pseudocodigo(rutaArchivo, logger);
 	if(lineasPseudocodigo == NULL) {
 		log_error(logger,"Lineas Pseudocodigo -> NULL");
-		return EXIT_FAILURE;
 	}
 
     for(uint32_t i=0; i< string_array_size(lineasPseudocodigo); i++){
@@ -39,17 +40,8 @@ int recibirInstrucciones(uint32_t conexion, t_log* logger, char* rutaArchivo, in
     }
 
     generarListaInstrucciones(&listaInstrucciones, lineasPseudocodigo);
-
-	for(int i=0; i<list_size(listaInstrucciones); i++){
-    	t_instruccion* instr = list_get(listaInstrucciones,i);
-    	printf("instrucciones\n%d:%d:%d\n",instr->codigo_operacion,instr->parametros[0],instr->parametros[1]);
-    }
-
-    enviarListaInstrucciones(conexion, tamanioProceso, listaInstrucciones);
-	string_array_destroy(lineasPseudocodigo);
-	list_destroy(listaInstrucciones);
-	//terminar_programa(conexion, logger, config);
-	return EXIT_SUCCESS;
+    string_array_destroy(lineasPseudocodigo);
+    return listaInstrucciones;
 }
 
 
@@ -123,51 +115,9 @@ instr_code obtener_cop(char* operacion){
 	else return EXIT;
 }
 
-uint32_t conectar_al_kernel(){
-	char* ip;
-	uint32_t puerto;
-
-	config = iniciar_config();
-	ip = config_get_string_value(config,"IP_KERNEL");
-	puerto = config_get_int_value(config,"PUERTO_KERNEL");
-	uint32_t conexion = crear_conexion(ip, puerto);
-	return conexion;
-}
-
-t_log* iniciar_logger(void) {
-
-	t_log* nuevo_logger = log_create(LOG_FILE, LOG_NAME, false, LOG_LEVEL_INFO );
-	return nuevo_logger;
-
-}
-
-t_config* iniciar_config(void) {
-	t_config* nuevo_config;
-
-	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
-		perror("No se pudo leer la configuracion: ");
-		exit(-1);
-	}
-	return nuevo_config;
-
-}
-
-void leer_consola(t_log* logger) {
-	char* leido;
-	uint32_t leiCaracterSalida;
-
-	do {
-		leido = readline("> ");
-		leiCaracterSalida = strcmp(leido, CARACTER_SALIDA);
-		if(leiCaracterSalida!=0) log_info(logger,"> %s",leido);
-		free(leido);
-
-	} while(leiCaracterSalida);
-
-}
 
 void enviarListaInstrucciones(uint32_t conexion, int tamanioProceso, t_list* instrucciones) {
-	t_paquete* paquete = crear_paquete();
+	t_paquete* paquete = crearPaquete();
 	paquete->codigo_operacion = LISTA_INSTRUCCIONES;
 
 	for(uint32_t i=0; i<list_size(instrucciones); i++){
@@ -183,25 +133,5 @@ void enviarListaInstrucciones(uint32_t conexion, int tamanioProceso, t_list* ins
 
 }
 
-int tamanioCodigoOperacion(instr_code codigoOperacion) {
-    if (codigoOperacion==NO_OP || codigoOperacion== IO || codigoOperacion == READ) {
-        return sizeof(instr_code) + sizeof(operando);
-    }
-    else if (codigoOperacion==WRITE || codigoOperacion == COPY) {
-        return  sizeof(instr_code)+sizeof(operando)*2;
-    }
-      else {
-          return sizeof(instr_code);
-      }
-}
 
 
-void terminar_programa(uint32_t conexion, t_log* logger, t_config* config) {
-
-	log_info(logger, "Consola: Terminando programa...");
-	log_destroy(logger);
-	if(config!=NULL) {
-		config_destroy(config);
-	}
-	//liberar_conexion(conexion);
-}

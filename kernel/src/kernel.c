@@ -1,13 +1,15 @@
-
+#include <semaphore.h>
 #include "kernel.h"
 
+//Variables globales
 t_log* logger;
 int kernel_fd;
-<<<<<<< HEAD
-=======
 t_queue * colaProcesosNew;
 t_config * config;
->>>>>>> desarrollo
+
+t_queue * colaProcesosReady;
+uint32_t gradoMultiprogramacion;
+sem_t semGradoMultiprogramacion;
 
 void sighandler(int s) {
     cerrar_programa(logger);
@@ -17,13 +19,9 @@ void sighandler(int s) {
 int main() {
     signal(SIGINT, sighandler);
 
+ //   sem_init(&semGradoMultiprogramacion,0,gradoMultiprogramacion);
     logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
-<<<<<<< HEAD
-
-    kernel_fd = iniciar_kernel();
-    log_info(logger, "Kernel listo para recibir una consola");
-=======
-    config = iniciar_config();
+    config = iniciarConfig(CONFIG_FILE);
 
     char* ip= config_get_string_value(config,"IP_MEMORIA");
     char* puerto= config_get_string_value(config,"PUERTO_MEMORIA");
@@ -36,8 +34,7 @@ int main() {
 
 	log_info(logger, "Kernel listo para recibir una consola");
     colaProcesosNew = queue_create();
->>>>>>> desarrollo
-
+    colaProcesosReady = queue_create();
     while (escuchar_consolas(logger, "KERNEL", kernel_fd));
 
     //cerrar_programa(logger);
@@ -46,113 +43,110 @@ int main() {
 }
 
 void cerrar_programa(t_log* logger) {
-    log_destroy(logger);
+	log_destroy(logger);
 }
 
 static void procesar_conexion(void* void_args) {
-    t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
-    t_log* logger = attrs->log;
+	t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
+	t_log* logger = attrs->log;
     int consola_fd = attrs->fd;
-    //char* nombre_kernel = attrs->nombre_kernel;
     free(attrs);
 
     op_code cop;
+    t_list* listaInstrucciones = list_create();
 
-    while (consola_fd != -1) { 
-        
-       if (recv(consola_fd, &cop, sizeof(op_code), 0) != sizeof(op_code)) {
-            log_info(logger, "CONSOLA DESCONECTADA");
-            return;
-        }
+    while (consola_fd != -1) {
 
-        op_code cod_op = recibirOperacion(consola_fd);
-
-        switch (cod_op) {
-            case MENSAJE:
-                recibirMensaje(consola_fd);
-                break;
-            case LISTA_INSTRUCCIONES:
-                printf("va a entrar en recibirListaInstrucciones\n");
-                t_list* listaInstrucciones = list_create();
-
-                listaInstrucciones = recibirListaInstrucciones(consola_fd);
-                for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
-                    t_instruccion *instruccion = list_get(listaInstrucciones,i);
-                    printf("\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
+		op_code cod_op = recibirOperacion(consola_fd);
+		switch (cod_op) {
+			case MENSAJE:
+                recibirMensaje(consola_fd, logger);
+				break;
+			case LISTA_INSTRUCCIONES:
+			    listaInstrucciones = recibirListaInstrucciones(consola_fd);
+                int tamanioProceso = recibirTamanioProceso(consola_fd);
+                t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso);
+           //     printf("\nPCB->idProceso:%d\n", pcb->idProceso);
+            //    printf("\nPCB->tamanioProceso:%d\n", pcb->tamanioProceso);
+            /*    for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
+                    t_instruccion *instruccion = list_get(pcb->listaInstrucciones,i);
+                    printf("\nEN EL PCB\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
                            instruccion->codigo_operacion,
                            instruccion->parametros[0],
                            instruccion->parametros[1]);
-                }
+                }*/
+               // printf("PCB->programCounter:%d", pcb->programCounter);
+                queue_push(colaProcesosNew, pcb);
+              //  sem_wait(&semGradoMultiprogramacion);
+                queue_push(colaProcesosReady, queue_pop(colaProcesosNew));
 
-                int tamanioProceso = recibirTamanioProceso(consola_fd);
-                printf("\nTamano del proceso -->: %d", tamanioProceso);
-                /*log_info(logger, "Me llegaron los siguientes valores:\n");
-                list_iterate(listaInstrucciones, (void*) iterator);
-                list_destroy_and_destroy_elements(listaInstrucciones,free);*/
+           //     sem_post(&semGradoMultiprogramacion);
+                printf("\n\ntamanio de la cola de procesos en ready: %d\n\n", queue_size(colaProcesosReady));
+                enviarMensaje("Recibí la lista de instrucciones. Termino de ejecutar y te aviso", consola_fd);
+                //TODO enviar a la consla que se recibió correctamente la lista de instrucciones por ahora
                 break;
-            case -1:
-                log_info(logger, "La consola se desconecto.");
-                //continuar = accion_kernel(consola_fd, kernel_fd);
-                break;
-            default:
-                log_warning(logger,"Operacion desconocida.");
-                break;
-            }
-    }
+			case -1:
+				log_info(logger, "La consola se desconecto.");
+				consola_fd = -1;
+				break;
+			default:
+				log_warning(logger,"Operacion desconocida.");
+				break;
+			}
+	}
 }
 
-
 int recibir_opcion() {
-    char* opcion = malloc(4);
-    log_info(logger, "Ingrese una opcion: ");
-    scanf("%s",opcion);
-    int op = atoi(opcion);
-    free(opcion);
-    return op;
+	char* opcion = malloc(4);
+	log_info(logger, "Ingrese una opcion: ");
+	scanf("%s",opcion);
+	int op = atoi(opcion);
+	free(opcion);
+	return op;
 }
 
 int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd) {
 
-    int continuar = 1;
+	int continuar = 1;
 
-    switch(opcion) {
-        case 1:
-            log_info(logger,"kernel continua corriendo, esperando nueva consola.");
-            consola_fd = esperar_consola(kernel_fd);
-            break;
-        case 0:
-            log_info(logger,"Terminando kernel...");
-            close(kernel_fd);
-            continuar = 0;
-            break;
-        default:
-            log_error(logger,"Opcion invalida. Volve a intentarlo");
-            recibir_opcion();
-    }
+	switch(opcion) {
+		case 1:
+			log_info(logger,"kernel continua corriendo, esperando nueva consola.");
+			consola_fd = esperarConsola(kernel_fd);
+			break;
+		case 0:
+			log_info(logger,"Terminando kernel...");
+			close(kernel_fd);
+			continuar = 0;
+			break;
+		default:
+			log_error(logger,"Opcion invalida. Volve a intentarlo");
+			recibir_opcion();
+	}
 
-    return continuar;
+	return continuar;
 
 }
 
 
 int accion_kernel(int consola_fd, int kernel_fd) {
 
-    log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
-    int opcion = recibir_opcion();
+	log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
+	int opcion = recibir_opcion();
 
-    if (recibirOperacion(consola_fd) == SIN_CONSOLAS) {
-      log_info(logger, "No hay mas clientes conectados.");
-      log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
-      opcion = recibir_opcion();
-      return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
-    }
+	if (recibirOperacion(consola_fd) == SIN_CONSOLAS) {
+	  log_info(logger, "No hay mas clientes conectados.");
+	  log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
+	  opcion = recibir_opcion();
+	  return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
+	}
 
-    return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
+	return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
 
 }
 
 int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
-    int consola_fd = esperar_consola(kernel_fd);
+    int consola_fd = esperarConsola(kernel_fd);
     if (consola_fd != -1) {
         pthread_t hilo;
         t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
@@ -161,40 +155,26 @@ int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
         attrs->nombre_kernel = nombre_kernel;
         pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
         pthread_detach(hilo);
-        
-        /*
-        por default, un subproceso se ejecuta en modo unible. 
-        El subproceso que se puede unir no liberará ningún recurso incluso después del final de la función
-        del subproceso, hasta que otro subproceso llame a pthread_join() con su ID.
-
-        pthread_join() es una llamada de bloqueo, bloqueará el hilo de llamada hasta que finalice el otro hilo.
-        El primer parámetro de pthread_join() es el ID del hilo de destino.
-        El segundo parámetro de pthread_join() es la dirección de (void *), es decir, (void **), apuntará al valor de retorno de la función de subproceso, (el puntero a (void *)).
-
-        pthread_detach()
-        es un subproceso separado que libera automaticamente los recursos asignados al salir. Ningún otro hilo necesita unirse a él. Pero por default todos los subprocesos se pueden unir, por lo que para separar un subproceso 
-        debemos llamar a pthread_detach() con el id del subproceso.
-        Como el subproceso separado libera automaticamente los recursos al salir, no hay forma de determinar su valor de retorno de la función de este subproceso separado.
-        
-        */
-
         return 1;
     }
     return 0;
 }
 
-
 void iterator(char* value) {
-    log_info(logger,"%s", value);
+	log_info(logger,"%s", value);
 }
 
-t_config* iniciar_config(void) {
-	t_config* nuevo_config;
+t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
 
-	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
-		perror("No se pudo leer la configuracion: ");
-		exit(-1);
-	}
-	return nuevo_config;
+    t_pcb *pcb =  malloc(sizeof(t_pcb));
+    t_instruccion *instruccion = list_get(listaInstrucciones,0);
+
+    pcb->idProceso = process_get_thread_id();
+    pcb->tamanioProceso = tamanioProceso;
+    pcb->listaInstrucciones = listaInstrucciones;
+    pcb->programCounter= instruccion->codigo_operacion;
+    pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
 
 }
+
+

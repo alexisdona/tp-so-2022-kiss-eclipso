@@ -11,7 +11,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "protocolo.h"
+#include "../../shared/headers/protocolo.h"
 
 #define IP "127.0.0.1"
 #define PUERTO "8000"
@@ -23,9 +23,6 @@ void* recibir_buffer(int*, int);
 
 int iniciar_cpu(void);
 int esperar_memoria(int);
-void recibirMensaje(int);
 op_code recibirOperacion(int);
-void verificarBind(int, const struct addrinfo *);
-void verificarListen(int);
 
 #endif /* UTILS_H_ */

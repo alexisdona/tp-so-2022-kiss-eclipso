@@ -12,7 +12,7 @@ int main(void) {
 		op_code cod_op = recibirOperacion(memoria_fd);
 		switch (cod_op) {
 			case MENSAJE:
-				recibirMensaje(memoria_fd);
+                recibirMensaje(memoria_fd, logger);
 				break;
 			case -1:
 				log_info(logger, "La memoria se desconecto.");

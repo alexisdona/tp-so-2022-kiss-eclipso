@@ -24,15 +24,6 @@ int iniciar_memoria(void) {
 	return socket_memoria;
 }
 
-
-void verificarBind(int socket_memoria, const struct addrinfo *memoriainfo) {
-    if(bind(socket_memoria, memoriainfo->ai_addr, memoriainfo->ai_addrlen) == -1) {
-        perror("Hubo un error en el bind: ");
-        close(socket_memoria);
-        exit(-1);
-    }
-}
-
 void verificarListen(int socket_memoria) {
     if (listen(socket_memoria, SOMAXCONN) == -1) {
         perror("Hubo un error en el listen: ");
@@ -69,19 +60,3 @@ op_code recibirOperacion(int socket_cpu) {
     }
 }
 
-void* recibirBuffer(size_t size, int socket_cpu)
-{
-	void * buffer;
-	buffer = malloc(size);
-	recv(socket_cpu, buffer, size, MSG_WAITALL);
-
-	return buffer;
-}
-
-void recibirMensaje(int socket_cpu)
-{
-	int size;
-	char* buffer = recibirBuffer(size, socket_cpu);
-	log_info(logger, "Me llego el mensaje %s", buffer);
-	free(buffer);
-}

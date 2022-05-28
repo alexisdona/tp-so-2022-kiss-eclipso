@@ -1,0 +1,12 @@
+//
+// Created by alecho on 26/5/22.
+//
+
+#ifndef TP_2022_1C_ECLIPSO_PLANIFICACION_H
+#define TP_2022_1C_ECLIPSO_PLANIFICACION_H
+
+#DEFINE GRADO_MULTIPROGRAMACION
+
+void iniciarPlanificacion(void);
+
+#endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

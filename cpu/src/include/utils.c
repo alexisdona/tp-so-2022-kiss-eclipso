@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "../../../shared/headers/sharedUtils.h"
 
 int iniciar_cpu(void) {
 	int socket_cpu;
@@ -18,27 +19,11 @@ int iniciar_cpu(void) {
     // Escuchamos las conexiones entrantes
     verificarListen(socket_cpu);
 
+
     freeaddrinfo(cpuinfo);
 	log_trace(logger, "Listo para escuchar a la memoria");
 
 	return socket_cpu;
-}
-
-
-void verificarBind(int socket_cpu, const struct addrinfo *cpuinfo) {
-    if(bind(socket_cpu, cpuinfo->ai_addr, cpuinfo->ai_addrlen) == -1) {
-        perror("Hubo un error en el bind: ");
-        close(socket_cpu);
-        exit(-1);
-    }
-}
-
-void verificarListen(int socket_cpu) {
-    if (listen(socket_cpu, SOMAXCONN) == -1) {
-        perror("Hubo un error en el listen: ");
-        close(socket_cpu);
-        exit(-1);
-    }
 }
 
 int esperar_memoria(int socket_cpu)
@@ -69,19 +54,5 @@ op_code recibirOperacion(int socket_memoria) {
     }
 }
 
-void* recibirBuffer(size_t size, int socket_memoria)
-{
-	void * buffer;
-	buffer = malloc(size);
-	recv(socket_memoria, buffer, size, MSG_WAITALL);
 
-	return buffer;
-}
 
-void recibirMensaje(int socket_memoria)
-{
-	int size;
-	char* buffer = recibirBuffer(size, socket_memoria);
-	log_info(logger, "Me llego el mensaje %s", buffer);
-	free(buffer);
-}
