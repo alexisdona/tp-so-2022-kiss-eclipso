@@ -13,13 +13,14 @@
 #include<stdint.h>
 #include <unistd.h>
 #include <sys/socket.h>
-
+#include<errno.h>
 #include<commons/config.h>
 #include <commons/log.h>
 #include<commons/collections/list.h>
 
 #include "protocolo.h"
 
+extern int errno;
 
 typedef uint32_t operando;
 
@@ -75,5 +76,6 @@ void verificarListen(int);
 void verificarBind(int, struct addrinfo*);
 void verificarConnect(int, struct sockaddr_in *);
 int crearConexion(char*, int, char*);
+int iniciarServidor(char*, char*, t_log*);
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H

@@ -4,12 +4,14 @@
 //Variables globales
 t_log* logger;
 int kernel_fd;
-t_queue * colaProcesosNew;
+t_queue * colaProcesosNew, *colaProcesosReady, *colaProcesosBlocked;
 t_config * config;
 
-t_queue * colaProcesosReady;
 uint32_t gradoMultiprogramacion;
 sem_t semGradoMultiprogramacion;
+pthread_mutex_t mutexColaNew;
+pthread_mutex_t mutexColaReady;
+
 
 void sighandler(int s) {
     cerrar_programa(logger);
@@ -19,27 +21,45 @@ void sighandler(int s) {
 int main() {
     signal(SIGINT, sighandler);
 
- //   sem_init(&semGradoMultiprogramacion,0,gradoMultiprogramacion);
+   if (inicializarMutex() != 0){
+        return EXIT_FAILURE;
+    }
+
     logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
     config = iniciarConfig(CONFIG_FILE);
-
-    char* ip= config_get_string_value(config,"IP_MEMORIA");
-    char* puerto= config_get_string_value(config,"PUERTO_MEMORIA");
-
-    kernel_fd = iniciar_kernel(ip,puerto);
-
-    ip= config_get_string_value(config,"IP_CPU");
-    puerto= config_get_string_value(config,"PUERTO_ESCUCHA");
-    kernel_fd = iniciar_kernel(ip,puerto);
-
+    gradoMultiprogramacion = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
+    sem_init(&semGradoMultiprogramacion,0, gradoMultiprogramacion);
+    char* ipKernel= config_get_string_value(config,"IP_KERNEL");
+    char* puertoKernel= config_get_string_value(config,"PUERTO_KERNEL");
+    char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
+    char* puertoMemoria= config_get_string_value(config,"PUERTO_MEMORIA");
+    char* ipCpu= config_get_string_value(config,"IP_CPU");
+    char* puertoCpu= config_get_string_value(config,"PUERTO_ESCUCHA");
+//    int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
+//    int conexionCPU = crearConexion(ipCpu, puertoCpu, "Kernel");
+    kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
     colaProcesosNew = queue_create();
     colaProcesosReady = queue_create();
+
     while (escuchar_consolas(logger, "KERNEL", kernel_fd));
 
     //cerrar_programa(logger);
 
     return 0;
+}
+
+int inicializarMutex() {
+    int error=0;
+    if(pthread_mutex_init(&mutexColaNew, NULL) != 0) {
+      perror("Mutex cola de new fallo: ");
+      error+=1;
+    }
+    if(pthread_mutex_init(&mutexColaReady, NULL) != 0) {
+        perror("Mutex cola de ready fallo: ");
+        error+=1;
+    }
+    return error;
 }
 
 void cerrar_programa(t_log* logger) {
@@ -76,14 +96,22 @@ static void procesar_conexion(void* void_args) {
                            instruccion->parametros[1]);
                 }*/
                // printf("PCB->programCounter:%d", pcb->programCounter);
+                pthread_mutex_lock(&mutexColaNew);
                 queue_push(colaProcesosNew, pcb);
-              //  sem_wait(&semGradoMultiprogramacion);
+                printf("\n\ntamanio de la cola de procesos en new: %d\n\n", queue_size(colaProcesosNew));
+                pthread_mutex_unlock(&mutexColaNew);
+
+                sem_wait(&semGradoMultiprogramacion);
+                pthread_mutex_lock(&mutexColaReady);
                 queue_push(colaProcesosReady, queue_pop(colaProcesosNew));
+                gradoMultiprogramacion--;
+                printf("gradoMultiprogramacion: %d", gradoMultiprogramacion );
+                pthread_mutex_unlock(&mutexColaReady);
 
            //     sem_post(&semGradoMultiprogramacion);
-                printf("\n\ntamanio de la cola de procesos en ready: %d\n\n", queue_size(colaProcesosReady));
+            //    printf("\n\ntamanio de la cola de procesos en ready: %d\n\n", queue_size(colaProcesosReady));
                 enviarMensaje("Recibí la lista de instrucciones. Termino de ejecutar y te aviso", consola_fd);
-                //TODO enviar a la consla que se recibió correctamente la lista de instrucciones por ahora
+                //si es fifo hago un pop de la cola de ready y envio ese pcb al CPU y hago signal al semaforo de grado de multiprogramacion
                 break;
 			case -1:
 				log_info(logger, "La consola se desconecto.");
