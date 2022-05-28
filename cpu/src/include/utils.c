@@ -69,19 +69,5 @@ op_code recibirOperacion(int socket_memoria) {
     }
 }
 
-void* recibirBuffer(size_t size, int socket_memoria)
-{
-	void * buffer;
-	buffer = malloc(size);
-	recv(socket_memoria, buffer, size, MSG_WAITALL);
 
-	return buffer;
-}
 
-void recibirMensaje(int socket_memoria)
-{
-	int size;
-	char* buffer = recibirBuffer(size, socket_memoria);
-	log_info(logger, "Me llego el mensaje %s", buffer);
-	free(buffer);
-}

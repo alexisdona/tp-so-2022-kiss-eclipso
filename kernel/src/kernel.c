@@ -21,7 +21,7 @@ int main() {
 
  //   sem_init(&semGradoMultiprogramacion,0,gradoMultiprogramacion);
     logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
-    config = iniciar_config(CONFIG_FILE);
+    config = iniciarConfig(CONFIG_FILE);
 
     char* ip= config_get_string_value(config,"IP_MEMORIA");
     char* puerto= config_get_string_value(config,"PUERTO_MEMORIA");
@@ -60,7 +60,7 @@ static void procesar_conexion(void* void_args) {
 		op_code cod_op = recibirOperacion(consola_fd);
 		switch (cod_op) {
 			case MENSAJE:
-                recibirMensaje(consola_fd);
+                recibirMensaje(consola_fd, logger);
 				break;
 			case LISTA_INSTRUCCIONES:
 			    listaInstrucciones = recibirListaInstrucciones(consola_fd);
@@ -82,6 +82,7 @@ static void procesar_conexion(void* void_args) {
 
            //     sem_post(&semGradoMultiprogramacion);
                 printf("\n\ntamanio de la cola de procesos en ready: %d\n\n", queue_size(colaProcesosReady));
+                enviarMensaje("Recibí la lista de instrucciones. Termino de ejecutar y te aviso", consola_fd);
                 //TODO enviar a la consla que se recibió correctamente la lista de instrucciones por ahora
                 break;
 			case -1:
@@ -175,4 +176,5 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
     pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
 
 }
+
 

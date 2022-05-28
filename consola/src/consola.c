@@ -7,7 +7,7 @@ int tamanioCodigoOperacion(instr_code operacion);
 
 int main(int argc, char* argv[]) {
 
-	t_log* logger = iniciar_logger();
+	t_log* logger = iniciarLogger(LOG_FILE, LOG_NAME);
 	uint32_t conexion = conectar_al_kernel(config);
 
   if(argc < 3){
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 	int tamanioProceso = atoi(argv[2]);
 
 	recibirInstrucciones(conexion, logger, rutaArchivo, tamanioProceso);
-    terminar_programa(conexion, logger, config);
+//    terminarPrograma(conexion, logger, config);
 	return EXIT_SUCCESS;
 }
 
@@ -48,6 +48,7 @@ int recibirInstrucciones(uint32_t conexion, t_log* logger, char* rutaArchivo, in
     enviarListaInstrucciones(conexion, tamanioProceso, listaInstrucciones);
 	string_array_destroy(lineasPseudocodigo);
 	list_destroy(listaInstrucciones);
+    recibirMensaje(conexion, logger);
 	//terminar_programa(conexion, logger, config);
 	return EXIT_SUCCESS;
 }
@@ -127,19 +128,14 @@ uint32_t conectar_al_kernel(){
 	char* ip;
 	uint32_t puerto;
 
-	config = iniciar_config(CONFIG_FILE);
+	config = iniciarConfig(CONFIG_FILE);
 	ip = config_get_string_value(config,"IP_KERNEL");
 	puerto = config_get_int_value(config,"PUERTO_KERNEL");
 	uint32_t conexion = crear_conexion(ip, puerto);
 	return conexion;
 }
 
-t_log* iniciar_logger(void) {
 
-	t_log* nuevo_logger = log_create(LOG_FILE, LOG_NAME, false, LOG_LEVEL_INFO );
-	return nuevo_logger;
-
-}
 
 
 
@@ -158,7 +154,7 @@ void leer_consola(t_log* logger) {
 }
 
 void enviarListaInstrucciones(uint32_t conexion, int tamanioProceso, t_list* instrucciones) {
-	t_paquete* paquete = crear_paquete();
+	t_paquete* paquete = crearPaquete();
 	paquete->codigo_operacion = LISTA_INSTRUCCIONES;
 
 	for(uint32_t i=0; i<list_size(instrucciones); i++){
@@ -187,12 +183,4 @@ int tamanioCodigoOperacion(instr_code codigoOperacion) {
 }
 
 
-void terminar_programa(uint32_t conexion, t_log* logger, t_config* config) {
 
-	log_info(logger, "Consola: Terminando programa...");
-	log_destroy(logger);
-	if(config!=NULL) {
-		config_destroy(config);
-	}
-	//liberar_conexion(conexion);
-}

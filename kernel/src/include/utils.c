@@ -91,24 +91,6 @@ size_t recibirTamanioStream(int socket_consola) {
     }
 }
 
-void* recibirBuffer(size_t size, int socket_consola)
-{
-	void * buffer;
-	buffer = malloc(size);
-	recv(socket_consola, buffer, size, MSG_WAITALL);
-
-	return buffer;
-}
-
-void recibirMensaje(int socket_consola)
-{
-	int size;
-	char* buffer = recibirBuffer(size, socket_consola);
-	log_info(logger, "Me llego el mensaje %s", buffer);
-	free(buffer);
-}
-
-
 int recibirTamanioProceso(int socket_consola) {
     int tamanioProceso;
     recv(socket_consola, &tamanioProceso, sizeof(int), 0);
