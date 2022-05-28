@@ -1,5 +1,5 @@
 
-#include <netdb.h>
+
 #include "headers/sharedUtils.h"
 
 t_config* iniciarConfig(char* file) {
@@ -36,15 +36,15 @@ void crearBuffer(t_paquete* paquete)
 
 }
 
-void* serializarPaquete(t_paquete* paquete, int bytes)
+void* serializarPaquete(t_paquete* paquete, size_t bytes)
 {
     void * magic = malloc(bytes);
     int desplazamiento = 0;
 
-    memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(int));
-    desplazamiento+= sizeof(int);
-    memcpy(magic + desplazamiento, &(paquete->buffer->size), sizeof(int));
-    desplazamiento+= sizeof(int);
+    memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(op_code));
+    desplazamiento+= sizeof(op_code);
+    memcpy(magic + desplazamiento, &(paquete->buffer->size), sizeof(size_t));
+    desplazamiento+= sizeof(size_t);
     memcpy(magic + desplazamiento, paquete->buffer->stream, paquete->buffer->size);
     desplazamiento+= paquete->buffer->size;
 
@@ -66,8 +66,8 @@ void enviarMensaje(char* mensaje, int fd) {
     paquete->buffer->size = strlen(mensaje) + 1;
     paquete->buffer->stream = malloc(paquete->buffer->size);
     memcpy(paquete->buffer->stream, mensaje, paquete->buffer->size);
-
-    int bytes = paquete->buffer->size + 2 * sizeof(int);
+    /*Se envia el tamaño total del paquete que es el stream más tamaño de codigo de operacion + tamanño de lo que indica size del stream*/
+    int bytes = paquete->buffer->size + sizeof(op_code) + sizeof(size_t);
 
     void *a_enviar = serializarPaquete(paquete, bytes);
 
@@ -77,7 +77,7 @@ void enviarMensaje(char* mensaje, int fd) {
     eliminarPaquete(paquete);
 }
 
-int enviarPaquete(t_paquete* paquete, int socket_consola)
+int enviarPaquete(t_paquete* paquete, int socketCliente)
 {
     int tamanioCodigoOperacion = sizeof(op_code);
     int tamanioStream = paquete->buffer->size;
@@ -86,9 +86,9 @@ int enviarPaquete(t_paquete* paquete, int socket_consola)
 
     size_t tamanioPaquete = tamanioCodigoOperacion + tamanioStream + tamanioPayload;
     void* a_enviar = serializarPaquete(paquete, tamanioPaquete);
-    printf("paquete->codigo_operacion: %u",paquete->codigo_operacion);
-    if(send(socket_consola, a_enviar, tamanioPaquete, 0) == -1){
-        perror("Hubo un error enviando la lista de instrucciones: ");
+
+    if(send(socketCliente, a_enviar, tamanioPaquete, 0) == -1){
+        perror("Hubo un error enviando el paquete: ");
         free(a_enviar);
         return EXIT_FAILURE;
     }
@@ -112,19 +112,26 @@ void terminarPrograma(uint32_t conexion, t_log* logger, t_config* config) {
     liberarConexion(conexion);
 }
 
-void recibirMensaje(int socket_cliente, t_log* logger)
+void recibirMensaje(int socketCliente, t_log* logger)
 {
-    int size;
-    char* buffer = recibirBuffer((size_t) &size, socket_cliente);
+    char* buffer = recibirBuffer(socketCliente);
+    printf("\nMensaje del kernel: %s\n", buffer);
     log_info(logger, "Me llego el mensaje %s", buffer);
     free(buffer);
 }
 
-void* recibirBuffer(size_t size, int socket_cliente)
+void* recibirBuffer(int socketCliente)
 {
     void * buffer;
-    buffer = malloc(size);
-    recv(socket_cliente, buffer, size, MSG_WAITALL);
+    op_code opCode;
+    size_t streamSize;
+    //recibo el código de operacion --> MENSAJE
+    recv(socketCliente, &opCode, sizeof(op_code), MSG_WAITALL);
+    //Recibo el tamaño del mensaje
+    recv(socketCliente, &streamSize, sizeof(size_t), MSG_WAITALL);
+    //malloqueo el tamaño del mensaje y lo recibo en buffer
+    buffer = malloc(streamSize);
+    recv(socketCliente, buffer, streamSize, MSG_WAITALL);
 
     return buffer;
 }
@@ -141,6 +148,33 @@ void verificarBind(int socket_kernel,  struct addrinfo *kernelinfo) {
     if( bind(socket_kernel, kernelinfo->ai_addr, kernelinfo->ai_addrlen) == -1) {
         perror("Hubo un error en el bind: ");
         close(socket_kernel);
+        exit(-1);
+    }
+}
+
+int crearConexion(char* ip, int puerto, char* nombreCliente){ //TODO agregar nombre cliente que arroja el error
+    int socketCliente = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (socketCliente == -1) {
+        perror("Hubo un error al crear el socket del servidor");
+        exit(-1);
+    }
+
+    struct sockaddr_in direccionServer;
+    direccionServer.sin_family = AF_INET;
+    direccionServer.sin_addr.s_addr = inet_addr(ip);
+    direccionServer.sin_port = htons(puerto);
+    memset(&(direccionServer.sin_zero), '\0', 8); //se rellena con ceros para que tenga el mismo tamaño que socketaddr
+
+    verificarConnect(socketCliente, &direccionServer);
+
+    return socketCliente;
+}
+
+void verificarConnect(int socketCliente, struct sockaddr_in *direccionServer) {
+    if (connect(socketCliente, (void*) direccionServer, sizeof((*direccionServer))) == -1) {
+        perror("Hubo un problema conectando al servidor: ");
+        close(socketCliente);
         exit(-1);
     }
 }
