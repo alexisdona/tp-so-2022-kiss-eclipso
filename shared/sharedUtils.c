@@ -77,7 +77,7 @@ void enviarMensaje(char* mensaje, int fd) {
     eliminarPaquete(paquete);
 }
 
-int enviarPaquete(t_paquete* paquete, int socket_consola)
+int enviarPaquete(t_paquete* paquete, int socketCliente)
 {
     int tamanioCodigoOperacion = sizeof(op_code);
     int tamanioStream = paquete->buffer->size;
@@ -87,8 +87,8 @@ int enviarPaquete(t_paquete* paquete, int socket_consola)
     size_t tamanioPaquete = tamanioCodigoOperacion + tamanioStream + tamanioPayload;
     void* a_enviar = serializarPaquete(paquete, tamanioPaquete);
     printf("paquete->codigo_operacion: %u",paquete->codigo_operacion);
-    if(send(socket_consola, a_enviar, tamanioPaquete, 0) == -1){
-        perror("Hubo un error enviando la lista de instrucciones: ");
+    if(send(socketCliente, a_enviar, tamanioPaquete, 0) == -1){
+        perror("Hubo un error enviando el paquete: ");
         free(a_enviar);
         return EXIT_FAILURE;
     }
@@ -112,10 +112,10 @@ void terminarPrograma(uint32_t conexion, t_log* logger, t_config* config) {
     liberarConexion(conexion);
 }
 
-void recibirMensaje(int socket_cliente, t_log* logger)
+void recibirMensaje(int socketCliente, t_log* logger)
 {
     int size;
-    char* buffer = recibirBuffer((size_t) &size, socket_cliente);
+    char* buffer = recibirBuffer((size_t) &size, socketCliente);
     printf("Mensaje del kernel: %s", buffer);
     log_info(logger, "Me llego el mensaje %s", buffer);
     free(buffer);
