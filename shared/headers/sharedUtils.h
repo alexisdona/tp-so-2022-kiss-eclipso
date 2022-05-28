@@ -77,5 +77,6 @@ void verificarBind(int, struct addrinfo*);
 void verificarConnect(int, struct sockaddr_in *);
 int crearConexion(char*, int, char*);
 int iniciarServidor(char*, char*, t_log*);
+int esperar_cliente(int, char*, t_log*);
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H

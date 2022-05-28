@@ -179,6 +179,20 @@ void verificarConnect(int socketCliente, struct sockaddr_in *direccionServer) {
     }
 }
 
+int esperar_cliente(int socket_servidor, char* nombre_cliente, t_log* logger) {
+	// Aceptamos un cliente
+    int socket_cliente = accept(socket_servidor, NULL, NULL);
+
+	if (socket_cliente == -1) {
+	    perror(strcat("Hubo un error en aceptar una conexión del cliente ", nombre_cliente));
+	    close(socket_servidor);
+	    exit(-1);
+	}
+
+	log_info(logger, strcat("Se conectó el cliente ", nombre_cliente));
+	return socket_cliente;
+}
+
 int iniciarServidor(char* ip, char* puerto, t_log* logger){
     int socketServidor;
     struct addrinfo hints, *serverInfo;
