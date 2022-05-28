@@ -36,15 +36,15 @@ void crearBuffer(t_paquete* paquete)
 
 }
 
-void* serializarPaquete(t_paquete* paquete, int bytes)
+void* serializarPaquete(t_paquete* paquete, size_t bytes)
 {
     void * magic = malloc(bytes);
     int desplazamiento = 0;
 
-    memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(int));
-    desplazamiento+= sizeof(int);
-    memcpy(magic + desplazamiento, &(paquete->buffer->size), sizeof(int));
-    desplazamiento+= sizeof(int);
+    memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(op_code));
+    desplazamiento+= sizeof(op_code);
+    memcpy(magic + desplazamiento, &(paquete->buffer->size), sizeof(size_t));
+    desplazamiento+= sizeof(size_t);
     memcpy(magic + desplazamiento, paquete->buffer->stream, paquete->buffer->size);
     desplazamiento+= paquete->buffer->size;
 
@@ -66,8 +66,8 @@ void enviarMensaje(char* mensaje, int fd) {
     paquete->buffer->size = strlen(mensaje) + 1;
     paquete->buffer->stream = malloc(paquete->buffer->size);
     memcpy(paquete->buffer->stream, mensaje, paquete->buffer->size);
-
-    int bytes = paquete->buffer->size + 2 * sizeof(int);
+    /*Se envia el tamaño total del paquete que es el stream más tamaño de codigo de operacion + tamanño de lo que indica size del stream*/
+    int bytes = paquete->buffer->size + sizeof(op_code) + sizeof(size_t);
 
     void *a_enviar = serializarPaquete(paquete, bytes);
 
@@ -86,7 +86,7 @@ int enviarPaquete(t_paquete* paquete, int socketCliente)
 
     size_t tamanioPaquete = tamanioCodigoOperacion + tamanioStream + tamanioPayload;
     void* a_enviar = serializarPaquete(paquete, tamanioPaquete);
-    printf("paquete->codigo_operacion: %u",paquete->codigo_operacion);
+
     if(send(socketCliente, a_enviar, tamanioPaquete, 0) == -1){
         perror("Hubo un error enviando el paquete: ");
         free(a_enviar);
@@ -114,18 +114,24 @@ void terminarPrograma(uint32_t conexion, t_log* logger, t_config* config) {
 
 void recibirMensaje(int socketCliente, t_log* logger)
 {
-    int size;
-    char* buffer = recibirBuffer((size_t) &size, socketCliente);
-    printf("Mensaje del kernel: %s", buffer);
+    char* buffer = recibirBuffer(socketCliente);
+    printf("\nMensaje del kernel: %s\n", buffer);
     log_info(logger, "Me llego el mensaje %s", buffer);
     free(buffer);
 }
 
-void* recibirBuffer(size_t size, int socket_cliente)
+void* recibirBuffer(int socketCliente)
 {
     void * buffer;
-    buffer = malloc(size);
-    recv(socket_cliente, buffer, size, MSG_WAITALL);
+    op_code opCode;
+    size_t streamSize;
+    //recibo el código de operacion --> MENSAJE
+    recv(socketCliente, &opCode, sizeof(op_code), MSG_WAITALL);
+    //Recibo el tamaño del mensaje
+    recv(socketCliente, &streamSize, sizeof(size_t), MSG_WAITALL);
+    //malloqueo el tamaño del mensaje y lo recibo en buffer
+    buffer = malloc(streamSize);
+    recv(socketCliente, buffer, streamSize, MSG_WAITALL);
 
     return buffer;
 }
