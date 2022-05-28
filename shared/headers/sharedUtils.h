@@ -69,5 +69,6 @@ void terminarPrograma(uint32_t, t_log*, t_config*);
 void* recibirBuffer(size_t, int);
 void verificarListen(int);
 void verificarBind(int, struct addrinfo*);
+int esperar_cliente(int, char*, t_log*);
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H

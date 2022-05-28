@@ -144,3 +144,17 @@ void verificarBind(int socket_kernel,  struct addrinfo *kernelinfo) {
         exit(-1);
     }
 }
+
+int esperar_cliente(int socket_servidor, char* nombre_cliente, t_log* logger) {
+	// Aceptamos un cliente
+    int socket_cliente = accept(socket_servidor, NULL, NULL);
+
+	if (socket_cliente == -1) {
+	    perror(strcat("Hubo un error en aceptar una conexión del cliente ", nombre_cliente));
+	    close(socket_servidor);
+	    exit(-1);
+	}
+
+	log_info(logger, strcat("Se conectó el cliente ", nombre_cliente));
+	return socket_cliente;
+}
