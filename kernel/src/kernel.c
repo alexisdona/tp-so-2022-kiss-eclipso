@@ -1,9 +1,15 @@
+#include <semaphore.h>
 #include "kernel.h"
 
+//Variables globales
 t_log* logger;
 int kernel_fd;
 t_queue * colaProcesosNew;
 t_config * config;
+
+t_queue * colaProcesosReady;
+uint32_t gradoMultiprogramacion;
+sem_t semGradoMultiprogramacion;
 
 void sighandler(int s) {
     cerrar_programa(logger);
@@ -13,8 +19,9 @@ void sighandler(int s) {
 int main() {
     signal(SIGINT, sighandler);
 
+ //   sem_init(&semGradoMultiprogramacion,0,gradoMultiprogramacion);
     logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
-    config = iniciar_config();
+    config = iniciar_config(CONFIG_FILE);
 
     char* ip= config_get_string_value(config,"IP_MEMORIA");
     char* puerto= config_get_string_value(config,"PUERTO_MEMORIA");
@@ -27,7 +34,7 @@ int main() {
 
 	log_info(logger, "Kernel listo para recibir una consola");
     colaProcesosNew = queue_create();
-
+    colaProcesosReady = queue_create();
     while (escuchar_consolas(logger, "KERNEL", kernel_fd));
 
     //cerrar_programa(logger);
@@ -70,7 +77,11 @@ static void procesar_conexion(void* void_args) {
                 }*/
                // printf("PCB->programCounter:%d", pcb->programCounter);
                 queue_push(colaProcesosNew, pcb);
-                printf("\n\ntamanio de la cola de procesos en new: %d\n\n", queue_size(colaProcesosNew));
+              //  sem_wait(&semGradoMultiprogramacion);
+                queue_push(colaProcesosReady, queue_pop(colaProcesosNew));
+
+           //     sem_post(&semGradoMultiprogramacion);
+                printf("\n\ntamanio de la cola de procesos en ready: %d\n\n", queue_size(colaProcesosReady));
                 //TODO enviar a la consla que se recibió correctamente la lista de instrucciones por ahora
                 break;
 			case -1:
@@ -165,13 +176,3 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
 
 }
 
-t_config* iniciar_config(void) {
-	t_config* nuevo_config;
-
-	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
-		perror("No se pudo leer la configuracion: ");
-		exit(-1);
-	}
-	return nuevo_config;
-
-}

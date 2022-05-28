@@ -127,7 +127,7 @@ uint32_t conectar_al_kernel(){
 	char* ip;
 	uint32_t puerto;
 
-	config = iniciar_config();
+	config = iniciar_config(CONFIG_FILE);
 	ip = config_get_string_value(config,"IP_KERNEL");
 	puerto = config_get_int_value(config,"PUERTO_KERNEL");
 	uint32_t conexion = crear_conexion(ip, puerto);
@@ -141,16 +141,7 @@ t_log* iniciar_logger(void) {
 
 }
 
-t_config* iniciar_config(void) {
-	t_config* nuevo_config;
 
-	if((nuevo_config = config_create(CONFIG_FILE)) == NULL) {
-		perror("No se pudo leer la configuracion: ");
-		exit(-1);
-	}
-	return nuevo_config;
-
-}
 
 void leer_consola(t_log* logger) {
 	char* leido;

@@ -5,8 +5,13 @@
 #ifndef TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 #define TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 
+#include<stdlib.h>
+#include<stdio.h>
+#include<commons/config.h>
+#include<stdint.h>
 #include<commons/collections/list.h>
 #include "protocolo.h"
+
 
 typedef uint32_t operando;
 
@@ -45,6 +50,8 @@ typedef struct {
     uint32_t tablaPaginas;
     uint32_t estimacionRafaga;
 } t_pcb;
+
+t_config* iniciar_config(char*);
 
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H
