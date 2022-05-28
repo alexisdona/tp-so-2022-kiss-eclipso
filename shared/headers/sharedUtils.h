@@ -8,12 +8,16 @@
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
-#include<commons/config.h>
-#include <commons/log.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include<stdint.h>
 #include <unistd.h>
 #include <sys/socket.h>
+
+#include<commons/config.h>
+#include <commons/log.h>
 #include<commons/collections/list.h>
+
 #include "protocolo.h"
 
 
@@ -69,5 +73,7 @@ void terminarPrograma(uint32_t, t_log*, t_config*);
 void* recibirBuffer(size_t, int);
 void verificarListen(int);
 void verificarBind(int, struct addrinfo*);
+void verificarConnect(int, struct sockaddr_in *);
+int crearConexion(char*, int, char*);
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H

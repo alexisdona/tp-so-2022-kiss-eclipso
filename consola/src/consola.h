@@ -24,9 +24,9 @@ instr_code obtener_cop(char*);
 void generarListaInstrucciones(t_list **instrucciones, char **pseudocodigo);
 void agregarInstrucciones(t_list **instrucciones, char *itr);
 char** leer_archivo_pseudocodigo(char*,t_log*);
-uint32_t conectar_al_kernel();
 void leer_consola(t_log*);
 void enviarListaInstrucciones(uint32_t, int, t_list*);
 int recibirInstrucciones(uint32_t, t_log*, char*, int);
+int tamanioCodigoOperacion(instr_code operacion);
 
 #endif /* CONSOLA_H_ */

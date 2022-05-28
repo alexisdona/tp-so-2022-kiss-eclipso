@@ -1,20 +1,19 @@
 #include "consola.h"
 
-t_config* config;
-t_instruccion* instruccion;
-
-int tamanioCodigoOperacion(instr_code operacion);
-
 int main(int argc, char* argv[]) {
-
-	t_log* logger = iniciarLogger(LOG_FILE, LOG_NAME);
-	uint32_t conexion = conectar_al_kernel(config);
 
   if(argc < 3){
 		printf("Cantidad de parametros incorrectos. Debe informar 2 parametros.\n");
 		printf("1- Ruta al archivo con instrucciones a ejecutar.\n2- Tamaño del proceso\n");
 		return argc;
 	}
+    t_log* logger = iniciarLogger(LOG_FILE, LOG_NAME);
+
+    t_config* config = iniciarConfig(CONFIG_FILE);
+    char* ip = config_get_string_value(config,"IP_KERNEL");
+    uint32_t puerto = config_get_int_value(config,"PUERTO_KERNEL");
+
+    uint32_t conexion = crearConexion(ip, puerto, "Consola");
 
 	char* rutaArchivo = argv[1];
 	int tamanioProceso = atoi(argv[2]);
@@ -123,21 +122,6 @@ instr_code obtener_cop(char* operacion){
 	else if(string_contains(operacion,"WRITE")) return WRITE;
 	else return EXIT;
 }
-
-uint32_t conectar_al_kernel(){
-	char* ip;
-	uint32_t puerto;
-
-	config = iniciarConfig(CONFIG_FILE);
-	ip = config_get_string_value(config,"IP_KERNEL");
-	puerto = config_get_int_value(config,"PUERTO_KERNEL");
-	uint32_t conexion = crear_conexion(ip, puerto);
-	return conexion;
-}
-
-
-
-
 
 void leer_consola(t_log* logger) {
 	char* leido;

@@ -1,5 +1,5 @@
 
-#include <netdb.h>
+
 #include "headers/sharedUtils.h"
 
 t_config* iniciarConfig(char* file) {
@@ -116,6 +116,7 @@ void recibirMensaje(int socket_cliente, t_log* logger)
 {
     int size;
     char* buffer = recibirBuffer((size_t) &size, socket_cliente);
+    printf("Mensaje del kernel: %s", buffer);
     log_info(logger, "Me llego el mensaje %s", buffer);
     free(buffer);
 }
@@ -141,6 +142,33 @@ void verificarBind(int socket_kernel,  struct addrinfo *kernelinfo) {
     if( bind(socket_kernel, kernelinfo->ai_addr, kernelinfo->ai_addrlen) == -1) {
         perror("Hubo un error en el bind: ");
         close(socket_kernel);
+        exit(-1);
+    }
+}
+
+int crearConexion(char* ip, int puerto, char* nombreCliente){ //TODO agregar nombre cliente que arroja el error
+    int socketCliente = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (socketCliente == -1) {
+        perror("Hubo un error al crear el socket del servidor");
+        exit(-1);
+    }
+
+    struct sockaddr_in direccionServer;
+    direccionServer.sin_family = AF_INET;
+    direccionServer.sin_addr.s_addr = inet_addr(ip);
+    direccionServer.sin_port = htons(puerto);
+    memset(&(direccionServer.sin_zero), '\0', 8); //se rellena con ceros para que tenga el mismo tamaño que socketaddr
+
+    verificarConnect(socketCliente, &direccionServer);
+
+    return socketCliente;
+}
+
+void verificarConnect(int socketCliente, struct sockaddr_in *direccionServer) {
+    if (connect(socketCliente, (void*) direccionServer, sizeof((*direccionServer))) == -1) {
+        perror("Hubo un problema conectando al servidor: ");
+        close(socketCliente);
         exit(-1);
     }
 }
