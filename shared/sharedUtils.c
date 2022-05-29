@@ -15,7 +15,7 @@ t_config* iniciarConfig(char* file) {
 
 t_log* iniciarLogger(char* file, char* logName) {
 
-    t_log* nuevo_logger = log_create(file, logName, false, LOG_LEVEL_INFO );
+    t_log* nuevo_logger = log_create(file, logName, 1, LOG_LEVEL_DEBUG );
     return nuevo_logger;
 
 }
@@ -115,7 +115,6 @@ void terminarPrograma(uint32_t conexion, t_log* logger, t_config* config) {
 void recibirMensaje(int socketCliente, t_log* logger)
 {
     char* buffer = recibirBuffer(socketCliente);
-    printf("\nMensaje del kernel: %s\n", buffer);
     log_info(logger, "Me llego el mensaje %s", buffer);
     free(buffer);
 }
@@ -123,10 +122,8 @@ void recibirMensaje(int socketCliente, t_log* logger)
 void* recibirBuffer(int socketCliente)
 {
     void * buffer;
-    op_code opCode;
     size_t streamSize;
-    //recibo el código de operacion --> MENSAJE
-    recv(socketCliente, &opCode, sizeof(op_code), MSG_WAITALL);
+
     //Recibo el tamaño del mensaje
     recv(socketCliente, &streamSize, sizeof(size_t), MSG_WAITALL);
     //malloqueo el tamaño del mensaje y lo recibo en buffer
@@ -179,20 +176,6 @@ void verificarConnect(int socketCliente, struct sockaddr_in *direccionServer) {
     }
 }
 
-int esperar_cliente(int socket_servidor, char* nombre_cliente, t_log* logger) {
-	// Aceptamos un cliente
-    int socket_cliente = accept(socket_servidor, NULL, NULL);
-
-	if (socket_cliente == -1) {
-	    perror(strcat("Hubo un error en aceptar una conexión del cliente ", nombre_cliente));
-	    close(socket_servidor);
-	    exit(-1);
-	}
-
-	log_info(logger, strcat("Se conectó el cliente ", nombre_cliente));
-	return socket_cliente;
-}
-
 int iniciarServidor(char* ip, char* puerto, t_log* logger){
     int socketServidor;
     struct addrinfo hints, *serverInfo;
@@ -202,7 +185,7 @@ int iniciarServidor(char* ip, char* puerto, t_log* logger){
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    getaddrinfo(ip,puerto, &hints, &serverInfo);
+    getaddrinfo(ip, puerto, &hints, &serverInfo);
 
     // Creamos el socket de escucha del kernel
     socketServidor = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
@@ -216,3 +199,31 @@ int iniciarServidor(char* ip, char* puerto, t_log* logger){
 
     return socketServidor;
 }
+
+op_code recibirOperacion(int socketCliente) {
+    op_code cod_op;
+
+    if(recv(socketCliente, &cod_op, sizeof(op_code), MSG_WAITALL) > 0) {
+     //   printf("recibirOperacion --> cod_op: %d\n", cod_op);
+        return cod_op;
+    } else {
+        close(socketCliente);
+        return -1;
+    }
+}
+
+int esperarCliente(int socketServer, t_log* logger)
+{
+    // Aceptamos un nuevo cliente
+    int socketCliente = accept(socketServer, NULL, NULL);
+
+    if (socketCliente == -1) {
+        perror("Hubo un error en aceptar una conexión de la consola: ");
+        close(socketServer);
+        exit(-1);
+    }
+
+    log_info(logger, "Se conecto un cliente!");
+    return socketCliente;
+}
+

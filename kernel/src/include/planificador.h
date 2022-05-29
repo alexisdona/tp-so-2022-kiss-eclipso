@@ -1,3 +1,5 @@
+#include <commons/collections/queue.h>
+
 #ifndef PLANIFICADOR_H_
 #define PLANIFICADOR_H_
 
@@ -11,8 +13,7 @@ t_queue* NEW;
 t_queue* BLOCKED;
 t_queue* SUSPENDED_READY;
 t_queue* SUSPENDED_BLOCKED;
-t_queue* EXIT; //ver si realmente lo necesitamos.
+int GRADO_MULTIPROGRAMACION;
 
-typedef struct {
-  t_pcb* pcb;    
-} t_queue;
+
+#endif

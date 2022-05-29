@@ -18,11 +18,16 @@
 #include <commons/log.h>
 #include<commons/collections/list.h>
 
-#include "protocolo.h"
-
 extern int errno;
 
 typedef uint32_t operando;
+
+typedef enum {
+    MENSAJE,
+    LISTA_INSTRUCCIONES,
+    PCB,
+    TERMINAR_PROCESO
+} op_code;
 
 typedef enum
 {
@@ -68,6 +73,7 @@ void* serializarPaquete(t_paquete *, size_t );
 void eliminarPaquete(t_paquete *);
 int enviarPaquete(t_paquete*, int);
 void enviarMensaje(char*, int);
+op_code recibirOperacion(int);
 void recibirMensaje(int, t_log*);
 void liberarConexion(int);
 void terminarPrograma(uint32_t, t_log*, t_config*);
@@ -77,6 +83,5 @@ void verificarBind(int, struct addrinfo*);
 void verificarConnect(int, struct sockaddr_in *);
 int crearConexion(char*, int, char*);
 int iniciarServidor(char*, char*, t_log*);
-int esperar_cliente(int, char*, t_log*);
-
+int esperarCliente(int, t_log*);
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H

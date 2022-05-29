@@ -47,16 +47,4 @@ int esperar_cpu(int socket_memoria)
 	return socket_cpu;
 }
 
-op_code recibirOperacion(int socket_cpu) {
-    op_code cod_op;
-
-    if(recv(socket_cpu, &cod_op, sizeof(op_code), MSG_WAITALL) > 0) {
-        printf("recibirOperacion --> cod_op: %d\n", cod_op);
-        return cod_op;
-    }
-    else {
-        close(socket_cpu);
-        return -1;
-    }
-}
 

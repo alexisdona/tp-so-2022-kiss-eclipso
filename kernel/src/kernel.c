@@ -1,13 +1,12 @@
 #include <semaphore.h>
+#include <include/planificador.h>
 #include "kernel.h"
 
 //Variables globales
 t_log* logger;
 int kernel_fd;
-t_queue * colaProcesosNew, *colaProcesosReady, *colaProcesosBlocked;
 t_config * config;
 
-uint32_t gradoMultiprogramacion;
 sem_t semGradoMultiprogramacion;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaReady;
@@ -25,22 +24,24 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    logger = log_create("kernel.log", "KERNEL", 1, LOG_LEVEL_DEBUG);
+    logger = iniciarLogger("kernel.log", "KERNEL");
     config = iniciarConfig(CONFIG_FILE);
-    gradoMultiprogramacion = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
-    sem_init(&semGradoMultiprogramacion,0, gradoMultiprogramacion);
+    GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
+    sem_init(&semGradoMultiprogramacion,0, GRADO_MULTIPROGRAMACION);
     char* ipKernel= config_get_string_value(config,"IP_KERNEL");
-    char* puertoKernel= config_get_string_value(config,"PUERTO_KERNEL");
+    char* puertoKernel= config_get_string_value(config,"PUERTO_ESCUCHA");
     char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
-    char* puertoMemoria= config_get_string_value(config,"PUERTO_MEMORIA");
+    int puertoMemoria= config_get_int_value(config,"PUERTO_MEMORIA");
     char* ipCpu= config_get_string_value(config,"IP_CPU");
-    char* puertoCpu= config_get_string_value(config,"PUERTO_ESCUCHA");
-//    int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
-//    int conexionCPU = crearConexion(ipCpu, puertoCpu, "Kernel");
+    int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
+    char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
+ //   int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
+    int conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
+    enviarMensaje("hola soy el kernel", conexionCPUDispatch);
     kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
-    colaProcesosNew = queue_create();
-    colaProcesosReady = queue_create();
+    NEW = queue_create();
+    READY = queue_create();
 
     while (escuchar_consolas(logger, "KERNEL", kernel_fd));
 
@@ -97,15 +98,15 @@ static void procesar_conexion(void* void_args) {
                 }*/
                // printf("PCB->programCounter:%d", pcb->programCounter);
                 pthread_mutex_lock(&mutexColaNew);
-                queue_push(colaProcesosNew, pcb);
-                printf("\n\ntamanio de la cola de procesos en new: %d\n\n", queue_size(colaProcesosNew));
+                queue_push(NEW, pcb);
+                printf("\n\ntamanio de la cola de procesos en new esperando grado de multiprogramación: %d\n\n", queue_size(NEW));
                 pthread_mutex_unlock(&mutexColaNew);
 
                 sem_wait(&semGradoMultiprogramacion);
                 pthread_mutex_lock(&mutexColaReady);
-                queue_push(colaProcesosReady, queue_pop(colaProcesosNew));
-                gradoMultiprogramacion--;
-                printf("gradoMultiprogramacion: %d", gradoMultiprogramacion );
+                queue_push(READY, queue_pop(NEW));
+                GRADO_MULTIPROGRAMACION--;
+                printf("gradoMultiprogramacion: %d", GRADO_MULTIPROGRAMACION );
                 pthread_mutex_unlock(&mutexColaReady);
 
            //     sem_post(&semGradoMultiprogramacion);
@@ -140,7 +141,7 @@ int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd)
 	switch(opcion) {
 		case 1:
 			log_info(logger,"kernel continua corriendo, esperando nueva consola.");
-			consola_fd = esperarConsola(kernel_fd);
+			consola_fd = esperarCliente(kernel_fd, logger);
 			break;
 		case 0:
 			log_info(logger,"Terminando kernel...");
@@ -174,7 +175,7 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 }
 
 int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
-    int consola_fd = esperarConsola(kernel_fd);
+    int consola_fd = esperarCliente(kernel_fd, logger);
     if (consola_fd != -1) {
         pthread_t hilo;
         t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));

@@ -11,15 +11,10 @@
 #include<string.h>
 #include<commons/log.h>
 #include<commons/string.h>
-#include "protocolo.h"
 #include "../../../shared/headers/sharedUtils.h"
 #include<errno.h>
 
 extern int errno;
-
-
-int crear_conexion(char* ip, int puerto);
-
 
 void agregarTamanioProceso(t_paquete*, int);
 void agregarInstruccion(t_paquete* paqueteInstrucciones, void* instruccion);

@@ -13,9 +13,7 @@
 
 #define LOG_NAME "CPU_LOG"
 #define LOG_FILE "cpu.log"
-#define CONFIG_FILE "../src/config/cpu.config"
+#define CONFIG_FILE "../cpu/src/config/cpu.config"
 
-int recibir_opcion();
-int accion_cpu(int, int);
 
 #endif /* SRC_CPU_H_ */

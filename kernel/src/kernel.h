@@ -15,7 +15,6 @@
 #include "include/estructuras.h"
 
 #define CONFIG_FILE "../kernel/src/config/kernel.config"
-#define GRADO_MULTIPROGRAMACION
 
 
 typedef struct {

@@ -5,36 +5,9 @@
 
 
 
-int esperarConsola(int socketKernel)
-{
-	// Aceptamos un nuevo consola
-    int socketConsola = accept(socketKernel, NULL, NULL);
 
-	if (socketConsola == -1) {
-	    perror("Hubo un error en aceptar una conexión de la consola: ");
-	    close(socketKernel);
-	    exit(-1);
-	}
 
-	log_info(logger, "Se conecto una consola!");
-	return socketConsola;
-}
 
-op_code recibirOperacion(int socketConsola)
-{
-	op_code cod_op;
-
-	if(recv(socketConsola, &cod_op, sizeof(op_code), MSG_WAITALL) > 0) {
-        printf("recibirOperacion --> cod_op: %d\n", cod_op);
-		return cod_op;
-	}
-	else
-	{
-		close(socketConsola);
-		return -1;
-	}
-
-}
 
 size_t recibirTamanioStream(int socketConsola) {
     size_t tamanioStream;
