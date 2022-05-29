@@ -12,6 +12,7 @@
 
 #include "include/utils.h"
 #include "../../shared/headers/sharedUtils.h"
+#include "../../shared/headers/protocolo.h"
 
 #define LOG_NAME "CONSOLA_LOG"
 #define LOG_FILE "consola.log"

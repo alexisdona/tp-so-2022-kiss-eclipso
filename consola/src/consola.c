@@ -1,5 +1,10 @@
 #include "consola.h"
 
+
+uint32_t conexionKernel;
+t_config* config;
+t_log* logger;
+
 int main(int argc, char* argv[]) {
 
   if(argc < 3){
@@ -7,23 +12,38 @@ int main(int argc, char* argv[]) {
 		printf("1- Ruta al archivo con instrucciones a ejecutar.\n2- Tamaño del proceso\n");
 		return argc;
 	}
-    t_log* logger = iniciarLogger(LOG_FILE, LOG_NAME);
-
-    t_config* config = iniciarConfig(CONFIG_FILE);
+    logger = iniciarLogger(LOG_FILE, LOG_NAME);
+    config = iniciarConfig(CONFIG_FILE);
     char* ip = config_get_string_value(config,"IP_KERNEL");
-    uint32_t puerto = config_get_int_value(config,"PUERTO_KERNEL");
+    int puerto = config_get_int_value(config,"PUERTO_KERNEL");
 
-    int conexionKernel = crearConexion(ip, puerto, "Consola");
+    conexionKernel = crearConexion(ip, puerto, "Consola");
 
 	char* rutaArchivo = argv[1];
 	int tamanioProceso = atoi(argv[2]);
 
 	t_list* listaInstrucciones = parsearInstrucciones(logger, rutaArchivo);
     enviarListaInstrucciones(conexionKernel, tamanioProceso, listaInstrucciones);
-    recibirMensaje(conexionKernel, logger);
     list_destroy(listaInstrucciones);
-//    terminarPrograma(conexionKernel, logger, config);
-	return EXIT_SUCCESS;
+
+    while(conexionKernel!=-1){
+
+        op_code cod_op = recibirOperacion(conexionKernel);
+        switch (cod_op) {
+            case MENSAJE:
+                recibirMensaje(conexionKernel, logger);
+                break;
+            case TERMINAR_PROCESO:
+                recibirMensaje(conexionKernel, logger);
+                terminarPrograma(conexionKernel, logger, config);
+                break;
+            default:
+                log_trace(logger, "Operación desconocida en consola");
+                terminarPrograma(conexionKernel, logger, config);
+                break;
+        }
+    }
+    return EXIT_SUCCESS;
 }
 
 t_list* parsearInstrucciones(t_log* logger, char* rutaArchivo) {

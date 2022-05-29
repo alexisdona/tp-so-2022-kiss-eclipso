@@ -20,11 +20,9 @@
 t_log* logger;
 extern int errno;
 
-int esperarConsola(int);
 t_list* recibirListaInstrucciones(int);
 t_list* deserializarListaInstrucciones(void *pVoid, size_t tamanioListaInstrucciones, t_list *instrucciones);
 int recibirTamanioProceso(int);
-op_code recibirOperacion(int);
 void cerrar_programa(t_log* logger);
 
 

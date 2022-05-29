@@ -1,31 +1,7 @@
 #include "utils.h"
 #include "../../../shared/headers/sharedUtils.h"
 
-int iniciar_cpu(void) {
-	int socket_cpu;
-
-	struct addrinfo hints, *cpuinfo;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-
-	getaddrinfo(IP, PUERTO, &hints, &cpuinfo);
-
-	// Creamos el socket de escucha de la cpu
-	socket_cpu = socket(cpuinfo->ai_family,cpuinfo->ai_socktype,cpuinfo->ai_protocol);
-	// Asociamos el socket a un puerto
-    verificarBind(socket_cpu, cpuinfo);
-    // Escuchamos las conexiones entrantes
-    verificarListen(socket_cpu);
-
-
-    freeaddrinfo(cpuinfo);
-	log_trace(logger, "Listo para escuchar a la memoria");
-
-	return socket_cpu;
-}
-
+/*
 int esperar_memoria(int socket_cpu)
 {
 	// Aceptamos una memoria
@@ -39,20 +15,7 @@ int esperar_memoria(int socket_cpu)
 
 	log_info(logger, "Se conecto una memoria!");
 	return socket_memoria;
-}
-
-op_code recibirOperacion(int socket_memoria) {
-    op_code cod_op;
-
-    if(recv(socket_memoria, &cod_op, sizeof(op_code), MSG_WAITALL) > 0) {
-        printf("recibirOperacion --> cod_op: %d\n", cod_op);
-        return cod_op;
-    }
-    else {
-        close(socket_memoria);
-        return -1;
-    }
-}
+}*/
 
 
 
