@@ -28,8 +28,20 @@ typedef enum {
     PCB,
     TERMINAR_PROCESO,
     ESCRIBIR_MEMORIA,
-    LEER_MEMORIA
+    LEER_MEMORIA,
+	ERROR_DESERIALIZAR_BUFFER = -2
 } op_code;
+
+typedef enum
+{
+	NEW,
+    READY,
+    BLOCKED,
+    EXEC,
+    SUSPENDED_READY,
+    SUSPENDED_BLOCKED,
+    EXIT
+} state_code;
 
 typedef enum
 {
@@ -65,6 +77,8 @@ typedef struct {
     uint32_t programCounter;
     uint32_t tablaPaginas;
     uint32_t estimacionRafaga;
+    state_code stateCode;
+    unit32_t blockTime;
 } t_pcb;
 
 t_config* iniciarConfig(char*);

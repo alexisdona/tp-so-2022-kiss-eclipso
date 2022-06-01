@@ -15,5 +15,12 @@
 #define LOG_FILE "cpu.log"
 #define CONFIG_FILE "../cpu/src/config/cpu.config"
 
+typedef struct
+{
+	void* stream;
+	uint32_t tamanio;
+	uint32_t desplazamiento;
+} t_buffer;
+
 
 #endif /* SRC_CPU_H_ */
