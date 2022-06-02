@@ -32,4 +32,5 @@ int escuchar_consolas(t_log*, char*, int);
 void iterator(char*);
 int validar_y_ejecutar_opcion_consola(int, int, int );
 int inicializarMutex();
+void enviarACpu(int, t_pcb*);
 #endif /* KERNEL_H_ */

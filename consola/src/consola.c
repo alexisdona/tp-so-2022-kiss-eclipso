@@ -5,6 +5,7 @@ uint32_t conexionKernel;
 t_config* config;
 t_log* logger;
 
+
 int main(int argc, char* argv[]) {
 
   if(argc < 3){
@@ -140,18 +141,14 @@ void enviarListaInstrucciones(uint32_t conexion, int tamanioProceso, t_list* ins
 	t_paquete* paquete = crearPaquete();
 	paquete->codigo_operacion = LISTA_INSTRUCCIONES;
 
-	for(uint32_t i=0; i<list_size(instrucciones); i++){
-	    t_instruccion *instruccion = list_get(instrucciones, i);
-        agregarInstruccion(paquete, (void *) instruccion);
-        printf("instruccion-->codigoInstruccion->%d\toperando1-> %d\toperando2-> %d\n",
-               instruccion->codigo_operacion,
-               instruccion->parametros[0],
-               instruccion->parametros[1]);	}
+    agregarListaInstrucciones(paquete, instrucciones);
     agregarTamanioProceso(paquete, tamanioProceso);
     enviarPaquete(paquete, conexion);
     eliminarPaquete(paquete);
 
 }
+
+
 
 
 
