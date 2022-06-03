@@ -1,4 +1,8 @@
 #include "memoria.h"
+#include "../../shared/headers/sharedUtils.h"
+
+t_log* logger;
+t_config * config;
 
 int main(void) {
 	logger = log_create("memoria.log", "Memoria", 1, LOG_LEVEL_DEBUG);
