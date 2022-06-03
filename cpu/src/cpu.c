@@ -34,21 +34,21 @@ int main(void) {
 	while(clienteDispatch!=-1) {
 		op_code cod_op = recibirOperacion(clienteDispatch);
 		switch (cod_op) {
-			case MENSAJE:
-                recibirMensaje(clienteDispatch, logger);
-		        break;
-		    case PCB:
-		    	pcb = recibirPCB(clienteDispatch);
-		    	comenzar_ciclo_instruccion();
-		       break;
-			case -1:
-				log_info(logger, "El cliente se desconecto.");
-				clienteDispatch=-1;
-				break;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;
-		}
+					case MENSAJE:
+		                recibirMensaje(clienteDispatch, logger);
+				        break;
+				    case PCB:
+				    	pcb = recibirPCB(clienteDispatch);
+				    	comenzar_ciclo_instruccion();
+				       break;
+					case -1:
+						log_info(logger, "El cliente se desconecto.");
+						clienteDispatch=-1;
+						break;
+					default:
+						log_warning(logger,"Operacion desconocida.");
+						break;
+				}
 	}
 	return EXIT_SUCCESS;
 }
@@ -57,25 +57,28 @@ int main(void) {
 //--------Ciclo de instruccion---------
 void comenzar_ciclo_instruccion(){
 
-	estado_proceso proceso = CONTINUA_PROCESO;
+	t_proceso_respuesta* proceso_respuesta;
+
+	proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
 	operando operador = 0;
 
 	//PRENDER CRONOMETRO
 
-	while(proceso == CONTINUA_PROCESO){
-		t_instruccion* instruccion = fase_fetch();
-			int requiero_operador = fase_decode(instruccion);
-			if(requiero_operador) {
-				operador = fase_fetch_operand(instruccion->parametros[1]);
-			}
-			proceso = fase_execute(instruccion, operador);
-			if(proceso == CONTINUA_PROCESO) {
-				//cicloInterrupciones();
-			}
-			else{
+	while(proceso_respuesta->estadoProceso == CONTINUA_PROCESO){
+			t_instruccion* instruccion = fase_fetch();
+				int requiero_operador = fase_decode(instruccion);
+				if(requiero_operador) {
+					operador = fase_fetch_operand(instruccion->parametros[1]);
+				}
+				proceso_respuesta = fase_execute(instruccion, operador);
+				if(proceso_respuesta->estadoProceso == CONTINUA_PROCESO) {
+					//ciclo_interrupciones();
+				}
+				else{
 
-			}
-	}
+				}
+		}
+
 
 	//TERMINAR CRONOMETRO
 	//CAMBIAR EN PCB -> TIEMPO_ESTIMADO
@@ -97,34 +100,39 @@ operando fase_fetch_operand(operando direccion_operador_a_buscar) {
 	return direccion_operador_a_buscar;
 }
 
-estado_proceso fase_execute(t_instruccion* instruccion, uint32_t operador){
-	estado_proceso proceso = CONTINUA_PROCESO;
+t_proceso_respuesta* fase_execute(t_instruccion* instruccion, uint32_t operador){
+	t_proceso_respuesta* proceso_respuesta;
+	estado_proceso estado_proceso = CONTINUA_PROCESO;
+	proceso_respuesta ->pcb = pcb;
+
 	switch(instruccion->codigo_operacion){
 		case NO_OP:
-			proceso = CONTINUA_PROCESO;
+			estado_proceso = CONTINUA_PROCESO;
 			operacion_NO_OP();
 			break;
 		case IO:
-			proceso = BLOQUEAR_PROCESO;
-			operacion_IO();
+			proceso_respuesta->estadoProceso = BLOQUEAR_PROCESO;
+			operacion_IO(proceso_respuesta, instruccion->parametros[0]);
 			break;
 		case READ:
 			//Provisorio
-			proceso = CONTINUA_PROCESO;
+			estado_proceso = CONTINUA_PROCESO;
 			break;
 		case WRITE:
 			//Provisorio
-			proceso = CONTINUA_PROCESO;
+			estado_proceso = CONTINUA_PROCESO;
 			break;
 		case COPY:
 			//Provisorio
-			proceso = CONTINUA_PROCESO;
+			estado_proceso = CONTINUA_PROCESO;
 			break;
 		case EXIT:
-			proceso = FINALIZAR_PROCESO;
+			proceso_respuesta->estadoProceso = FINALIZAR_PROCESO;
+			operacion_EXIT(proceso_respuesta);
 			break;
 	}
-	return proceso;
+
+	return proceso_respuesta;
 }
 
 void operacion_NO_OP(){
@@ -132,14 +140,33 @@ void operacion_NO_OP(){
 	usleep(retardo_noop_microsegundos);
 }
 
-void operacion_IO(operando tiempo_bloqueo){
-	//ARMAR ESTRUCTURA PARA:
-	//ENVIAR AL KERNEL EL PAQUETE CON -> "BLOQUEAR_PROCESO" + PCB + TIEMPO_BLOQUEO
+void operacion_IO(t_proceso_respuesta proceso_respuesta, operando tiempo_bloqueo){
+
+	proceso_respuesta->tiempoBloqueo = tiempo_bloqueo;
+
 }
 
-void operacion_EXIT(){
-	//ENVIAR AL KERNEL -> "FIN_PROCESO" + PCB
+void operacion_EXIT(t_proceso_respuesta proceso_respuesta){
+	t_paquete* paquete = crearPaquete();
+	paquete->codigo_operacion = TERMINAR_PROCESO;
+
+	agregarEntero(paquete, pcb->idProceso);
+	    agregarEntero(paquete, pcb->tamanioProceso);
+	    agregarEntero(paquete, pcb->programCounter);
+	    agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
+	    agregarEntero(paquete, pcb->estimacionRafaga);
+	    agregarEntero(paquete, pcb->duracionUltimaRafaga);
+	    agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
+
+	    enviarPaquete(paquete,clienteDispatch);
+	    eliminarPaquete(paquete);
+
 }
 
 
 //-----------Ciclo de interrupcion-----------
+
+
+
+
+

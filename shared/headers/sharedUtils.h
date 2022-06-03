@@ -62,6 +62,19 @@ typedef struct {
     t_list* listaInstrucciones;
 } t_pcb;
 
+typedef enum
+{
+	CONTINUA_PROCESO,
+	BLOQUEAR_PROCESO,
+	FINALIZAR_PROCESO
+} estado_proceso;
+
+typedef struct {
+    estado_proceso estadoProceso;
+    t_pcb* pcb;
+    int tiempoBloqueo;
+} t_proceso_respuesta;
+
 t_config* iniciarConfig(char*);
 t_log* iniciarLogger(char*, char*);
 t_paquete* crearPaquete(void);
