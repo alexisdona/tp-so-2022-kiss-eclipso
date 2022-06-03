@@ -144,23 +144,37 @@ void operacion_IO(t_proceso_respuesta proceso_respuesta, operando tiempo_bloqueo
 
 	proceso_respuesta->tiempoBloqueo = tiempo_bloqueo;
 
+	t_paquete* paquete = crearPaquete();
+
+	paquete->codigo_operacion = BLOQUEAR_PROCESO;
+
+	preparar_pcb_respuesta(paquete);
+
+	agregarEntero(paquete, proceso_respuesta->tiempoBloqueo);
+
+	    enviarPaquete(paquete,clienteDispatch);
+	    eliminarPaquete(paquete);
 }
 
 void operacion_EXIT(t_proceso_respuesta proceso_respuesta){
 	t_paquete* paquete = crearPaquete();
 	paquete->codigo_operacion = TERMINAR_PROCESO;
 
-	agregarEntero(paquete, pcb->idProceso);
-	    agregarEntero(paquete, pcb->tamanioProceso);
-	    agregarEntero(paquete, pcb->programCounter);
-	    agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
-	    agregarEntero(paquete, pcb->estimacionRafaga);
-	    agregarEntero(paquete, pcb->duracionUltimaRafaga);
-	    agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
+	preparar_pcb_respuesta(paquete);
 
 	    enviarPaquete(paquete,clienteDispatch);
 	    eliminarPaquete(paquete);
 
+}
+
+void preparar_pcb_respuesta(t_paquete* paquete) {
+	agregarEntero(paquete, pcb->idProceso);
+		    agregarEntero(paquete, pcb->tamanioProceso);
+		    agregarEntero(paquete, pcb->programCounter);
+		    agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
+		    agregarEntero(paquete, pcb->estimacionRafaga);
+		    agregarEntero(paquete, pcb->duracionUltimaRafaga);
+		    agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
 }
 
 
