@@ -1,21 +1,17 @@
-//
-// Created by alecho on 8/5/22.
-//
-
 #ifndef TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 #define TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#include<netdb.h>
+#include<arpa/inet.h>
 #include<stdint.h>
-#include <unistd.h>
-#include <sys/socket.h>
+#include<unistd.h>
+#include<sys/socket.h>
 #include<errno.h>
 #include<commons/config.h>
-#include <commons/log.h>
+#include<commons/log.h>
 #include<commons/collections/list.h>
 
 extern int errno;
@@ -26,22 +22,8 @@ typedef enum {
     MENSAJE,
     LISTA_INSTRUCCIONES,
     PCB,
-    TERMINAR_PROCESO,
-    ESCRIBIR_MEMORIA,
-    LEER_MEMORIA,
-	ERROR_DESERIALIZAR_BUFFER = -2
+    TERMINAR_PROCESO
 } op_code;
-
-typedef enum
-{
-	NEW,
-    READY,
-    BLOCKED,
-    EXEC,
-    SUSPENDED_READY,
-    SUSPENDED_BLOCKED,
-    EXIT
-} state_code;
 
 typedef enum
 {
@@ -71,14 +53,13 @@ typedef struct
 } t_paquete;
 
 typedef struct {
-    uint32_t idProceso;
-    uint32_t tamanioProceso;
+    size_t idProceso;
+    size_t tamanioProceso;
+    size_t programCounter;
+    size_t tablaPaginas;
+    size_t estimacionRafaga;
+    size_t duracionUltimaRafaga;
     t_list* listaInstrucciones;
-    uint32_t programCounter;
-    uint32_t tablaPaginas;
-    uint32_t estimacionRafaga;
-    state_code stateCode;
-    unit32_t blockTime;
 } t_pcb;
 
 t_config* iniciarConfig(char*);
@@ -100,4 +81,12 @@ void verificarConnect(int, struct sockaddr_in *);
 int crearConexion(char*, int, char*);
 int iniciarServidor(char*, char*, t_log*);
 int esperarCliente(int, t_log*);
+void agregarInstruccion(t_paquete*, void*);
+void agregarListaInstrucciones(t_paquete *, t_list *);
+void agregarTamanioProceso(t_paquete*, int);
+void agregarEntero(t_paquete *, size_t);
+void enviarPCB(int, t_pcb* );
+t_pcb* recibirPCB(int);
+t_list* deserializarListaInstrucciones(void* , size_t , t_list*) ;
+
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H
