@@ -102,32 +102,33 @@ operando fase_fetch_operand(operando direccion_operador_a_buscar) {
 
 t_proceso_respuesta* fase_execute(t_instruccion* instruccion, uint32_t operador){
 	t_proceso_respuesta* proceso_respuesta;
-	estado_proceso estado_proceso = CONTINUA_PROCESO;
-	proceso_respuesta ->pcb = pcb;
+	proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
 
 	switch(instruccion->codigo_operacion){
 		case NO_OP:
-			estado_proceso = CONTINUA_PROCESO;
+			proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
 			operacion_NO_OP();
 			break;
 		case IO:
 			proceso_respuesta->estadoProceso = BLOQUEAR_PROCESO;
+			proceso_respuesta ->pcb = pcb;
 			operacion_IO(proceso_respuesta, instruccion->parametros[0]);
 			break;
 		case READ:
 			//Provisorio
-			estado_proceso = CONTINUA_PROCESO;
+			proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
 			break;
 		case WRITE:
 			//Provisorio
-			estado_proceso = CONTINUA_PROCESO;
+			proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
 			break;
 		case COPY:
 			//Provisorio
-			estado_proceso = CONTINUA_PROCESO;
+			proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
 			break;
 		case EXIT:
 			proceso_respuesta->estadoProceso = FINALIZAR_PROCESO;
+			proceso_respuesta ->pcb = pcb;
 			operacion_EXIT(proceso_respuesta);
 			break;
 	}
@@ -140,7 +141,7 @@ void operacion_NO_OP(){
 	usleep(retardo_noop_microsegundos);
 }
 
-void operacion_IO(t_proceso_respuesta proceso_respuesta, operando tiempo_bloqueo){
+void operacion_IO(t_proceso_respuesta* proceso_respuesta, operando tiempo_bloqueo){
 
 	proceso_respuesta->tiempoBloqueo = tiempo_bloqueo;
 
@@ -156,7 +157,7 @@ void operacion_IO(t_proceso_respuesta proceso_respuesta, operando tiempo_bloqueo
 	    eliminarPaquete(paquete);
 }
 
-void operacion_EXIT(t_proceso_respuesta proceso_respuesta){
+void operacion_EXIT(t_proceso_respuesta* proceso_respuesta){
 	t_paquete* paquete = crearPaquete();
 	paquete->codigo_operacion = TERMINAR_PROCESO;
 
@@ -167,14 +168,14 @@ void operacion_EXIT(t_proceso_respuesta proceso_respuesta){
 
 }
 
-void preparar_pcb_respuesta(t_paquete* paquete) {
+void preparar_pcb_respuesta(t_paquete* paquete){
 	agregarEntero(paquete, pcb->idProceso);
-		    agregarEntero(paquete, pcb->tamanioProceso);
-		    agregarEntero(paquete, pcb->programCounter);
-		    agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
-		    agregarEntero(paquete, pcb->estimacionRafaga);
-		    agregarEntero(paquete, pcb->duracionUltimaRafaga);
-		    agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
+	agregarEntero(paquete, pcb->tamanioProceso);
+	agregarEntero(paquete, pcb->programCounter);
+	agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
+	agregarEntero(paquete, pcb->estimacionRafaga);
+	agregarEntero(paquete, pcb->duracionUltimaRafaga);
+	agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
 }
 
 
