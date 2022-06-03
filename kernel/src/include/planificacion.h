@@ -13,6 +13,7 @@ unsigned int GRADO_MULTIPROGRAMACION;
 sem_t semGradoMultiprogramacion;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaReady;
+int valorSemaforoContador;
 
 void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int);
 int iniciarPlanificacion(t_pcb*, t_log*, int);

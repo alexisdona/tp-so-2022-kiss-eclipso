@@ -8,7 +8,7 @@ int iniciarPlanificacion(t_pcb* pcb, t_log* logger, int conexionCPUDispatch) {
     log_info(logger, "Iniciando planificación");
     pthread_mutex_lock(&mutexColaNew);
     queue_push(NEW, pcb);
-    printf("dentro de mutex de cola de new\n");
+    printf("dentro de mutex de cola de new. Tamaño de la cola de NEW: %d\n", queue_size(NEW));
     pthread_mutex_unlock(&mutexColaNew);
     iniciarPlanificacionCortoPlazo(pcb, conexionCPUDispatch);
 
@@ -19,6 +19,9 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch) {
     printf("Entra en inciarPlanificacion de corto plazo\n");
 
     sem_wait(&semGradoMultiprogramacion);
+    sem_getvalue(&semGradoMultiprogramacion, &valorSemaforoContador);
+    printf("planificacion -> Valor semaforo contador: %d\n",valorSemaforoContador );
+
     pthread_mutex_lock(&mutexColaReady);
     queue_push(READY, queue_pop(NEW));
     printf("dentro de mutex de cola de ready: tamaño cola de ready: %d\n", queue_size(READY));

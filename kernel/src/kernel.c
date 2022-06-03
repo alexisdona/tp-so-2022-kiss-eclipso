@@ -14,7 +14,6 @@ void sighandler(int s) {
 
 int main() {
     signal(SIGINT, sighandler);
-    int valorSemaforoContador;
     if (inicializarMutex() != 0){
         return EXIT_FAILURE;
     }
@@ -24,7 +23,8 @@ int main() {
     GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
     printf("MAIN ** GRADO_MULTIPROGRAMACION: %d\n", GRADO_MULTIPROGRAMACION);
     sem_init(&semGradoMultiprogramacion,0, GRADO_MULTIPROGRAMACION);
-    printf("Valor semaforo contador: %d\n", sem_getvalue(&semGradoMultiprogramacion, &valorSemaforoContador));
+    sem_getvalue(&semGradoMultiprogramacion, &valorSemaforoContador);
+    printf("Inicio -> Valor semaforo contador: %d\n",valorSemaforoContador );
 
 
     char* ipKernel= config_get_string_value(config,"IP_KERNEL");
