@@ -16,7 +16,6 @@
 #define LOG_FILE "cpu.log"
 #define CONFIG_FILE "../cpu/src/config/cpu.config"
 
-
 void comenzar_ciclo_instruccion();
 t_instruccion* fase_fetch();
 int fase_decode(t_instruccion*);
