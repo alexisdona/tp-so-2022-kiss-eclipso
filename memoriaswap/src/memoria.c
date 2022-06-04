@@ -1,84 +1,82 @@
 #include "memoria.h"
+#include "../../shared/headers/sharedUtils.h"
 
-// Variables globales
-t_config* config;
 t_log* logger;
-int memoria_fd;
+t_config * config;
 
 int main(void) {
-	sem_t semMemoria;
+	logger = log_create("memoria.log", "Memoria", 1, LOG_LEVEL_DEBUG);
 
-	config = iniciarConfig(CONFIG_FILE);
-	logger = iniciarLogger("memoria.log", "Memoria");
-	char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
-    char* puertoMemoria= config_get_string_value(config,"PUERTO_ESCUCHA");
+	int memoria_fd = iniciar_memoria();
+	log_info(logger, "Memoria lista para recibir una cpu");
+	int cpu_fd = esperar_cpu(memoria_fd);
+	int continuar=1;
 
-	sem_init(&semMemoria, 0, 1);
-
-	// Inicio el servidor
-	memoria_fd = iniciarServidor(ipMemoria, puertoMemoria, logger);
-	log_info(logger, "Memoria lista para recibir a Kernel o CPU");
-
-	while(memoria_escuchar(logger, "Memoria", memoria_fd));
-
-	// Lorem ipsum
-
-	return EXIT_SUCCESS;
-}
-
-static void procesar_conexion(void* void_args) {
-	t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
-	t_log* logger = attrs->log;
-    int cliente_fd = attrs->fd;
-	char* nombre_cliente = attrs->nombre;
-    free(attrs);
-
-    op_code cop;
-
-    while (cliente_fd != -1) {
-
-		op_code cod_op = recibirOperacion(cliente_fd);
+	while(continuar) {
+		op_code cod_op = recibirOperacion(cpu_fd);
 		switch (cod_op) {
 			case MENSAJE:
-                recibirMensaje(cliente_fd, logger);
+				recibirMensaje(cpu_fd);
 				break;
-			case ESCRIBIR_MEMORIA:
-				enviarMensaje("Voy a escribir en memoria...", cliente_fd);
-				// sem_wait(&semMemoria);
-				// Escribir en memoria...
-				// sem_signal(&semMemoria);
-                enviarMensaje("Ya escribí en memoria!", cliente_fd);
-                break;
-			case LEER_MEMORIA:
-				enviarMensaje("Voy a leer la memoria...", cliente_fd);
-				// sem_wait(&semMemoria);
-				// Leer memoria...
-				// sem_signal(&semMemoria);
-                enviarMensaje("Ya leí la memoria!", cliente_fd);
-                break;
+			case LISTA_INSTRUCCIONES:
+				// Recibir instrucciones y devolverlas
+				break;
 			case -1:
-				log_info(logger, "El cliente se desconectó");
-				cliente_fd = -1;
+				log_info(logger, "La cpu se desconecto.");
+				continuar = accion_memoria(cpu_fd, memoria_fd);
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
 				break;
-			}
+		}
 	}
+	return EXIT_SUCCESS;
 }
 
-int memoria_escuchar(t_log* logger, char* nombre_server, int server_socket) {
-    int cliente_socket = esperarCliente(server_socket, logger);
+int recibir_opcion() {
+	char* opcion = malloc(4);
+	log_info(logger, "Ingrese una opcion: ");
+	scanf("%s",opcion);
+	int op = atoi(opcion);
+	free(opcion);
+	return op;
+}
 
-    if (cliente_socket != -1) {
-        pthread_t hilo;
-        t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
-        attrs->log = logger;
-        attrs->fd = cliente_socket;
-        attrs->nombre = nombre_server;
-        pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
-        pthread_detach(hilo);
-        return 1;
-    }
-    return 0;
+int validar_y_ejecutar_opcion_cpu(int opcion, int cpu_fd, int memoria_fd) {
+
+	int continuar=1;
+
+	switch(opcion) {
+		case 1:
+			log_info(logger,"Memoria continua corriendo, esperando nueva cpu.");
+			cpu_fd = esperar_cpu(memoria_fd);
+			break;
+		case 0:
+			log_info(logger,"Terminando memoria...");
+			close(memoria_fd);
+			continuar = 0;
+			break;
+		default:
+			log_error(logger,"Opcion invalida. Volve a intentarlo");
+			recibir_opcion();
+	}
+
+	return continuar;
+
+}
+
+int accion_memoria(int cpu_fd, int memoria_fd) {
+
+	log_info(logger, "¿Desea mantener la memoria corriendo? 1- Si 0- No");
+	int opcion = recibir_opcion();
+
+	if (recibirOperacion(cpu_fd) == 0) {
+	  log_info(logger, "No hay mas clientes conectados.");
+	  log_info(logger, "¿Desea mantener la memoria corriendo? 1- Si 0- No");
+	  opcion = recibir_opcion();
+	  return validar_y_ejecutar_opcion_cpu(opcion, cpu_fd, memoria_fd);
+	}
+
+	return validar_y_ejecutar_opcion_cpu(opcion, cpu_fd, memoria_fd);
+
 }

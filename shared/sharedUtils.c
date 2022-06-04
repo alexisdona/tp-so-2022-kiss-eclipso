@@ -1,3 +1,5 @@
+
+
 #include "headers/sharedUtils.h"
 
 t_config* iniciarConfig(char* file) {
@@ -333,3 +335,6 @@ t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucc
     }
     return valores;
 }
+
+
+

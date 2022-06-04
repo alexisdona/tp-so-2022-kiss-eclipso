@@ -44,16 +44,5 @@ t_list* recibirListaInstrucciones(int socketConsola) {
     return listaInstrucciones;
 }
 
-t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucciones, t_list* listaInstrucciones) {
-    int desplazamiento = 0;
-    size_t tamanioInstruccion = sizeof(instr_code)+sizeof(operando)*2;
-    t_list *valores = list_create();
-    while(desplazamiento < tamanioListaInstrucciones) {
-		char* valor = malloc(tamanioInstruccion);
-		memcpy(valor, stream+desplazamiento, tamanioInstruccion);
-		desplazamiento += tamanioInstruccion;
-		list_add(valores, valor);
-	}
-    return valores;
-}
+
 

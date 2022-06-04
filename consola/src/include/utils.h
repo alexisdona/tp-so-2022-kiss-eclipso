@@ -16,8 +16,6 @@
 
 extern int errno;
 
-void agregarTamanioProceso(t_paquete*, int);
-void agregarInstruccion(t_paquete* paqueteInstrucciones, void* instruccion);
 
 
 #endif /* UTILS_H_ */

@@ -1,16 +1,11 @@
 #include <semaphore.h>
-#include <include/planificador.h>
+#include <include/planificacion.h>
 #include "kernel.h"
 
 //Variables globales
 t_log* logger;
-int kernel_fd;
+int kernel_fd, conexionCPUDispatch;
 t_config * config;
-
-sem_t semGradoMultiprogramacion;
-pthread_mutex_t mutexColaNew;
-pthread_mutex_t mutexColaReady;
-
 
 void sighandler(int s) {
     cerrar_programa(logger);
@@ -19,15 +14,19 @@ void sighandler(int s) {
 
 int main() {
     signal(SIGINT, sighandler);
-
-   if (inicializarMutex() != 0){
+    if (inicializarMutex() != 0){
         return EXIT_FAILURE;
     }
 
     logger = iniciarLogger("kernel.log", "KERNEL");
     config = iniciarConfig(CONFIG_FILE);
     GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
+    printf("MAIN ** GRADO_MULTIPROGRAMACION: %d\n", GRADO_MULTIPROGRAMACION);
     sem_init(&semGradoMultiprogramacion,0, GRADO_MULTIPROGRAMACION);
+    sem_getvalue(&semGradoMultiprogramacion, &valorSemaforoContador);
+    printf("Inicio -> Valor semaforo contador: %d\n",valorSemaforoContador );
+
+
     char* ipKernel= config_get_string_value(config,"IP_KERNEL");
     char* puertoKernel= config_get_string_value(config,"PUERTO_ESCUCHA");
     char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
@@ -36,8 +35,7 @@ int main() {
     int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
     char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
  //   int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
-    int conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
-    enviarMensaje("hola soy el kernel", conexionCPUDispatch);
+    conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
     kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
     NEW = queue_create();
@@ -50,18 +48,6 @@ int main() {
     return 0;
 }
 
-int inicializarMutex() {
-    int error=0;
-    if(pthread_mutex_init(&mutexColaNew, NULL) != 0) {
-      perror("Mutex cola de new fallo: ");
-      error+=1;
-    }
-    if(pthread_mutex_init(&mutexColaReady, NULL) != 0) {
-        perror("Mutex cola de ready fallo: ");
-        error+=1;
-    }
-    return error;
-}
 
 void cerrar_programa(t_log* logger) {
 	log_destroy(logger);
@@ -84,34 +70,16 @@ static void procesar_conexion(void* void_args) {
                 recibirMensaje(consola_fd, logger);
 				break;
 			case LISTA_INSTRUCCIONES:
+                enviarMensaje("Recibí la lista de instrucciones. Termino de ejecutar y te aviso", consola_fd);
 			    listaInstrucciones = recibirListaInstrucciones(consola_fd);
                 int tamanioProceso = recibirTamanioProceso(consola_fd);
                 t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso);
-           //     printf("\nPCB->idProceso:%d\n", pcb->idProceso);
-            //    printf("\nPCB->tamanioProceso:%d\n", pcb->tamanioProceso);
-            /*    for(uint32_t i=0; i<list_size(listaInstrucciones); i++){
-                    t_instruccion *instruccion = list_get(pcb->listaInstrucciones,i);
-                    printf("\nEN EL PCB\ninstruccion-->codigoInstruccion->%d\toperando1->%d\toperando2->%d\n",
-                           instruccion->codigo_operacion,
-                           instruccion->parametros[0],
-                           instruccion->parametros[1]);
-                }*/
-               // printf("PCB->programCounter:%d", pcb->programCounter);
-                pthread_mutex_lock(&mutexColaNew);
-                queue_push(NEW, pcb);
-                printf("\n\ntamanio de la cola de procesos en new esperando grado de multiprogramación: %d\n\n", queue_size(NEW));
-                pthread_mutex_unlock(&mutexColaNew);
-
-                sem_wait(&semGradoMultiprogramacion);
-                pthread_mutex_lock(&mutexColaReady);
-                queue_push(READY, queue_pop(NEW));
-                GRADO_MULTIPROGRAMACION--;
-                printf("gradoMultiprogramacion: %d", GRADO_MULTIPROGRAMACION );
-                pthread_mutex_unlock(&mutexColaReady);
+                printf("pcb->idProceso: %zu\n",pcb->idProceso);
+                iniciarPlanificacion(pcb, logger, conexionCPUDispatch);
 
            //     sem_post(&semGradoMultiprogramacion);
             //    printf("\n\ntamanio de la cola de procesos en ready: %d\n\n", queue_size(colaProcesosReady));
-                enviarMensaje("Recibí la lista de instrucciones. Termino de ejecutar y te aviso", consola_fd);
+
                 //si es fifo hago un pop de la cola de ready y envio ese pcb al CPU y hago signal al semaforo de grado de multiprogramacion
                 break;
 			case -1:
@@ -189,10 +157,6 @@ int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
     return 0;
 }
 
-void iterator(char* value) {
-	log_info(logger,"%s", value);
-}
-
 t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
 
     t_pcb *pcb =  malloc(sizeof(t_pcb));
@@ -200,10 +164,14 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
 
     pcb->idProceso = process_get_thread_id();
     pcb->tamanioProceso = tamanioProceso;
-    pcb->listaInstrucciones = listaInstrucciones;
     pcb->programCounter= instruccion->codigo_operacion;
     pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
+    pcb->duracionUltimaRafaga =0; //Arranca en cero
+    pcb->listaInstrucciones = listaInstrucciones;
 
+    return pcb;
 }
+
+
 
 

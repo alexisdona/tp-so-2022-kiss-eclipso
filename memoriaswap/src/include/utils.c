@@ -1,6 +1,39 @@
 #include "utils.h"
 
-int esperar_cpu(int socket_memoria) {
+int iniciar_memoria(void) {
+	int socket_memoria;
+
+	struct addrinfo hints, *memoriainfo;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	getaddrinfo(IP, PUERTO, &hints, &memoriainfo);
+
+	// Creamos el socket de escucha de la memoria
+	socket_memoria = socket(memoriainfo->ai_family,memoriainfo->ai_socktype,memoriainfo->ai_protocol);
+	// Asociamos el socket a un puerto
+    verificarBind(socket_memoria, memoriainfo);
+    // Escuchamos las conexiones entrantes
+    verificarListen(socket_memoria);
+
+    freeaddrinfo(memoriainfo);
+	log_trace(logger, "Listo para escuchar a la cpu");
+
+	return socket_memoria;
+}
+
+void verificarListen(int socket_memoria) {
+    if (listen(socket_memoria, SOMAXCONN) == -1) {
+        perror("Hubo un error en el listen: ");
+        close(socket_memoria);
+        exit(-1);
+    }
+}
+
+int esperar_cpu(int socket_memoria)
+{
 	// Aceptamos una cpu
     int socket_cpu = accept(socket_memoria, NULL, NULL);
 
@@ -14,39 +47,4 @@ int esperar_cpu(int socket_memoria) {
 	return socket_cpu;
 }
 
-/*int escuchar_cpu(t_log* logger, char* nombre_memoria, char* nombre_cpu, int socket_memoria) {
-    int cpu_fd = esperar_cliente(socket_memoria, nombre_cpu, logger);
 
-    if (cpu_fd != -1) {
-        pthread_t hilo;
-        t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
-        attrs->log = logger;
-        attrs->fd = cpu_fd;
-        attrs->nombre_servidor = nombre_memoria;
-        pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) args);
-        pthread_detach(hilo);
-        return 1;
-    }
-    return 0;
-}*/
-
-op_code recibirOperacion(int socket_cpu) {
-    op_code cod_op;
-
-    if(recv(socket_cpu, &cod_op, sizeof(op_code), MSG_WAITALL) > 0) {
-        printf("recibirOperacion --> cod_op: %d\n", cod_op);
-        return cod_op;
-    }
-    else {
-        close(socket_cpu);
-        return -1;
-    }
-}
-
-void* recibirBuffer(size_t size, int socket_cpu) {
-	void * buffer;
-	buffer = malloc(size);
-	recv(socket_cpu, buffer, size, MSG_WAITALL);
-
-	return buffer;
-}
