@@ -7,6 +7,7 @@
 #include<commons/log.h>
 #include<commons/string.h>
 #include<commons/config.h>
+#include<time.h>
 #include<commons/collections/list.h>
 #include "../../shared/headers/sharedUtils.h"
 #include "include/utils.h"
@@ -25,5 +26,6 @@ void operacion_NO_OP();
 void operacion_IO(t_proceso_respuesta* proceso_respuesta, operando tiempo_bloqueo);
 void operacion_EXIT(t_proceso_respuesta* proceso_respuesta);
 void preparar_pcb_respuesta(t_paquete* paquete);
+void estimar_proxima_rafaga(time_t tiempo);
 
 #endif /* SRC_CPU_H_ */

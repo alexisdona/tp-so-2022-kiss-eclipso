@@ -34,21 +34,21 @@ int main(void) {
 	while(clienteDispatch!=-1) {
 		op_code cod_op = recibirOperacion(clienteDispatch);
 		switch (cod_op) {
-					case MENSAJE:
-		                recibirMensaje(clienteDispatch, logger);
-				        break;
-				    case PCB:
-				    	pcb = recibirPCB(clienteDispatch);
-				    	comenzar_ciclo_instruccion();
-				       break;
-					case -1:
-						log_info(logger, "El cliente se desconecto.");
-						clienteDispatch=-1;
-						break;
-					default:
-						log_warning(logger,"Operacion desconocida.");
-						break;
-				}
+			case MENSAJE:
+				recibirMensaje(clienteDispatch, logger);
+				break;
+			case PCB:
+				pcb = recibirPCB(clienteDispatch);
+				comenzar_ciclo_instruccion();
+			   break;
+			case -1:
+				log_info(logger, "El cliente se desconecto.");
+				clienteDispatch=-1;
+				break;
+			default:
+				log_warning(logger,"Operacion desconocida.");
+				break;
+		}
 	}
 	return EXIT_SUCCESS;
 }
@@ -57,31 +57,30 @@ int main(void) {
 //--------Ciclo de instruccion---------
 void comenzar_ciclo_instruccion(){
 
+	time_t cronometro = time(NULL);
 	t_proceso_respuesta* proceso_respuesta;
-
 	proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
 	operando operador = 0;
 
 	//PRENDER CRONOMETRO
 
 	while(proceso_respuesta->estadoProceso == CONTINUA_PROCESO){
-			t_instruccion* instruccion = fase_fetch();
-				int requiero_operador = fase_decode(instruccion);
-				if(requiero_operador) {
-					operador = fase_fetch_operand(instruccion->parametros[1]);
-				}
-				proceso_respuesta = fase_execute(instruccion, operador);
-				if(proceso_respuesta->estadoProceso == CONTINUA_PROCESO) {
-					//ciclo_interrupciones();
-				}
-				else{
-
-				}
+		t_instruccion* instruccion = fase_fetch();
+		int requiero_operador = fase_decode(instruccion);
+		if(requiero_operador) {
+			operador = fase_fetch_operand(instruccion->parametros[1]);
 		}
+		proceso_respuesta = fase_execute(instruccion, operador);
+		if(proceso_respuesta->estadoProceso == CONTINUA_PROCESO) {
+			//ciclo_interrupciones();
+		}
+		else{
 
+		}
+	}
 
-	//TERMINAR CRONOMETRO
-	//CAMBIAR EN PCB -> TIEMPO_ESTIMADO
+	cronometro = cronometro - time(NULL);
+	estimar_proxima_rafaga(cronometro);
 
 }
 
@@ -178,6 +177,11 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 	agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
 }
 
+void estimar_proxima_rafaga(time_t tiempo){
+	int tiempo_cpu = tiempo / 1000;
+	int alpha = 0.5; //Provisorio, debiera ser enviado por el kernel al conectarse una unica vez.
+	pcb->estimacionRafaga = alpha*tiempo_cpu + (1-alpha)*(pcb->estimacionRafaga);
+}
 
 //-----------Ciclo de interrupcion-----------
 
