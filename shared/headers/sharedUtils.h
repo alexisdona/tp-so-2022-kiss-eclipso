@@ -4,14 +4,14 @@
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
-#include<netdb.h>
-#include<arpa/inet.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include<stdint.h>
-#include<unistd.h>
-#include<sys/socket.h>
+#include <unistd.h>
+#include <sys/socket.h>
 #include<errno.h>
 #include<commons/config.h>
-#include<commons/log.h>
+#include <commons/log.h>
 #include<commons/collections/list.h>
 
 extern int errno;
@@ -62,19 +62,6 @@ typedef struct {
     t_list* listaInstrucciones;
 } t_pcb;
 
-typedef enum
-{
-	CONTINUA_PROCESO,
-	BLOQUEAR_PROCESO,
-	FINALIZAR_PROCESO
-} estado_proceso;
-
-typedef struct {
-    estado_proceso estadoProceso;
-    t_pcb* pcb;
-    int tiempoBloqueo;
-} t_proceso_respuesta;
-
 t_config* iniciarConfig(char*);
 t_log* iniciarLogger(char*, char*);
 t_paquete* crearPaquete(void);
@@ -101,5 +88,6 @@ void agregarEntero(t_paquete *, size_t);
 void enviarPCB(int, t_pcb* );
 t_pcb* recibirPCB(int);
 t_list* deserializarListaInstrucciones(void* , size_t , t_list*) ;
+
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H
