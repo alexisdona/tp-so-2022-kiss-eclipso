@@ -19,7 +19,7 @@
 #define PUERTO "8000"
 #define SIN_CONSOLAS -1
 
-t_log* logger;
+
 
 int iniciar_memoria(void);
 int esperar_cpu(int);

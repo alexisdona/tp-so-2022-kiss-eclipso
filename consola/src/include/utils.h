@@ -16,8 +16,11 @@
 
 extern int errno;
 
+<<<<<<< HEAD
 void agregarTamanioProceso(t_paquete*, int);
 void agregarInstruccion(t_paquete* paqueteInstrucciones, void* instruccion);
+=======
+>>>>>>> planificador
 
 
 #endif /* UTILS_H_ */

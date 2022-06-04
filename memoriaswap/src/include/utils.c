@@ -1,6 +1,6 @@
 #include "utils.h"
 
-int esperar_cpu(int socket_memoria) {
+/*int esperar_cpu(int socket_memoria) {
 	// Aceptamos una cpu
     int socket_cpu = accept(socket_memoria, NULL, NULL);
 
@@ -12,7 +12,7 @@ int esperar_cpu(int socket_memoria) {
 
 	log_info(logger, "Se conecto una cpu!");
 	return socket_cpu;
-}
+}*/
 
 /*int escuchar_cpu(t_log* logger, char* nombre_memoria, char* nombre_cpu, int socket_memoria) {
     int cpu_fd = esperar_cliente(socket_memoria, nombre_cpu, logger);

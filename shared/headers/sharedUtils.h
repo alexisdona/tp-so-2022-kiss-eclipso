@@ -59,12 +59,13 @@ typedef struct
 } t_paquete;
 
 typedef struct {
-    uint32_t idProceso;
-    uint32_t tamanioProceso;
+    size_t idProceso;
+    size_t tamanioProceso;
+    size_t programCounter;
+    size_t tablaPaginas;
+    size_t estimacionRafaga;
+    size_t duracionUltimaRafaga;
     t_list* listaInstrucciones;
-    uint32_t programCounter;
-    uint32_t tablaPaginas;
-    uint32_t estimacionRafaga;
 } t_pcb;
 
 t_config* iniciarConfig(char*);
@@ -86,4 +87,13 @@ void verificarConnect(int, struct sockaddr_in *);
 int crearConexion(char*, int, char*);
 int iniciarServidor(char*, char*, t_log*);
 int esperarCliente(int, t_log*);
+void agregarInstruccion(t_paquete*, void*);
+void agregarListaInstrucciones(t_paquete *, t_list *);
+void agregarTamanioProceso(t_paquete*, int);
+void agregarEntero(t_paquete *, size_t);
+void enviarPCB(int, t_pcb* );
+t_pcb* recibirPCB(int);
+t_list* deserializarListaInstrucciones(void* , size_t , t_list*) ;
+
+
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H

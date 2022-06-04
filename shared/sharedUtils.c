@@ -228,3 +228,111 @@ int esperarCliente(int socketServer, t_log* logger)
     return socketCliente;
 }
 
+void agregarInstruccion(t_paquete* paquete, void* instruccion){
+    size_t tamanioOperandos = sizeof(operando)*2;
+    int tamanio = sizeof(instr_code)+tamanioOperandos;
+    paquete->buffer->stream =
+            realloc(paquete->buffer->stream, paquete->buffer->size + tamanio + sizeof(int));
+
+    memcpy(paquete->buffer->stream + paquete->buffer->size, instruccion, sizeof(instr_code));
+    memcpy(paquete->buffer->stream + paquete->buffer->size + sizeof(instr_code), instruccion + sizeof(instr_code), tamanioOperandos);
+    paquete->buffer->size += tamanio;
+
+}
+
+void agregarListaInstrucciones( t_paquete *paquete, t_list *instrucciones) {
+    for(uint32_t i=0; i < list_size(instrucciones); i++){
+        t_instruccion *instruccion = list_get(instrucciones, i);
+        agregarInstruccion(paquete, (void *) instruccion);
+    }
+}
+
+void agregarTamanioProceso(t_paquete* paquete, int tamanioProceso) {
+
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(tamanioProceso));
+
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanioProceso,
+           sizeof(tamanioProceso));
+
+    paquete->buffer->size += sizeof(tamanioProceso);
+}
+//con esta funcion agrego todos los uint32_t que tiene el pcb
+void agregarEntero(t_paquete * paquete, size_t entero) {
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(entero));
+
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &entero, sizeof(entero));
+
+    paquete->buffer->size += sizeof(entero);
+}
+
+
+void enviarPCB(int socketDestino, t_pcb* pcb) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = PCB;
+
+    agregarEntero(paquete, pcb->idProceso);
+    agregarEntero(paquete, pcb->tamanioProceso);
+    agregarEntero(paquete, pcb->programCounter);
+    agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
+    agregarEntero(paquete, pcb->estimacionRafaga);
+    agregarEntero(paquete, pcb->duracionUltimaRafaga);
+    agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
+
+    enviarPaquete(paquete, socketDestino);
+    eliminarPaquete(paquete);
+}
+
+t_pcb* recibirPCB(int socketDesde){
+
+    t_pcb* pcb = malloc(sizeof(t_pcb));
+    t_list* listaInstrucciones = list_create();
+    void* buffer;
+    size_t tamanioTotalStream;
+    size_t tamanioValoresFijos=0;
+    size_t tamanioListaInstrucciones;
+    size_t auxiliar;
+    recv(socketDesde, &tamanioTotalStream, sizeof(size_t), 0); //tamaño total del buffer
+
+    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
+    pcb->idProceso = auxiliar;
+    tamanioValoresFijos+=sizeof(size_t);
+    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
+    pcb->tamanioProceso = (size_t) auxiliar;
+    tamanioValoresFijos+=sizeof(size_t);
+    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
+    pcb->programCounter = (size_t) auxiliar;
+    tamanioValoresFijos+=sizeof(size_t);
+    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
+    pcb->tablaPaginas = (size_t) auxiliar;
+    tamanioValoresFijos+=sizeof(size_t);
+    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
+    pcb->estimacionRafaga = (size_t) auxiliar;
+    tamanioValoresFijos+=sizeof(size_t);
+    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
+    pcb->duracionUltimaRafaga = (size_t) auxiliar;
+    tamanioValoresFijos+=sizeof(size_t);
+
+    /* a priori no se cuanta va a ocupar el tamanio de lista de instrucciones
+    * Entonces sumo cuanto ocupan los otros valores fijos del PCB y despues el tamaño
+     * de la lista de instrucciones va a ser tamanioTotalStream - tamanioValoresFijos */
+    tamanioListaInstrucciones = tamanioTotalStream - tamanioValoresFijos;
+    buffer=malloc(tamanioListaInstrucciones);
+    recv(socketDesde, buffer, tamanioListaInstrucciones,0); // lista de instrucciones
+    listaInstrucciones = deserializarListaInstrucciones(buffer, tamanioListaInstrucciones, listaInstrucciones);
+    pcb->listaInstrucciones = listaInstrucciones;
+
+    return pcb;
+}
+
+t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucciones, t_list* listaInstrucciones) {
+    int desplazamiento = 0;
+    size_t tamanioInstruccion = sizeof(instr_code)+sizeof(operando)*2;
+    t_list *valores = list_create();
+    while(desplazamiento < tamanioListaInstrucciones) {
+        char* valor = malloc(tamanioInstruccion);
+        memcpy(valor, stream+desplazamiento, tamanioInstruccion);
+        desplazamiento += tamanioInstruccion;
+        list_add(valores, valor);
+    }
+    return valores;
+}

@@ -1,4 +1,8 @@
 #include "memoria.h"
+#include "../../shared/headers/sharedUtils.h"
+
+t_log* logger;
+t_config * config;
 
 // Variables globales
 t_config* config;
