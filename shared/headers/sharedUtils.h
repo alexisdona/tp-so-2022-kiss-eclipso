@@ -26,7 +26,9 @@ typedef enum {
     MENSAJE,
     LISTA_INSTRUCCIONES,
     PCB,
-    TERMINAR_PROCESO
+    TERMINAR_PROCESO,
+	BLOQUEAR_PROCESO,
+	CONTINUA_PROCESO
 } op_code;
 
 typedef enum

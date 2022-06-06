@@ -59,20 +59,17 @@ int main(void) {
 void comenzar_ciclo_instruccion(){
 
 	time_t cronometro = time(NULL);
-	t_proceso_respuesta* proceso_respuesta;
-	proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
+	op_code proceso_respuesta = CONTINUA_PROCESO;
 	operando operador = 0;
 
-	//PRENDER CRONOMETRO
-
-	while(proceso_respuesta->estadoProceso == CONTINUA_PROCESO){
+	while(proceso_respuesta == CONTINUA_PROCESO){
 		t_instruccion* instruccion = fase_fetch();
 		int requiero_operador = fase_decode(instruccion);
 		if(requiero_operador) {
 			operador = fase_fetch_operand(instruccion->parametros[1]);
 		}
 		proceso_respuesta = fase_execute(instruccion, operador);
-		if(proceso_respuesta->estadoProceso == CONTINUA_PROCESO) {
+		if(proceso_respuesta == CONTINUA_PROCESO) {
 			//ciclo_interrupciones();
 		}
 		else{
@@ -100,35 +97,32 @@ operando fase_fetch_operand(operando direccion_operador_a_buscar) {
 	return direccion_operador_a_buscar;
 }
 
-t_proceso_respuesta* fase_execute(t_instruccion* instruccion, uint32_t operador){
-	t_proceso_respuesta* proceso_respuesta;
-	proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
+op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
+	op_code proceso_respuesta = CONTINUA_PROCESO;
 
 	switch(instruccion->codigo_operacion){
 		case NO_OP:
-			proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
+			proceso_respuesta = CONTINUA_PROCESO;
 			operacion_NO_OP();
 			break;
 		case IO:
-			proceso_respuesta->estadoProceso = BLOQUEAR_PROCESO;
-			proceso_respuesta ->pcb = pcb;
+			proceso_respuesta = BLOQUEAR_PROCESO;
 			operacion_IO(proceso_respuesta, instruccion->parametros[0]);
 			break;
 		case READ:
 			//Provisorio
-			proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
+			proceso_respuesta = CONTINUA_PROCESO;
 			break;
 		case WRITE:
 			//Provisorio
-			proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
+			proceso_respuesta = CONTINUA_PROCESO;
 			break;
 		case COPY:
 			//Provisorio
-			proceso_respuesta->estadoProceso = CONTINUA_PROCESO;
+			proceso_respuesta = CONTINUA_PROCESO;
 			break;
 		case EXIT:
-			proceso_respuesta->estadoProceso = FINALIZAR_PROCESO;
-			proceso_respuesta ->pcb = pcb;
+			proceso_respuesta = TERMINAR_PROCESO;
 			operacion_EXIT(proceso_respuesta);
 			break;
 	}
@@ -141,19 +135,18 @@ void operacion_NO_OP(){
 	usleep(retardo_noop_microsegundos);
 }
 
-void operacion_IO(t_proceso_respuesta* proceso_respuesta, operando tiempo_bloqueo){
-	proceso_respuesta->tiempoBloqueo = tiempo_bloqueo;
+void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 	t_paquete* paquete = crearPaquete();
-	paquete->codigo_operacion = BLOQUEAR_PROCESO;
+	paquete->codigo_operacion = proceso_respuesta;
 	preparar_pcb_respuesta(paquete);
-	agregarEntero(paquete, proceso_respuesta->tiempoBloqueo);
+	agregarEntero(paquete,tiempo_bloqueo);
 	enviarPaquete(paquete,cliente_dispatch);
 	eliminarPaquete(paquete);
 }
 
-void operacion_EXIT(t_proceso_respuesta* proceso_respuesta){
+void operacion_EXIT(op_code proceso_respuesta){
 	t_paquete* paquete = crearPaquete();
-	paquete->codigo_operacion = TERMINAR_PROCESO;
+	paquete->codigo_operacion = proceso_respuesta;
 	preparar_pcb_respuesta(paquete);
 	enviarPaquete(paquete,cliente_dispatch);
 	eliminarPaquete(paquete);

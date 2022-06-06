@@ -20,10 +20,10 @@ void comenzar_ciclo_instruccion();
 t_instruccion* fase_fetch();
 int fase_decode(t_instruccion*);
 operando fase_fetch_operand(operando);
-t_proceso_respuesta* fase_execute(t_instruccion* instruccion, uint32_t operador);
+op_code fase_execute(t_instruccion* instruccion, uint32_t operador);
 void operacion_NO_OP();
-void operacion_IO(t_proceso_respuesta* proceso_respuesta, operando tiempo_bloqueo);
-void operacion_EXIT(t_proceso_respuesta* proceso_respuesta);
+void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo);
+void operacion_EXIT(op_code proceso_respuesta);
 void preparar_pcb_respuesta(t_paquete* paquete);
 void estimar_proxima_rafaga(time_t tiempo);
 
