@@ -27,7 +27,7 @@ int main(void) {
     log_info(logger, "CPU listo para recibir un kernel");
     cliente_dispatch = esperarCliente(cpu_dispatch,logger);
 
-    //cpuInterrupt = iniciarServidor(ip, puertoInterrupt, logger);
+    cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
  	//conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
 	//log_info(logger, "Te conectaste con Memoria");
     //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
@@ -51,6 +51,7 @@ int main(void) {
 				break;
 		}
 	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -70,7 +71,7 @@ void comenzar_ciclo_instruccion(){
 		}
 		proceso_respuesta = fase_execute(instruccion, operador);
 		if(proceso_respuesta == CONTINUA_PROCESO) {
-			//ciclo_interrupciones();
+			atender_interrupciones();
 		}
 		else{
 
@@ -170,7 +171,28 @@ void estimar_proxima_rafaga(time_t tiempo){
 
 //-----------Ciclo de interrupcion-----------
 
+void atender_interrupciones() {
 
+	if(cpuInterrupt!= -1) {
+		op_code cod_op = recibirOperacion(cliente_dispatch);
+		t_pcb* pcbNuevo;
+
+		switch (cod_op) {
+					case DESALOJAR_PROCESO:
+						pcbNuevo = recibirPCB(cpuInterrupt);
+						enviarPCB(cpuInterrupt, pcb);
+						pcb = pcbNuevo;
+					   break;
+					case -1:
+						log_info(logger, "El cliente se desconecto.");
+						cliente_dispatch=-1;
+						break;
+					default:
+						log_warning(logger,"Operacion desconocida.");
+						break;
+				}
+	}
+}
 
 
 

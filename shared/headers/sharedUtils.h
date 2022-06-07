@@ -28,7 +28,8 @@ typedef enum {
     PCB,
     TERMINAR_PROCESO,
 	BLOQUEAR_PROCESO,
-	CONTINUA_PROCESO
+	CONTINUA_PROCESO,
+	DESALOJAR_PROCESO
 } op_code;
 
 typedef enum

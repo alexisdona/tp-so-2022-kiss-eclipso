@@ -26,5 +26,6 @@ void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo);
 void operacion_EXIT(op_code proceso_respuesta);
 void preparar_pcb_respuesta(t_paquete* paquete);
 void estimar_proxima_rafaga(time_t tiempo);
+void atender_interrupciones();
 
 #endif /* SRC_CPU_H_ */
