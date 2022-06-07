@@ -34,7 +34,8 @@ int main() {
     char* ipCpu= config_get_string_value(config,"IP_CPU");
     int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
     char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
- //   int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
+    int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
+    enviarMensaje("Hola memoria soy el kernel", conexionMemoria);
     conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
     kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
