@@ -14,9 +14,13 @@ int main(void) {
     cpuDispatch = iniciarServidor(ip, puertoDispatch, logger);
     log_info(logger, "CPU listo para recibir un al kernel");
     clienteDispatch = esperarCliente(cpuDispatch,logger);
-//	int memoria_fd = esperar_memoria(cpuDispatch);
 
-	while(clienteDispatch!=-1) {
+    char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
+    int puertoMemoria= config_get_int_value(config,"PUERTO_MEMORIA");
+    int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
+    enviarMensaje("Hola memoria soy el CPU", conexionMemoria);
+
+    while(clienteDispatch!=-1) {
 		op_code cod_op = recibirOperacion(clienteDispatch);
 		switch (cod_op) {
 			case MENSAJE:
