@@ -17,7 +17,7 @@ int main(void) {
     config = iniciarConfig(CONFIG_FILE);
 
 	char* ip = config_get_string_value(config,"IP_CPU");
-	char* ip_memoria = config_get_string_value(config,"IP_MEMORIA");
+	//char* ip_memoria = config_get_string_value(config,"IP_MEMORIA");
 
 	//int puerto_memoria = config_get_int_value(config,"PUERTO_MEMORIA");
     char* puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
@@ -182,7 +182,9 @@ void atender_interrupciones() {
 		switch (cod_op) {
 					case DESALOJAR_PROCESO:
 						pcbNuevo = recibirPCB(cpuInterrupt);
+						log_info(logger,"Recibi nuevo PCB");
 						enviarPCB(cpuInterrupt, pcb);
+						log_info(logger, "Envio PCB que estaba ejecutando");
 						pcb = pcbNuevo;
 					   break;
 					case -1:
