@@ -9,6 +9,7 @@ int cliente_dispatch, clienteInterrupt;
 t_pcb* pcb;
 int retardo_noop;
 t_list* interrupciones;
+int alpha = 0.5; //Provisorio, debiera ser enviado por el kernel al conectarse una unica vez.
 
 int main(void) {
 
@@ -66,10 +67,15 @@ void comenzar_ciclo_instruccion(){
 	while(proceso_respuesta == CONTINUA_PROCESO){
 		t_instruccion* instruccion = fase_fetch();
 		int requiero_operador = fase_decode(instruccion);
+
 		if(requiero_operador) {
 			operador = fase_fetch_operand(instruccion->parametros[1]);
 		}
+
 		proceso_respuesta = fase_execute(instruccion, operador);
+		cronometro = cronometro - time(NULL);
+		estimar_proxima_rafaga(cronometro);
+
 		if(proceso_respuesta == CONTINUA_PROCESO) {
 			atender_interrupciones();
 		}
@@ -77,9 +83,6 @@ void comenzar_ciclo_instruccion(){
 
 		}
 	}
-
-	cronometro = cronometro - time(NULL);
-	estimar_proxima_rafaga(cronometro);
 
 }
 
@@ -165,7 +168,6 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 
 void estimar_proxima_rafaga(time_t tiempo){
 	int tiempo_cpu = tiempo / 1000;
-	int alpha = 0.5; //Provisorio, debiera ser enviado por el kernel al conectarse una unica vez.
 	pcb->estimacionRafaga = alpha*tiempo_cpu + (1-alpha)*(pcb->estimacionRafaga);
 }
 
