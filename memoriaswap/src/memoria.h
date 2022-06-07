@@ -15,7 +15,7 @@
 
 #define LOG_NAME "MEMORIA_LOG"
 #define LOG_FILE "memoria.log"
-#define CONFIG_FILE "../src/config/memoria.config"
+#define CONFIG_FILE "../memoriaswap/src/config/memoria.config"
 
 typedef struct {
     t_log* log;
