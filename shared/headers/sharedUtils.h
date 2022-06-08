@@ -1,21 +1,17 @@
-//
-// Created by alecho on 8/5/22.
-//
-
 #ifndef TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 #define TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#include<netdb.h>
+#include<arpa/inet.h>
 #include<stdint.h>
-#include <unistd.h>
-#include <sys/socket.h>
+#include<unistd.h>
+#include<sys/socket.h>
 #include<errno.h>
 #include<commons/config.h>
-#include <commons/log.h>
+#include<commons/log.h>
 #include<commons/collections/list.h>
 
 extern int errno;

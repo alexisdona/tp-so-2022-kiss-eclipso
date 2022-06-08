@@ -40,7 +40,9 @@ int main(void) {
 				recibirMensaje(cliente_dispatch, logger);
 				break;
 			case PCB:
+				log_info(logger,"Recibi un PCB");
 				pcb = recibirPCB(cliente_dispatch);
+				loggearPCB(pcb);
 				comenzar_ciclo_instruccion();
 			   break;
 			case -1:
@@ -79,9 +81,7 @@ void comenzar_ciclo_instruccion(){
 		if(proceso_respuesta == CONTINUA_PROCESO) {
 			atender_interrupciones();
 		}
-		else{
 
-		}
 	}
 
 }
@@ -103,7 +103,6 @@ operando fase_fetch_operand(operando direccion_operador_a_buscar) {
 
 op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 	op_code proceso_respuesta = CONTINUA_PROCESO;
-
 	switch(instruccion->codigo_operacion){
 		case NO_OP:
 			proceso_respuesta = CONTINUA_PROCESO;
@@ -116,30 +115,34 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 		case READ:
 			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
+			log_info(logger,"Ejecutando READ");
 			break;
 		case WRITE:
 			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
+			log_info(logger,"Ejecutando WRITE");
 			break;
 		case COPY:
 			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
+			log_info(logger,"Ejecutando COPY");
 			break;
 		case EXIT:
 			proceso_respuesta = TERMINAR_PROCESO;
 			operacion_EXIT(proceso_respuesta);
 			break;
 	}
-
 	return proceso_respuesta;
 }
 
 void operacion_NO_OP(){
 	int retardo_noop_microsegundos = 1000 * retardo_noop;
+	log_info(logger,"Ejecutando NO_OP: %d",retardo_noop_microsegundos);
 	usleep(retardo_noop_microsegundos);
 }
 
 void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
+	log_info(logger,"Ejecutando I/O: %d",tiempo_bloqueo);
 	t_paquete* paquete = crearPaquete();
 	paquete->codigo_operacion = proceso_respuesta;
 	preparar_pcb_respuesta(paquete);
@@ -149,6 +152,7 @@ void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 }
 
 void operacion_EXIT(op_code proceso_respuesta){
+	log_info(logger,"Ejecutando EXIT");
 	t_paquete* paquete = crearPaquete();
 	paquete->codigo_operacion = proceso_respuesta;
 	preparar_pcb_respuesta(paquete);
@@ -174,29 +178,33 @@ void estimar_proxima_rafaga(time_t tiempo){
 //-----------Ciclo de interrupcion-----------
 
 void atender_interrupciones() {
-
-	if(cpuInterrupt!= -1) {
-		op_code cod_op = recibirOperacion(cliente_dispatch);
+	log_info(logger,"Entro en atender_interrupciones");
+	if(cpuInterrupt != -1) {
+		op_code cod_op = recibirOperacion(cpuInterrupt);
 		t_pcb* pcbNuevo;
 
 		switch (cod_op) {
-					case DESALOJAR_PROCESO:
-						pcbNuevo = recibirPCB(cpuInterrupt);
-						log_info(logger,"Recibi nuevo PCB");
-						enviarPCB(cpuInterrupt, pcb);
-						log_info(logger, "Envio PCB que estaba ejecutando");
-						pcb = pcbNuevo;
-					   break;
-					case -1:
-						log_info(logger, "El cliente se desconecto.");
-						cliente_dispatch=-1;
-						break;
-					default:
-						log_warning(logger,"Operacion desconocida.");
-						break;
-				}
+			case DESALOJAR_PROCESO:
+				pcbNuevo = recibirPCB(cpuInterrupt);
+				log_info(logger,"Recibi nuevo PCB");
+				enviarPCB(cpuInterrupt, pcb);
+				log_info(logger, "Envio PCB que estaba ejecutando");
+				pcb = pcbNuevo;
+			   break;
+			case -1:
+				log_info(logger, "El Kernel no envio ninguna interrupcion");
+				cliente_dispatch=-1;
+				break;
+			default:
+				log_warning(logger,"Operacion desconocida.");
+				break;
+		}
 	}
 }
 
+void loggearPCB(t_pcb* pcb){
+	log_info(logger, "PCB:");
+	log_info(logger, "ID: %d",pcb->idProceso);
+}
 
 
