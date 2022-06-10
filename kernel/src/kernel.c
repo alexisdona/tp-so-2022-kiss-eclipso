@@ -21,11 +21,8 @@ int main() {
     logger = iniciarLogger("kernel.log", "KERNEL");
     config = iniciarConfig(CONFIG_FILE);
     GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
-    printf("MAIN ** GRADO_MULTIPROGRAMACION: %d\n", GRADO_MULTIPROGRAMACION);
+  //  printf("MAIN ** GRADO_MULTIPROGRAMACION: %d\n", GRADO_MULTIPROGRAMACION);
     sem_init(&semGradoMultiprogramacion,0, GRADO_MULTIPROGRAMACION);
-    sem_getvalue(&semGradoMultiprogramacion, &valorSemaforoContador);
-    printf("Inicio -> Valor semaforo contador: %d\n",valorSemaforoContador );
-
 
     char* ipKernel= config_get_string_value(config,"IP_KERNEL");
     char* puertoKernel= config_get_string_value(config,"PUERTO_ESCUCHA");
@@ -34,15 +31,19 @@ int main() {
     char* ipCpu= config_get_string_value(config,"IP_CPU");
     int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
     char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
-    int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
-    enviarMensaje("Hola memoria soy el kernel", conexionMemoria);
+  //  int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
+  //  enviarMensaje("Hola memoria soy el kernel", conexionMemoria);
     conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
+   // printf("conexionCPUDispatch: %d\n", conexionCPUDispatch);
     kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
+    printf("kernel_fd: %d\n", kernel_fd);
 	log_info(logger, "Kernel listo para recibir una consola");
     NEW = queue_create();
     READY = queue_create();
 
-    while (escuchar_consolas(logger, "KERNEL", kernel_fd));
+    while (1) {
+        escucharClientes("KERNEL");
+    }
 
     //cerrar_programa(logger);
 
@@ -54,38 +55,42 @@ void cerrar_programa(t_log* logger) {
 	log_destroy(logger);
 }
 
-static void procesar_conexion(void* void_args) {
+void procesar_conexion(void* void_args) {
 	t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
 	t_log* logger = attrs->log;
-    int consola_fd = attrs->fd;
+    int cliente_fd = attrs->fd;
     free(attrs);
 
-    op_code cop;
-    t_list* listaInstrucciones = list_create();
-
-    while (consola_fd != -1) {
-
-		op_code cod_op = recibirOperacion(consola_fd);
+    while (cliente_fd != -1) {
+        printf("entro un cliente nuevo: %d\n", cliente_fd);
+		op_code cod_op = recibirOperacion(cliente_fd);
 		switch (cod_op) {
 			case MENSAJE:
-                recibirMensaje(consola_fd, logger);
+                recibirMensaje(cliente_fd, logger);
 				break;
 			case LISTA_INSTRUCCIONES:
-                enviarMensaje("Recibí la lista de instrucciones. Termino de ejecutar y te aviso", consola_fd);
-			    listaInstrucciones = recibirListaInstrucciones(consola_fd);
-                int tamanioProceso = recibirTamanioProceso(consola_fd);
-                t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso);
-                printf("pcb->idProceso: %zu\n",pcb->idProceso);
+                enviarMensaje("Recibí la lista de instrucciones. Termino de ejecutar y te aviso", cliente_fd);
+			    t_list* listaInstrucciones = recibirListaInstrucciones(cliente_fd);
+                int tamanioProceso = recibirTamanioProceso(cliente_fd);
+                t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso, cliente_fd);
+              //  printf("pcb->idProceso: %zu\n",pcb->idProceso);
                 iniciarPlanificacion(pcb, logger, conexionCPUDispatch);
-
-           //     sem_post(&semGradoMultiprogramacion);
-            //    printf("\n\ntamanio de la cola de procesos en ready: %d\n\n", queue_size(colaProcesosReady));
-
-                //si es fifo hago un pop de la cola de ready y envio ese pcb al CPU y hago signal al semaforo de grado de multiprogramacion
                 break;
-			case -1:
+		    case TERMINAR_PROCESO:
+                log_info(logger, "PCB recibido para terminar proceso");
+                t_pcb* pcbFinalizado = recibirPCB(cliente_fd);
+                printf("pcbFinalizado->idProceso: %zu\n", pcbFinalizado->idProceso);
+                printf("pcbFinalizado->tamanioProceso: %zu\n", pcbFinalizado->tamanioProceso);
+                pthread_mutex_lock(&mutexGradoMultiprogramacion);
+                GRADO_MULTIPROGRAMACION++;
+                printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
+                pthread_mutex_unlock(&mutexGradoMultiprogramacion);
+                sem_post(&semGradoMultiprogramacion);
+                enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
+                break;
+            case -1:
 				log_info(logger, "La consola se desconecto.");
-				consola_fd = -1;
+              //  cliente_fd = -1;
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
@@ -143,13 +148,13 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 
 }
 
-int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
-    int consola_fd = esperarCliente(kernel_fd, logger);
-    if (consola_fd != -1) {
+int escucharClientes(char *nombre_kernel) {
+    int cliente = esperarCliente(kernel_fd, logger);
+    if (cliente != -1) {
         pthread_t hilo;
         t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
         attrs->log = logger;
-        attrs->fd = consola_fd;
+        attrs->fd = cliente;
         attrs->nombre_kernel = nombre_kernel;
         pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
         pthread_detach(hilo);
@@ -158,7 +163,7 @@ int escuchar_consolas(t_log* logger, char* nombre_kernel, int kernel_fd) {
     return 0;
 }
 
-t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
+t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso, int socketConsola) {
 
     t_pcb *pcb =  malloc(sizeof(t_pcb));
     t_instruccion *instruccion = list_get(listaInstrucciones,0);
@@ -168,7 +173,10 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso) {
     pcb->programCounter= instruccion->codigo_operacion;
     pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
     pcb->duracionUltimaRafaga =0; //Arranca en cero
+    pcb->consola_fd = socketConsola;
+    pcb->kernel_fd = kernel_fd;
     pcb->listaInstrucciones = listaInstrucciones;
+
 
     return pcb;
 }

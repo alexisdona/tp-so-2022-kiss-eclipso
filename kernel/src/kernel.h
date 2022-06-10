@@ -27,9 +27,9 @@ typedef struct {
 int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd);
 int recibir_opcion();
 int accion_kernel(int, int);
-t_pcb* crearEstructuraPcb(t_list*, int);
+t_pcb* crearEstructuraPcb(t_list*, int, int);
 void iterator(char*);
-int escuchar_consolas(t_log*, char*, int);
+int escucharClientes( char *nombre_kernel);
 void iterator(char*);
 int validar_y_ejecutar_opcion_consola(int, int, int );
 void enviarACpu(int, t_pcb*);

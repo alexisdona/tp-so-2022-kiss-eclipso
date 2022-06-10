@@ -23,6 +23,5 @@ typedef struct {
     char* nombre;
 } t_procesar_conexion_attrs;
 
-int escucharClientes(t_log*, char*, int);
 
 #endif /* SRC_MEMORIA_H_ */

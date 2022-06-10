@@ -142,6 +142,8 @@ void verificarListen(int socket) {
 }
 
 void verificarBind(int socket_kernel,  struct addrinfo *kernelinfo) {
+    int yes= 1;
+    setsockopt(socket_kernel, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
     if( bind(socket_kernel, kernelinfo->ai_addr, kernelinfo->ai_addrlen) == -1) {
         perror("Hubo un error en el bind: ");
         close(socket_kernel);
@@ -218,7 +220,7 @@ int esperarCliente(int socketServer, t_log* logger)
     int socketCliente = accept(socketServer, NULL, NULL);
 
     if (socketCliente == -1) {
-        perror("Hubo un error en aceptar una conexión de la consola: ");
+        perror("Hubo un error en aceptar una conexión del cliente: ");
         close(socketServer);
         exit(-1);
     }
@@ -265,9 +267,9 @@ void agregarEntero(t_paquete * paquete, size_t entero) {
 }
 
 
-void enviarPCB(int socketDestino, t_pcb* pcb) {
+void enviarPCB(int socketDestino, t_pcb* pcb, op_code codigoOperacion) {
     t_paquete* paquete = crearPaquete();
-    paquete->codigo_operacion = PCB;
+    paquete->codigo_operacion = codigoOperacion;
 
     agregarEntero(paquete, pcb->idProceso);
     agregarEntero(paquete, pcb->tamanioProceso);
@@ -275,6 +277,8 @@ void enviarPCB(int socketDestino, t_pcb* pcb) {
     agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
     agregarEntero(paquete, pcb->estimacionRafaga);
     agregarEntero(paquete, pcb->duracionUltimaRafaga);
+    agregarEntero(paquete, pcb->consola_fd);
+    agregarEntero(paquete, pcb->kernel_fd);
     agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
 
     enviarPaquete(paquete, socketDestino);
@@ -310,7 +314,12 @@ t_pcb* recibirPCB(int socketDesde){
     recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
     pcb->duracionUltimaRafaga = (size_t) auxiliar;
     tamanioValoresFijos+=sizeof(size_t);
-
+    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
+    pcb->consola_fd = (size_t) auxiliar;
+    tamanioValoresFijos+=sizeof(size_t);
+    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
+    pcb->kernel_fd = (size_t) auxiliar;
+    tamanioValoresFijos+=sizeof(size_t);
     /* a priori no se cuanta va a ocupar el tamanio de lista de instrucciones
     * Entonces sumo cuanto ocupan los otros valores fijos del PCB y despues el tamaño
      * de la lista de instrucciones va a ser tamanioTotalStream - tamanioValoresFijos */

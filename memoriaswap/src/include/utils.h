@@ -11,17 +11,10 @@
 #include <string.h>
 #include <assert.h>
 
-#include "protocolo.h"
 
 #define IP "127.0.0.1"
 #define PUERTO "8000"
 #define SIN_CONSOLAS -1
 
-
-
-void* recibir_buffer(int*, int);
-
-int iniciar_memoria(void);
-int esperar_cpu(int);
 
 #endif /* UTILS_H_ */

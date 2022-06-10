@@ -2,13 +2,6 @@
 
 //void deserializarListaInstrucciones(void*, t_paquete*);
 
-
-
-
-
-
-
-
 size_t recibirTamanioStream(int socketConsola) {
     size_t tamanioStream;
     void* stream;

@@ -13,10 +13,11 @@ unsigned int GRADO_MULTIPROGRAMACION;
 sem_t semGradoMultiprogramacion;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaReady;
+pthread_mutex_t  mutexGradoMultiprogramacion;
 int valorSemaforoContador;
 
 void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int);
-int iniciarPlanificacion(t_pcb*, t_log*, int);
+void iniciarPlanificacion(t_pcb*, t_log*, int);
 int inicializarMutex();
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

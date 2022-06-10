@@ -66,6 +66,8 @@ typedef struct {
     size_t estimacionRafaga;
     size_t duracionUltimaRafaga;
     t_list* listaInstrucciones;
+    size_t kernel_fd;
+    size_t consola_fd;
 } t_pcb;
 
 t_config* iniciarConfig(char*);
@@ -91,7 +93,7 @@ void agregarInstruccion(t_paquete*, void*);
 void agregarListaInstrucciones(t_paquete *, t_list *);
 void agregarTamanioProceso(t_paquete*, int);
 void agregarEntero(t_paquete *, size_t);
-void enviarPCB(int, t_pcb* );
+void enviarPCB(int, t_pcb*, op_code);
 t_pcb* recibirPCB(int);
 t_list* deserializarListaInstrucciones(void* , size_t , t_list*) ;
 
