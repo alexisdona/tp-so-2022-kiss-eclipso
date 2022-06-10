@@ -23,6 +23,7 @@ int main(void) {
     char* puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
     char* puerto_interrupt = config_get_string_value(config,"PUERTO_ESCUCHA_INTERRUPT");
     retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
+    int tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
 
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
     log_info(logger, "CPU listo para recibir un kernel");
@@ -62,7 +63,7 @@ int main(void) {
 //--------Ciclo de instruccion---------
 void comenzar_ciclo_instruccion(){
 
-	time_t cronometro = time(NULL);
+	//time_t cronometro = time(NULL);
 	op_code proceso_respuesta = CONTINUA_PROCESO;
 	operando operador = 0;
 
@@ -75,13 +76,13 @@ void comenzar_ciclo_instruccion(){
 		}
 
 		proceso_respuesta = fase_execute(instruccion, operador);
-		cronometro = cronometro - time(NULL);
-		estimar_proxima_rafaga(cronometro);
-
+		//cronometro = cronometro - time(NULL);
+		//estimar_proxima_rafaga(cronometro);
+/*
 		if(proceso_respuesta == CONTINUA_PROCESO) {
 			atender_interrupciones();
 		}
-
+*/
 	}
 
 }

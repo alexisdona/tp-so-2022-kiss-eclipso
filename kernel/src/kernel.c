@@ -1,5 +1,5 @@
 #include <semaphore.h>
-#include <include/planificacion.h>
+#include <../kernel/src/include/planificacion.h>
 #include "kernel.h"
 
 //Variables globales
