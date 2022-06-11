@@ -166,6 +166,7 @@ int crearConexion(char* ip, int puerto, char* nombreCliente){ //TODO agregar nom
     memset(&(direccionServer.sin_zero), '\0', 8); //se rellena con ceros para que tenga el mismo tamaño que socketaddr
 
     verificarConnect(socketCliente, &direccionServer);
+    // log_info(logger, strcat("Te conectaste con ", nombreCliente));
 
     return socketCliente;
 }

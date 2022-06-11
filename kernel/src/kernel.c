@@ -1,5 +1,5 @@
 #include <semaphore.h>
-#include <include/planificacion.h>
+#include <../src/include/planificacion.h>
 #include "kernel.h"
 
 //Variables globales
@@ -21,9 +21,7 @@ int main() {
     logger = iniciarLogger("kernel.log", "KERNEL");
     config = iniciarConfig(CONFIG_FILE);
     GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
-  //  printf("MAIN ** GRADO_MULTIPROGRAMACION: %d\n", GRADO_MULTIPROGRAMACION);
     sem_init(&semGradoMultiprogramacion,0, GRADO_MULTIPROGRAMACION);
-
     char* ipKernel= config_get_string_value(config,"IP_KERNEL");
     char* puertoKernel= config_get_string_value(config,"PUERTO_ESCUCHA");
     char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
@@ -31,12 +29,10 @@ int main() {
     char* ipCpu= config_get_string_value(config,"IP_CPU");
     int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
     char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
-  //  int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
-  //  enviarMensaje("Hola memoria soy el kernel", conexionMemoria);
-    conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
-   // printf("conexionCPUDispatch: %d\n", conexionCPUDispatch);
+ //   int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
+    int conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
+    enviarMensaje("hola soy el kernel", conexionCPUDispatch);
     kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
-    printf("kernel_fd: %d\n", kernel_fd);
 	log_info(logger, "Kernel listo para recibir una consola");
     NEW = queue_create();
     READY = queue_create();
@@ -170,6 +166,7 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso, int so
 
     pcb->idProceso = process_get_thread_id();
     pcb->tamanioProceso = tamanioProceso;
+    pcb->listaInstrucciones = listaInstrucciones;
     pcb->programCounter= instruccion->codigo_operacion;
     pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
     pcb->duracionUltimaRafaga =0; //Arranca en cero
