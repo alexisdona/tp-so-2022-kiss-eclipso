@@ -21,6 +21,7 @@ int main() {
     logger = iniciarLogger("kernel.log", "KERNEL");
     config = iniciarConfig(CONFIG_FILE);
     GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
+    TIEMPO_MAXIMO_BLOQUEADO = config_get_int_value(config, "TIEMPO_MAXIMO_BLOQUEADO");
     sem_init(&semGradoMultiprogramacion,0, GRADO_MULTIPROGRAMACION);
     char* ipKernel= config_get_string_value(config,"IP_KERNEL");
     char* puertoKernel= config_get_string_value(config,"PUERTO_ESCUCHA");
@@ -36,6 +37,8 @@ int main() {
 	log_info(logger, "Kernel listo para recibir una consola");
     NEW = queue_create();
     READY = queue_create();
+    BLOCKED = queue_create();
+    SUSPENDED_BLOCKED = queue_create();
 
     while (1) {
         escucharClientes("KERNEL");

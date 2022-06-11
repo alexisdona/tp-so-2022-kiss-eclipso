@@ -40,7 +40,7 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* 
                 printf("PCB ID: %zu\n",pcb->idProceso);
                 printf("PCB PC: %zu\n",pcb->programCounter);
                 atendi_dispatch=1;
-                //bloquear_proceso(pcb);
+                bloquearProceso(pcb);
                 break;
             case TERMINAR_PROCESO:
                 log_info(logger, "PCB recibido para terminar proceso");
@@ -60,7 +60,6 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* 
                 printf("Cod_op=%d\n",cod_op);
         }
     }
-
 }
 
 int inicializarMutex() {
@@ -73,6 +72,11 @@ int inicializarMutex() {
         perror("Mutex cola de ready fallo: ");
         error+=1;
     }
+
+    if(pthread_mutex_init(&mutexColaBloqueados, NULL) != 0) {
+        perror("Mutex cola de bloqueados fallo: ");
+        error+=1;
+    }
     return error;
 }
 
@@ -82,4 +86,32 @@ void avisarProcesoTerminado(int socketDestino) {
     enviarPaquete(paqueteProcesoTerminado, socketDestino);
 }
 
+void bloquearProceso(t_pcb* pcb){
+    pthread_mutex_lock(&mutexColaBloqueados);
+    queue_push(BLOCKED, pcb);
+    pthread_mutex_unlock(&mutexColaBloqueados);
+    sem_wait(&semGradoMultiprogramacion);
+    pthread_mutex_lock(&mutexGradoMultiprogramacion);
+    GRADO_MULTIPROGRAMACION--;
+    pthread_mutex_unlock(&mutexGradoMultiprogramacion);
+    printf("pcb->programCounter: %zu\n", pcb->programCounter);
+    t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
+    if (instruccion->codigo_operacion ==  IO) {
+        operando tiempoBloqueado = instruccion->parametros[0];
+        if(tiempoBloqueado>=TIEMPO_MAXIMO_BLOQUEADO){
+            suspenderBlockedProceso(pcb);
+        };
+    }
+}
+
+void suspenderBlockedProceso(t_pcb* pcb){
+
+    pthread_mutex_lock(&mutexColaSuspendedBloqued);
+    queue_push(SUSPENDED_BLOCKED, queue_pop(BLOCKED));
+    pthread_mutex_unlock(&mutexColaSuspendedBloqued);
+    pthread_mutex_lock(&mutexGradoMultiprogramacion);
+    GRADO_MULTIPROGRAMACION++;
+    pthread_mutex_unlock(&mutexGradoMultiprogramacion);
+    sem_post(&semGradoMultiprogramacion);
+}
 
