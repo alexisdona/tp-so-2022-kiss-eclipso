@@ -51,8 +51,9 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* 
                 GRADO_MULTIPROGRAMACION++;
                 printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
                 pthread_mutex_unlock(&mutexGradoMultiprogramacion);
-                sem_post(&semGradoMultiprogramacion);
+              //  avisarProcesoTerminado(pcbFinalizado->consola_fd);
                 enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
+                 sem_post(&semGradoMultiprogramacion);
                 atendi_dispatch = 1;
                 break;
             default:
@@ -74,3 +75,11 @@ int inicializarMutex() {
     }
     return error;
 }
+
+void avisarProcesoTerminado(int socketDestino) {
+    t_paquete* paqueteProcesoTerminado = crearPaquete();
+    paqueteProcesoTerminado->codigo_operacion = TERMINAR_PROCESO;
+    enviarPaquete(paqueteProcesoTerminado, socketDestino);
+}
+
+

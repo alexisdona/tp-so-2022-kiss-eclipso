@@ -23,5 +23,7 @@ int valorSemaforoContador;
 void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int, t_log*);
 void iniciarPlanificacion(t_pcb*, t_log*, int);
 int inicializarMutex();
+void avisarProcesoTerminado(int);
+
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H
