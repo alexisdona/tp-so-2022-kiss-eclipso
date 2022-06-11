@@ -12,10 +12,10 @@ void iniciarPlanificacion(t_pcb* pcb, t_log* logger, int conexionCPUDispatch) {
     queue_push(NEW, pcb);
   //  printf("dentro de mutex de cola de new. Tamaño de la cola de NEW: %d\n", queue_size(NEW));
     pthread_mutex_unlock(&mutexColaNew);
-    iniciarPlanificacionCortoPlazo(pcb, conexionCPUDispatch);
+    iniciarPlanificacionCortoPlazo(pcb, conexionCPUDispatch, logger);
 }
 
-void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch) {
+void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* logger) {
     //  printf("Entra en inciarPlanificacion de corto plazo\n");
     //tiempo_max_bloqueo = tiempo_bloqueo_config;
     uint32_t atendi_dispatch = 0;
@@ -43,8 +43,17 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch) {
                 //bloquear_proceso(pcb);
                 break;
             case TERMINAR_PROCESO:
-                printf("TERMINAR PROCESO.......\n");
-                atendi_dispatch=1;
+                log_info(logger, "PCB recibido para terminar proceso");
+                t_pcb* pcbFinalizado = recibirPCB(conexionCPUDispatch);
+                printf("pcbFinalizado->idProceso: %zu\n", pcbFinalizado->idProceso);
+                printf("pcbFinalizado->tamanioProceso: %zu\n", pcbFinalizado->tamanioProceso);
+                pthread_mutex_lock(&mutexGradoMultiprogramacion);
+                GRADO_MULTIPROGRAMACION++;
+                printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
+                pthread_mutex_unlock(&mutexGradoMultiprogramacion);
+                sem_post(&semGradoMultiprogramacion);
+                enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
+                atendi_dispatch = 1;
                 break;
             default:
                 printf("Cod_op=%d\n",cod_op);

@@ -166,11 +166,7 @@ void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 
 void operacion_EXIT(op_code proceso_respuesta){
 	log_info(logger,"Ejecutando EXIT");
-	t_paquete* paquete = crearPaquete();
-	paquete->codigo_operacion = proceso_respuesta;
-	preparar_pcb_respuesta(paquete);
-	enviarPaquete(paquete,cliente_dispatch);
-	eliminarPaquete(paquete);
+    enviarPCB(cliente_dispatch, pcb, proceso_respuesta);
 }
 
 void preparar_pcb_respuesta(t_paquete* paquete){

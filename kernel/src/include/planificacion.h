@@ -20,7 +20,7 @@ pthread_mutex_t mutexColaReady;
 pthread_mutex_t  mutexGradoMultiprogramacion;
 int valorSemaforoContador;
 
-void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int);
+void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int, t_log*);
 void iniciarPlanificacion(t_pcb*, t_log*, int);
 int inicializarMutex();
 

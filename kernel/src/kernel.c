@@ -30,7 +30,7 @@ int main() {
     int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
     char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
  //   int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
-    int conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
+    conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
     enviarMensaje("hola soy el kernel", conexionCPUDispatch);
     kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
@@ -72,18 +72,7 @@ void procesar_conexion(void* void_args) {
               //  printf("pcb->idProceso: %zu\n",pcb->idProceso);
                 iniciarPlanificacion(pcb, logger, conexionCPUDispatch);
                 break;
-		    case TERMINAR_PROCESO:
-                log_info(logger, "PCB recibido para terminar proceso");
-                t_pcb* pcbFinalizado = recibirPCB(cliente_fd);
-                printf("pcbFinalizado->idProceso: %zu\n", pcbFinalizado->idProceso);
-                printf("pcbFinalizado->tamanioProceso: %zu\n", pcbFinalizado->tamanioProceso);
-                pthread_mutex_lock(&mutexGradoMultiprogramacion);
-                GRADO_MULTIPROGRAMACION++;
-                printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
-                pthread_mutex_unlock(&mutexGradoMultiprogramacion);
-                sem_post(&semGradoMultiprogramacion);
-                enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
-                break;
+
             case -1:
 				log_info(logger, "La consola se desconecto.");
               //  cliente_fd = -1;
