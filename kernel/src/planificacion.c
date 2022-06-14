@@ -21,14 +21,19 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* 
     uint32_t atendi_dispatch = 0;
     sem_wait(&semGradoMultiprogramacion);
 
+    pthread_mutex_lock(&mutexColaNew);
+    t_pcb *pcbEnColaNew = queue_pop(NEW);
+    pthread_mutex_unlock(&mutexColaNew);
+
     pthread_mutex_lock(&mutexColaReady);
-    queue_push(READY, queue_pop(NEW));
+    queue_push(READY, pcbEnColaNew);
     pthread_mutex_unlock(&mutexColaReady);
-    // printf("dentro de mutex de cola de ready: tamaño cola de ready: %d\n", queue_size(READY));
+
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
     GRADO_MULTIPROGRAMACION--;
     printf("GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
+
     enviarPCB(conexionCPUDispatch, queue_pop(READY), PCB); //falta definir algoritmos de planificacion
 
     while(conexionCPUDispatch != -1 && atendi_dispatch!=1){
@@ -87,14 +92,12 @@ void avisarProcesoTerminado(int socketDestino) {
 }
 
 void bloquearProceso(t_pcb* pcb){
+
     pthread_mutex_lock(&mutexColaBloqueados);
     queue_push(BLOCKED, pcb);
     pthread_mutex_unlock(&mutexColaBloqueados);
-    sem_wait(&semGradoMultiprogramacion);
-    pthread_mutex_lock(&mutexGradoMultiprogramacion);
-    GRADO_MULTIPROGRAMACION--;
-    pthread_mutex_unlock(&mutexGradoMultiprogramacion);
-    printf("pcb->programCounter: %zu\n", pcb->programCounter);
+
+     /* Me paro en la instruccion anterior a la que apunta el programCounter porque el ciclo de instruccion termina siempre y suma 1 al PC*/
     t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
     if (instruccion->codigo_operacion ==  IO) {
         operando tiempoBloqueado = instruccion->parametros[0];
@@ -105,13 +108,20 @@ void bloquearProceso(t_pcb* pcb){
 }
 
 void suspenderBlockedProceso(t_pcb* pcb){
+    pthread_mutex_lock(&mutexColaBloqueados);
+    t_pcb * pcbEnColaBlocked = queue_pop(BLOCKED);
+    pthread_mutex_unlock(&mutexColaBloqueados);
 
     pthread_mutex_lock(&mutexColaSuspendedBloqued);
-    queue_push(SUSPENDED_BLOCKED, queue_pop(BLOCKED));
+    queue_push(SUSPENDED_BLOCKED, pcbEnColaBlocked);
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
+
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
     GRADO_MULTIPROGRAMACION++;
+    printf("suspenderProceso() --> GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
     sem_post(&semGradoMultiprogramacion);
 }
+
+
 

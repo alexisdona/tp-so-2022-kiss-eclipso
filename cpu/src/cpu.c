@@ -19,9 +19,9 @@ int main(void) {
     config = iniciarConfig(CONFIG_FILE);
 
 	char* ip = config_get_string_value(config,"IP_CPU");
-	//char* ip_memoria = config_get_string_value(config,"IP_MEMORIA");
+	char* ipMemoria = config_get_string_value(config,"IP_MEMORIA");
 
-	//int puerto_memoria = config_get_int_value(config,"PUERTO_MEMORIA");
+	int puertoMemoria = config_get_int_value(config,"PUERTO_MEMORIA");
     char* puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
     char* puerto_interrupt = config_get_string_value(config,"PUERTO_ESCUCHA_INTERRUPT");
     retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
@@ -32,7 +32,8 @@ int main(void) {
     cliente_dispatch = esperarCliente(cpu_dispatch,logger);
 
     cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
- 	//conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
+ 	conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
+ 	enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
 	//log_info(logger, "Te conectaste con Memoria");
     //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
 
@@ -157,11 +158,8 @@ void operacion_NO_OP(){
 void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 	log_info(logger,"Ejecutando I/O: %d",tiempo_bloqueo);
 	t_paquete* paquete = crearPaquete();
-	paquete->codigo_operacion = proceso_respuesta;
-	preparar_pcb_respuesta(paquete);
-	agregarEntero(paquete,tiempo_bloqueo);
-	enviarPaquete(paquete,cliente_dispatch);
-	eliminarPaquete(paquete);
+    enviarPCB(cliente_dispatch, pcb,  proceso_respuesta);
+
 }
 
 void operacion_EXIT(op_code proceso_respuesta){
