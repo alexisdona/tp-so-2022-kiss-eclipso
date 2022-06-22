@@ -28,6 +28,7 @@ int main() {
     char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
     int puertoMemoria= config_get_int_value(config,"PUERTO_MEMORIA");
     char* ipCpu= config_get_string_value(config,"IP_CPU");
+    char* algoritmoPlanificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
     int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
     char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
     int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
@@ -157,17 +158,16 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso, int so
 
     t_pcb *pcb =  malloc(sizeof(t_pcb));
     t_instruccion *instruccion = list_get(listaInstrucciones,0);
+    int estimacionInicial = config_get_int_value(config,"ESTIMACION_INICIAL");
 
     pcb->idProceso = process_get_thread_id();
     pcb->tamanioProceso = tamanioProceso;
     pcb->listaInstrucciones = listaInstrucciones;
     pcb->programCounter= instruccion->codigo_operacion;
-    pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
-    pcb->duracionUltimaRafaga =0; //Arranca en cero
+    pcb->estimacionRafaga = estimacionInicial; 
     pcb->consola_fd = socketConsola;
     pcb->kernel_fd = kernel_fd;
     pcb->listaInstrucciones = listaInstrucciones;
-
 
     return pcb;
 }

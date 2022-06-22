@@ -67,7 +67,6 @@ typedef struct {
     size_t programCounter;
     size_t tablaPaginas;
     size_t estimacionRafaga;
-    size_t duracionUltimaRafaga;
     t_list* listaInstrucciones;
     size_t kernel_fd;
     size_t consola_fd;

@@ -7,9 +7,10 @@
 
 #include <commons/collections/queue.h>
 #include "../../../shared/headers/sharedUtils.h"
+#include <time.h>
 
-t_queue* READY;
-t_queue* NEW;
+t_list* READY;
+t_list* NEW;
 t_queue* BLOCKED;
 t_queue* SUSPENDED_READY;
 t_queue* SUSPENDED_BLOCKED;
