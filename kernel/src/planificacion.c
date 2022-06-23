@@ -151,6 +151,14 @@ void ordenar_procesos_lista_READY() {
     //     return 0;
     // }
    list_sort(READY, sort_by_rafaga);
+
+   printf("----- LISTA REORDENADA ----")
+   for (int i=0; i < list_size(READY); i++){
+        t_pcb* pcb = list_get(pcb, i);
+        printf("pcb->idProceso->%d\testimacionRafaga-> %d\n",
+               pcb->idProceso,
+               pcb->estimacionRafaga
+    }
 }
 
 static bool sort_by_rafaga(void* pcb1, void* pcb2) {
@@ -167,13 +175,13 @@ void checkear_proceso(conexionCPUDispatch) {
 
 void interrumpir_proceso_en_CPU(pcb, conexionCPUDispatch) {
     // interrupt del proceso en cpu 
-    t_pcb* pcbExec = obtener_proceso_en_EXEC();
+    t_pcb* pcbExec = obtener_proceso_en_EXEC(conexionCPUDispatch);
     bloquearProceso(pcbExec);
     // enviar PCB que tiene menos rafagas
     enviarPCB(conexionCPUDispatch, pcb, PCB); 
 }
 
-t_pcb* obtener_proceso_en_EXEC() {
+t_pcb* obtener_proceso_en_EXEC(conexionCPUDispatch) {
     //pcb de exec ver pcb->estimacionRafaga
     t_pcb* pcbEnExec = recibirPCB(conexionCPUDispatch);
     return pcbEnExec;
