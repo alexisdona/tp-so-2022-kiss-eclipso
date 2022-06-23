@@ -154,13 +154,13 @@ void ordenar_procesos_lista_READY() {
 }
 
 static bool sort_by_rafaga(void* pcb1, void* pcb2) {
-    return (((t_pcb*) pcb1)->estimacionRafaga) < (((t_running_thread*) pcb2)->estimacionRafaga);
+    return (((t_pcb*) pcb1)->estimacionRafaga) < (((t_pcb*) pcb2)->estimacionRafaga);
 }
 
 void checkear_proceso(conexionCPUDispatch) {
     t_pcb* pcb = list_get(READY, 0);
     t_pcb* pcbEnExec = obtener_proceso_en_EXEC();
-    pcb->estimacionRafaga < pcbEnExec->duracionUltimaRafaga ? 
+    pcb->estimacionRafaga < pcbEnExec->estimacionRafaga ? 
                             interrumpir_proceso_en_CPU(pcb, conexionCPUDispatch) 
                             : ordenar_procesos_lista_READY();
 }
