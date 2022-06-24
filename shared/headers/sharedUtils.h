@@ -61,6 +61,17 @@ typedef struct
     t_buffer* buffer;
 } t_paquete;
 
+typedef struct
+{
+    t_pcb* pcb;
+    int conexion_cpu_dispatch;
+    int conexion_cpu_interrupt;
+    char* algoritmo_planificacion;
+    t_log* logger;
+    uint32_t tiempo_maximo_bloqueado;
+    float alpha;
+} t_attrs_planificacion;
+
 typedef struct {
     size_t idProceso;
     size_t tamanioProceso;
@@ -96,8 +107,10 @@ void agregarListaInstrucciones(t_paquete *, t_list *);
 void agregarTamanioProceso(t_paquete*, int);
 void agregarEntero(t_paquete *, size_t);
 void enviarPCB(int, t_pcb*, op_code);
+void enviar_interrupcion(int, op_code);
 t_pcb* recibirPCB(int);
-t_list* deserializarListaInstrucciones(void* , size_t , t_list*) ;
+t_list* deserializarListaInstrucciones(void* , size_t , t_list*);
+void enviar_interrupcion(int, op_code);
 
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H

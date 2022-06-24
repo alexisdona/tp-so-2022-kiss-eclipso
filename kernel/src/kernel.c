@@ -4,8 +4,9 @@
 
 //Variables globales
 t_log* logger;
-int kernel_fd, conexionCPUDispatch;
+int kernel_fd, conexionCPUDispatch, conexionCPUInterrupt, conexionMemoria;
 t_config * config;
+struct t_attrs_planificacion info_planificacion;
 
 void sighandler(int s) {
     cerrar_programa(logger);
@@ -20,35 +21,56 @@ int main() {
 
     logger = iniciarLogger("kernel.log", "KERNEL");
     config = iniciarConfig(CONFIG_FILE);
+
     GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
     TIEMPO_MAXIMO_BLOQUEADO = config_get_int_value(config, "TIEMPO_MAXIMO_BLOQUEADO");
-    sem_init(&semGradoMultiprogramacion,0, GRADO_MULTIPROGRAMACION);
-    char* ipKernel= config_get_string_value(config,"IP_KERNEL");
-    char* puertoKernel= config_get_string_value(config,"PUERTO_ESCUCHA");
-    char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
-    int puertoMemoria= config_get_int_value(config,"PUERTO_MEMORIA");
-    char* ipCpu= config_get_string_value(config,"IP_CPU");
-    char* algoritmoPlanificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
-    int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
-    char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
-    int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
-    conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
+    sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
+
+    char* IP_KERNEL= config_get_string_value(config,"IP_KERNEL");
+    char* PUERTO_KERNEL= config_get_string_value(config,"PUERTO_ESCUCHA");
+    char* IP_MEMORIA= config_get_string_value(config,"IP_MEMORIA");
+    int PUERTO_MEMORIA = config_get_int_value(config,"PUERTO_MEMORIA");
+    char* IP_CPU = config_get_string_value(config,"IP_CPU");
+    char* ALGORITMO_PLANIFICACION = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    int PUERTO_CPU_DISPATCH = config_get_int_value(config,"PUERTO_CPU_DISPATCH");
+    char* PUERTO_CPU_INTERRUPT = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
+    float ALFA = config_get_float_value(config, "ALFA");
+
+    /* CONEXIONES A MODULOS */
+
+    conexionMemoria = crearConexion(IP_MEMORIA, PUERTO_MEMORIA, "Kernel");
+    conexionCPUDispatch = crearConexion(IP_CPU, PUERTO_CPU_DISPATCH, "Kernel");
+    conexionCPUInterrupt = crearConexion(IP_CPU, PUERTO_CPU_INTERRUPT, "Kernel");
     enviarMensaje("hola CPU soy el kernel", conexionCPUDispatch);
     enviarMensaje("hola  MEMORIA soy el kernel", conexionMemoria);
-
+    enviarMensaje("Puerto de interrupcion --->", conexionCPUInterrupt);
     kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
+
+    /* INICIALIZACION DE COLAS Y LISTAS */
+
     NEW = queue_create();
-    READY = queue_create();
+    READY = list_create();
     BLOCKED = queue_create();
     SUSPENDED_BLOCKED = queue_create();
+
+    /* Atributos a enviar para la planificacion */
+
+    t_attrs_planificacion* attrs_planificacion = malloc(sizeof(t_attrs_planificacion));
+
+    attrs_planificacion->conexion_cpu_dispatch = conexionCPUDispatch;
+    attrs_planificacion->conexion_cpu_interrupt = conexionCPUDInterrupt;
+    attrs_planificacion->algoritmo_planificacion = algoritmoPlanificacion;
+    attrs_planificacion->logger = logger;
+    attrs_planificacion->tiempo_maximo_bloqueado = TIEMPO_MAXIMO_BLOQUEADO;
+    attrs_planificacion->alpha = alpha;
+
+    info_planificacion = attrs_planificacion;
 
     while (1) {
         escucharClientes("KERNEL");
     }
-
     //cerrar_programa(logger);
-
     return 0;
 }
 
@@ -66,6 +88,7 @@ void procesar_conexion(void* void_args) {
     while (cliente_fd != -1) {
         printf("entro un cliente nuevo: %d\n", cliente_fd);
 		op_code cod_op = recibirOperacion(cliente_fd);
+       
 		switch (cod_op) {
 			case MENSAJE:
                 recibirMensaje(cliente_fd, logger);
@@ -75,8 +98,9 @@ void procesar_conexion(void* void_args) {
 			    t_list* listaInstrucciones = recibirListaInstrucciones(cliente_fd);
                 int tamanioProceso = recibirTamanioProceso(cliente_fd);
                 t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso, cliente_fd);
-              //  printf("pcb->idProceso: %zu\n",pcb->idProceso);
-                iniciarPlanificacion(pcb, conexionCPUDispatch, algoritmoPlanificacion, logger);
+                info_planificacion->pcb = pcb;
+                //  printf("pcb->idProceso: %zu\n",pcb->idProceso);
+                iniciarPlanificacion(info_planificacion);
                 break;
         
             case -1:
