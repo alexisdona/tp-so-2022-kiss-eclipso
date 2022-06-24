@@ -10,7 +10,7 @@
 #include <time.h>
 
 t_list* READY;
-t_list* NEW;
+t_queue* NEW;
 t_queue* BLOCKED;
 t_queue* SUSPENDED_READY;
 t_queue* SUSPENDED_BLOCKED;

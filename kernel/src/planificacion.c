@@ -5,19 +5,21 @@
 #include <commons/collections/queue.h>
 
 uint32_t tiempo_max_bloqueo;
+t_pcb* pcb_en_ejecucion;
 
-void iniciarPlanificacion(t_pcb* pcb, t_log* logger, int conexionCPUDispatch) {
+void iniciarPlanificacion(t_pcb* pcb, int conexionCPUDispatch, char* algoritmoPlanificacion, t_log* logger) {
    // log_info(logger, "Iniciando planificación");
     pthread_mutex_lock(&mutexColaNew);
     queue_push(NEW, pcb);
   //  printf("dentro de mutex de cola de new. Tamaño de la cola de NEW: %d\n", queue_size(NEW));
     pthread_mutex_unlock(&mutexColaNew);
-    iniciarPlanificacionCortoPlazo(pcb, conexionCPUDispatch, logger);
+    iniciarPlanificacionCortoPlazo(pcb, conexionCPUDispatch, algoritmoPlanificacion, logger);
 }
 
-void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* logger) {
+void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, char* algoritmoPlanificacion, t_log* logger) {
     //  printf("Entra en inciarPlanificacion de corto plazo\n");
     //tiempo_max_bloqueo = tiempo_bloqueo_config;
+
     uint32_t atendi_dispatch = 0;
     sem_wait(&semGradoMultiprogramacion);
 
@@ -27,22 +29,20 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* 
 
     pthread_mutex_lock(&mutexColaReady);
 
-    // agregar list_add(READY, pcbEnColaNew);
-    queue_push(READY, pcbEnColaNew);
+    list_add(READY, pcbEnColaNew);
+    
+    iniciar_algoritmo_planificacion(algoritmoPlanificacion);
+  
     pthread_mutex_unlock(&mutexColaReady);
-
-    //Me llega un PCB, entonces:
-    //Reordeno LISTA READY - tiempo estimacion > al siguiente , rafaga mas corta primero
-    ordenar_procesos_lista_READY();
-    //Chequeo si el PCB en la primer posicion es mas corto que el PCB en EXEC -> interrumpir cpu mandando PCB corto
-    checkear_proceso(conexionCPUDispatch);
 
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
     GRADO_MULTIPROGRAMACION--;
     printf("GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
 
-    enviarPCB(conexionCPUDispatch, queue_pop(READY), PCB); 
+    pcb_en_ejecucion = obtener_proceso_en_READY();
+    enviarPCB(conexionCPUDispatch, pcb_en_ejecucion, PCB); 
+    time_t tiempo_en_ejecucion = time(NULL);
 
     while(conexionCPUDispatch != -1 && atendi_dispatch!=1){
         op_code cod_op = recibirOperacion(conexionCPUDispatch);
@@ -54,7 +54,8 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* 
                 printf("PCB PC: %zu\n",pcb->programCounter);
                 atendi_dispatch=1;
                 bloquearProceso(pcb);
-                tiempo_en_ejecucion = tiempo_en_ejecucion - time(NULL);
+                time_t tiempo_finalizacion = time(NULL)
+                tiempo_en_ejecucion = tiempo_en_ejecucion - tiempo_finalizacion
                 estimar_proxima_rafaga(tiempo_en_ejecucion, pcb);
                 break;
             case TERMINAR_PROCESO:
@@ -71,10 +72,34 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* 
                  sem_post(&semGradoMultiprogramacion);
                 atendi_dispatch = 1;
                 break;
+            case DESALOJAR_PROCESO:
+                t_pcb* pcb = recibirPCB(conexionCPUDispatch);
+                checkear_proceso(pcb);
+                break;
             default:
                 printf("Cod_op=%d\n",cod_op);
         }
     }
+}
+
+void iniciar_algoritmo_planificacion(char* algoritmoPlanificacion) {
+     if (list_size(READY) > 0) {
+        if (strcmp("SJF", algoritmoPlanificacion)) {
+            //Me llega un PCB, entonces:
+            //Reordeno LISTA READY 
+            //Chequeo si el PCB en la primer posicion es mas corto que el PCB en EXEC -> interrumpir cpu mandando PCB corto
+            checkear_proceso_rafagas(pcb_en_ejecucion);
+        }
+    }
+}
+
+void replanificar_READY(t_pcb* pcb) {
+    list_add(READY, pcb);
+    ordenar_procesos_lista_READY();
+}
+
+t_pcb* obtener_proceso_en_READY() {
+    return list_get(READY, 0);
 }
 
 int inicializarMutex() {
@@ -165,24 +190,22 @@ static bool sort_by_rafaga(void* pcb1, void* pcb2) {
     return (((t_pcb*) pcb1)->estimacionRafaga) < (((t_pcb*) pcb2)->estimacionRafaga);
 }
 
-void checkear_proceso(conexionCPUDispatch) {
-    t_pcb* pcb = list_get(READY, 0);
-    t_pcb* pcbEnExec = obtener_proceso_en_EXEC();
-    pcb->estimacionRafaga < pcbEnExec->estimacionRafaga ? 
-                            interrumpir_proceso_en_CPU(pcb, conexionCPUDispatch) 
-                            : ordenar_procesos_lista_READY();
+void checkear_proceso(pcbEnExec) {
+    t_pcb* pcb = obtener_proceso_en_READY();
+    if(pcb->estimacionRafaga < pcbEnExec->estimacionRafaga) { 
+       interrumpir_proceso_en_CPU(pcbEnExec)
+       replanificar_y_enviar_nuevo_proceso(pcb, pcbEnExec, conexionCPUDispatch);
+    }
+}
+void actualizar_proceso_bloqueado_rafagas() {
+
 }
 
-void interrumpir_proceso_en_CPU(pcb, conexionCPUDispatch) {
-    // interrupt del proceso en cpu 
-    t_pcb* pcbExec = obtener_proceso_en_EXEC(conexionCPUDispatch);
-    bloquearProceso(pcbExec);
-    // enviar PCB que tiene menos rafagas
-    enviarPCB(conexionCPUDispatch, pcb, PCB); 
+interrumpir_proceso_en_CPU() {
+  
 }
 
-t_pcb* obtener_proceso_en_EXEC(conexionCPUDispatch) {
-    //pcb de exec ver pcb->estimacionRafaga
-    t_pcb* pcbEnExec = recibirPCB(conexionCPUDispatch);
-    return pcbEnExec;
+void replanificar_y_enviar_nuevo_proceso(pcbNueva, pcbEnExec, conexionCPUDispatch) {
+    enviarPCB(conexionCPUDispatch, pcbNueva, PCB); 
+    replanificar_READY(pcbExec);
 }

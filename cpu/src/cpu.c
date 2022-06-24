@@ -76,7 +76,6 @@ void imprimirListaInstrucciones(t_pcb *pcb) {
 //--------Ciclo de instruccion---------
 void comenzar_ciclo_instruccion(){
 
-	//time_t cronometro = time(NULL);
 	op_code proceso_respuesta = CONTINUA_PROCESO;
 	operando operador = 0;
 
@@ -89,13 +88,11 @@ void comenzar_ciclo_instruccion(){
 		}
 
 		proceso_respuesta = fase_execute(instruccion, operador);
-		//cronometro = cronometro - time(NULL);
-		//estimar_proxima_rafaga(cronometro);
-/*
+
 		if(proceso_respuesta == CONTINUA_PROCESO) {
 			atender_interrupciones();
 		}
-*/
+
 	}
 
 }
@@ -187,9 +184,9 @@ void atender_interrupciones() {
 
 		switch (cod_op) {
 			case DESALOJAR_PROCESO:
-				pcbNuevo = recibirPCB(cpuInterrupt);
+				pcbNuevo = recibirPCB(cpuDispatch);
 				log_info(logger,"Recibi nuevo PCB");
-				enviarPCB(cpuInterrupt, pcb, PCB);
+				enviarPCB(cpuDispatch, pcb, cod_op);
 				log_info(logger, "Envio PCB que estaba ejecutando");
 				pcb = pcbNuevo;
 			   break;

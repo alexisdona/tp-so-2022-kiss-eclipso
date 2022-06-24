@@ -76,9 +76,9 @@ void procesar_conexion(void* void_args) {
                 int tamanioProceso = recibirTamanioProceso(cliente_fd);
                 t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso, cliente_fd);
               //  printf("pcb->idProceso: %zu\n",pcb->idProceso);
-                iniciarPlanificacion(pcb, logger, conexionCPUDispatch);
+                iniciarPlanificacion(pcb, conexionCPUDispatch, algoritmoPlanificacion, logger);
                 break;
-
+        
             case -1:
 				log_info(logger, "La consola se desconecto.");
               //  cliente_fd = -1;
