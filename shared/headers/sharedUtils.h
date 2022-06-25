@@ -1,7 +1,3 @@
-//
-// Created by alecho on 8/5/22.
-//
-
 #ifndef TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 #define TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 
@@ -31,7 +27,8 @@ typedef enum {
 	CONTINUA_PROCESO,
 	DESALOJAR_PROCESO,
     ESCRIBIR_MEMORIA,
-    LEER_MEMORIA
+    LEER_MEMORIA,
+	SWAPEAR_PROCESO
 } op_code;
 
 typedef enum

@@ -1,12 +1,11 @@
-#include "memoria.h"
-#include "../../shared/headers/sharedUtils.h"
+#include "include/swap.h"
+#include "include/memoria.h"
 
 t_log* logger;
 t_config * config;
 
 // Variables globales
 t_config* config;
-t_log* logger;
 int memoria_fd;
 int cliente_fd;
 
@@ -17,7 +16,7 @@ int main(void) {
 	logger = iniciarLogger("memoria.log", "Memoria");
 	char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
     char* puertoMemoria= config_get_string_value(config,"PUERTO_ESCUCHA");
-
+    preparar_modulo_swap();
 	//sem_init(&semMemoria, 0, 1);
 
 	// Inicio el servidor
@@ -45,6 +44,12 @@ int main(void) {
                     // sem_signal(&semMemoria);
                     enviarMensaje("Ya leí la memoria!", cliente_fd);
                     break;
+                case SWAPEAR_PROCESO:
+                	log_info(logger, "Recibi un PCB a swapear");
+                	t_pcb* pcb = recibirPCB(cliente_fd);
+                	printf("PID: %d\n",pcb->idProceso);
+                	swapear_proceso(pcb);
+                	break;
                 case -1:
                     log_info(logger, "El cliente se desconectó");
                     cliente_fd = -1;
@@ -56,9 +61,13 @@ int main(void) {
 
 	}
 
-	// Lorem ipsum
-
 	return EXIT_SUCCESS;
 }
 
+void preparar_modulo_swap(){
+	cola_swap = queue_create();
+	PATH_SWAP = config_get_string_value(config,"PATH_SWAP");
+	string_append(&PATH_SWAP,"/");
+	RETARDO_SWAP = config_get_int_value(config,"RETARDO_SWAP");
+}
 
