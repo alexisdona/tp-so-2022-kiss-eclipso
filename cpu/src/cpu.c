@@ -170,7 +170,6 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 	agregarEntero(paquete, pcb->programCounter);
 	agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
 	agregarEntero(paquete, pcb->estimacionRafaga);
-	agregarEntero(paquete, pcb->duracionUltimaRafaga);
 	agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
 }
 

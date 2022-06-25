@@ -4,18 +4,21 @@
 #include "include/planificacion.h"
 #include <commons/collections/queue.h>
 
-void iniciarPlanificacion(struct t_attrs_planificacion attrs_planificacion) {
-   // log_info(logger, "Iniciando planificación");
+double ALFA;
+
+void iniciarPlanificacion(t_attrs_planificacion* attrs_planificacion) {
+    log_info(attrs_planificacion->logger, "Iniciando planificación");
     pthread_mutex_lock(&mutexColaNew);
-    queue_push(NEW, attrs_planificacion.pcb);
+    queue_push(NEW, attrs_planificacion->pcb);
   //  printf("dentro de mutex de cola de new. Tamaño de la cola de NEW: %d\n", queue_size(NEW));
     pthread_mutex_unlock(&mutexColaNew);
     iniciarPlanificacionCortoPlazo(attrs_planificacion);
 }
 
-void iniciarPlanificacionCortoPlazo(struct t_attrs_planificacion attrs_planificacion) {
+void iniciarPlanificacionCortoPlazo(t_attrs_planificacion* attrs_planificacion) {
     //  printf("Entra en inciarPlanificacion de corto plazo\n");
     tiempo_max_bloqueo = attrs_planificacion->tiempo_maximo_bloqueado;
+    ALFA = attrs_planificacion->alpha;
 
     uint32_t atendi_dispatch = 0;
     sem_wait(&semGradoMultiprogramacion);
@@ -36,7 +39,7 @@ void iniciarPlanificacionCortoPlazo(struct t_attrs_planificacion attrs_planifica
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
 
     conexionCPUDispatch = attrs_planificacion->conexion_cpu_dispatch;
-    conexionCPUDInterrupt = attrs_planificacion->conexion_cpu_interrupt;
+    conexionCPUInterrupt = attrs_planificacion->conexion_cpu_interrupt;
     t_pcb* pcb_a_ejecutar = obtener_proceso_en_READY();
     enviarPCB(conexionCPUDispatch, pcb_a_ejecutar, PCB); 
     eliminar_proceso_de_READY(pcb_a_ejecutar);
@@ -57,7 +60,7 @@ void iniciarPlanificacionCortoPlazo(struct t_attrs_planificacion attrs_planifica
                 estimar_proxima_rafaga(tiempo_en_ejecucion, pcb);
                 break;
             case TERMINAR_PROCESO:
-                log_info(logger, "PCB recibido para terminar proceso");
+                log_info(attrs_planificacion->logger, "PCB recibido para terminar proceso");
                 t_pcb* pcbFinalizado = recibirPCB(conexionCPUDispatch);
                 printf("pcbFinalizado->idProceso: %zu\n", pcbFinalizado->idProceso);
                 printf("pcbFinalizado->tamanioProceso: %zu\n", pcbFinalizado->tamanioProceso);
@@ -71,9 +74,9 @@ void iniciarPlanificacionCortoPlazo(struct t_attrs_planificacion attrs_planifica
                 atendi_dispatch = 1;
                 break;
             case DESALOJAR_PROCESO:
+            	log_info(attrs_planificacion->logger, "PCB recibido desalojado por la CPU");
                 t_pcb* pcb_desalojada = recibirPCB(conexionCPUDispatch);
-                
-                time_t tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
+                tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                 calcular_rafagas_restantes_proceso_desalojado(tiempo_inicial, tiempo_en_ejecucion, pcb_desalojada);
                 checkear_proceso_y_replanificar(pcb_desalojada);
                 break;
@@ -83,7 +86,7 @@ void iniciarPlanificacionCortoPlazo(struct t_attrs_planificacion attrs_planifica
     }
 }
 
-void eliminar_proceso_de_READY(t_pcb*) {
+void eliminar_proceso_de_READY() {
     list_remove(READY, 0);
 }
 
@@ -175,7 +178,7 @@ void suspenderBlockedProceso(t_pcb* pcb){
 
 void estimar_proxima_rafaga(time_t tiempo, t_pcb* pcb){
 	int tiempo_cpu = tiempo / 1000;
-	pcb->estimacionRafaga = alpha*tiempo_cpu + (1-alpha)*(pcb->estimacionRafaga);
+	pcb->estimacionRafaga = ALFA*tiempo_cpu + (1-ALFA)*(pcb->estimacionRafaga);
 }
 
 void calcular_rafagas_restantes_proceso_desalojado(time_t tiempo_inicial, time_t tiempo_en_ejecucion, t_pcb* pcb_desalojada) {
@@ -188,12 +191,12 @@ void ordenar_procesos_lista_READY() {
     // Algoritmo SJF - ordenamiento
    list_sort(READY, sort_by_rafaga);
 
-   printf("----- LISTA REORDENADA ----")
+   printf("----- LISTA REORDENADA ----");
    for (int i=0; i < list_size(READY); i++){
         t_pcb* pcb = list_get(pcb, i);
         printf("pcb->idProceso->%d\testimacionRafaga-> %d\n",
                pcb->idProceso,
-               pcb->estimacionRafaga
+               pcb->estimacionRafaga);
     }
 }
 
@@ -206,7 +209,7 @@ void checkear_proceso_y_replanificar(t_pcb* pcbEnExec) {
 
     if (pcb->estimacionRafaga < pcbEnExec->estimacionRafaga) { 
        enviar_interrupcion(conexionCPUInterrupt, DESALOJAR_PROCESO);
-       replanificar_y_enviar_nuevo_proceso(pcb, pcbEnExec, conexionCPUDispatch);
+       replanificar_y_enviar_nuevo_proceso(pcb, pcbEnExec);
     }
 }
 

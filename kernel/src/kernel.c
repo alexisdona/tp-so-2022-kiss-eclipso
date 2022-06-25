@@ -1,12 +1,13 @@
 #include <semaphore.h>
-#include <../src/include/planificacion.h>
+#include "include/planificacion.h"
 #include "kernel.h"
 
 //Variables globales
+
 t_log* logger;
 int kernel_fd, conexionCPUDispatch, conexionCPUInterrupt, conexionMemoria;
 t_config * config;
-struct t_attrs_planificacion info_planificacion;
+t_attrs_planificacion* info_planificacion;
 
 void sighandler(int s) {
     cerrar_programa(logger);
@@ -34,7 +35,7 @@ int main() {
     char* ALGORITMO_PLANIFICACION = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
     int PUERTO_CPU_DISPATCH = config_get_int_value(config,"PUERTO_CPU_DISPATCH");
     char* PUERTO_CPU_INTERRUPT = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
-    float ALFA = config_get_float_value(config, "ALFA");
+    double ALFA = config_get_double_value(config, "ALFA");
 
     /* CONEXIONES A MODULOS */
 
@@ -44,7 +45,7 @@ int main() {
     enviarMensaje("hola CPU soy el kernel", conexionCPUDispatch);
     enviarMensaje("hola  MEMORIA soy el kernel", conexionMemoria);
     enviarMensaje("Puerto de interrupcion --->", conexionCPUInterrupt);
-    kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
+    kernel_fd = iniciarServidor(IP_KERNEL, PUERTO_KERNEL, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
 
     /* INICIALIZACION DE COLAS Y LISTAS */
@@ -59,11 +60,11 @@ int main() {
     t_attrs_planificacion* attrs_planificacion = malloc(sizeof(t_attrs_planificacion));
 
     attrs_planificacion->conexion_cpu_dispatch = conexionCPUDispatch;
-    attrs_planificacion->conexion_cpu_interrupt = conexionCPUDInterrupt;
-    attrs_planificacion->algoritmo_planificacion = algoritmoPlanificacion;
+    attrs_planificacion->conexion_cpu_interrupt = conexionCPUInterrupt;
+    attrs_planificacion->algoritmo_planificacion = ALGORITMO_PLANIFICACION;
     attrs_planificacion->logger = logger;
     attrs_planificacion->tiempo_maximo_bloqueado = TIEMPO_MAXIMO_BLOQUEADO;
-    attrs_planificacion->alpha = alpha;
+    attrs_planificacion->alpha = ALFA;
 
     info_planificacion = attrs_planificacion;
 

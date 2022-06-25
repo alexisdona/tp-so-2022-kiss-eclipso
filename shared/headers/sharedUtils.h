@@ -1,10 +1,7 @@
-//
-// Created by alecho on 8/5/22.
-//
-
 #ifndef TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 #define TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 
+#include <stdbool.h>
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
@@ -17,6 +14,7 @@
 #include<commons/config.h>
 #include <commons/log.h>
 #include<commons/collections/list.h>
+#include <commons/string.h>
 
 extern int errno;
 
@@ -61,17 +59,6 @@ typedef struct
     t_buffer* buffer;
 } t_paquete;
 
-typedef struct
-{
-    t_pcb* pcb;
-    int conexion_cpu_dispatch;
-    int conexion_cpu_interrupt;
-    char* algoritmo_planificacion;
-    t_log* logger;
-    uint32_t tiempo_maximo_bloqueado;
-    float alpha;
-} t_attrs_planificacion;
-
 typedef struct {
     size_t idProceso;
     size_t tamanioProceso;
@@ -82,6 +69,17 @@ typedef struct {
     size_t kernel_fd;
     size_t consola_fd;
 } t_pcb;
+
+typedef struct
+{
+    t_pcb* pcb;
+    int conexion_cpu_dispatch;
+    int conexion_cpu_interrupt;
+    char* algoritmo_planificacion;
+    t_log* logger;
+    uint32_t tiempo_maximo_bloqueado;
+    double alpha;
+} t_attrs_planificacion;
 
 t_config* iniciarConfig(char*);
 t_log* iniciarLogger(char*, char*);

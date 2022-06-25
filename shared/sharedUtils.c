@@ -283,7 +283,6 @@ void enviarPCB(int socketDestino, t_pcb* pcb, op_code codigoOperacion) {
     agregarEntero(paquete, pcb->programCounter);
     agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
     agregarEntero(paquete, pcb->estimacionRafaga);
-    agregarEntero(paquete, pcb->duracionUltimaRafaga);
     agregarEntero(paquete, pcb->consola_fd);
     agregarEntero(paquete, pcb->kernel_fd);
     agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
@@ -318,10 +317,6 @@ t_pcb* recibirPCB(int socketDesde){
     tamanioValoresFijos+=sizeof(size_t);
     recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
     pcb->estimacionRafaga = (size_t) auxiliar;
-    tamanioValoresFijos+=sizeof(size_t);
-    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
-    pcb->duracionUltimaRafaga = (size_t) auxiliar;
-    tamanioValoresFijos+=sizeof(size_t);
     recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
     pcb->consola_fd = (size_t) auxiliar;
     tamanioValoresFijos+=sizeof(size_t);
