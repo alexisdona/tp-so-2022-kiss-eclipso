@@ -14,7 +14,7 @@
 #include <commons/collections/queue.h>
 #include "include/estructuras.h"
 
-#define CONFIG_FILE "../kernel/src/config/kernel.config"
+#define CONFIG_FILE "../src/config/kernel.config"
 
 
 

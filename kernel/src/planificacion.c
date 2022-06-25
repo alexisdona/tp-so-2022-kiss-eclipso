@@ -56,8 +56,8 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, t_log* 
                 GRADO_MULTIPROGRAMACION++;
                 printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
                 pthread_mutex_unlock(&mutexGradoMultiprogramacion);
-              //  avisarProcesoTerminado(pcbFinalizado->consola_fd);
-                enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
+                avisarProcesoTerminado(pcbFinalizado->consola_fd);
+                //enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
                  sem_post(&semGradoMultiprogramacion);
                 atendi_dispatch = 1;
                 break;
@@ -102,8 +102,12 @@ void bloquearProceso(t_pcb* pcb){
     if (instruccion->codigo_operacion ==  IO) {
         operando tiempoBloqueado = instruccion->parametros[0];
         if(tiempoBloqueado>=TIEMPO_MAXIMO_BLOQUEADO){
+            log_info(logger,"SUSPENDO EL PROCESO");
             suspenderBlockedProceso(pcb);
-        };
+        }else{
+        	log_info(logger,string_from_format("BLOQUEO AL PROCESO POR %ds",(tiempoBloqueado/1000)));
+        	usleep(tiempoBloqueado*1000);
+        }
     }
 }
 
@@ -113,6 +117,7 @@ void suspenderBlockedProceso(t_pcb* pcb){
     pthread_mutex_unlock(&mutexColaBloqueados);
 
     pthread_mutex_lock(&mutexColaSuspendedBloqued);
+    enviarPCB(conexionMemoria,pcbEnColaBlocked,SWAPEAR_PROCESO);
     queue_push(SUSPENDED_BLOCKED, pcbEnColaBlocked);
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
 

@@ -22,6 +22,8 @@ pthread_mutex_t mutexColaBloqueados;
 pthread_mutex_t mutexColaSuspendedBloqued;
 pthread_mutex_t  mutexGradoMultiprogramacion;
 int valorSemaforoContador;
+int conexionMemoria;
+t_log* logger;
 
 void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int, t_log*);
 void iniciarPlanificacion(t_pcb*, t_log*, int);

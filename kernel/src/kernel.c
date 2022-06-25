@@ -1,10 +1,9 @@
 #include <semaphore.h>
-#include <../src/include/planificacion.h>
+#include "../src/include/planificacion.h"
 #include "kernel.h"
 
 //Variables globales
-t_log* logger;
-int kernel_fd, conexionCPUDispatch;
+int kernel_fd, conexionCPUDispatch, conexionInterrupt;
 t_config * config;
 
 void sighandler(int s) {
@@ -30,8 +29,10 @@ int main() {
     char* ipCpu= config_get_string_value(config,"IP_CPU");
     int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
     char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
-    int conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
+
+    conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
     conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
+    //conexionInterrupt = crearConexion(ipCpu, puertoCpuInterrupt, "Kernel");
     enviarMensaje("hola CPU soy el kernel", conexionCPUDispatch);
     enviarMensaje("hola  MEMORIA soy el kernel", conexionMemoria);
 
@@ -63,7 +64,7 @@ void procesar_conexion(void* void_args) {
     free(attrs);
 
     while (cliente_fd != -1) {
-        printf("entro un cliente nuevo: %d\n", cliente_fd);
+        //printf("entro un cliente nuevo: %d\n", cliente_fd);
 		op_code cod_op = recibirOperacion(cliente_fd);
 		switch (cod_op) {
 			case MENSAJE:
@@ -79,8 +80,8 @@ void procesar_conexion(void* void_args) {
                 break;
 
             case -1:
-				log_info(logger, "La consola se desconecto.");
-              //  cliente_fd = -1;
+				//log_info(logger, "La consola se desconecto.");
+            	//cliente_fd = -1;
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
