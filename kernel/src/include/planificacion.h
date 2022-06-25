@@ -36,8 +36,12 @@ void ordenar_procesos_lista_READY();
 void checkear_proceso_y_replanificar(t_pcb*);
 void replanificar_y_enviar_nuevo_proceso(t_pcb*, t_pcb*);
 void agregar_proceso_y_replanificar_READY(t_pcb*);
-void iniciar_algoritmo_planificacion(char*); 
+void iniciar_algoritmo_planificacion(char*, t_pcb*);
 t_pcb* obtener_proceso_en_READY();
 static bool sort_by_rafaga(void*, void*);
+void planificacion_FIFO(t_pcb*);
+void incrementar_grado_multiprogramacion();
+void decrementar_grado_multiprogramacion();
+void eliminar_proceso_de_READY();
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

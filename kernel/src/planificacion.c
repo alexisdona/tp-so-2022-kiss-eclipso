@@ -19,6 +19,8 @@ void iniciarPlanificacionCortoPlazo(t_attrs_planificacion* attrs_planificacion) 
     //  printf("Entra en inciarPlanificacion de corto plazo\n");
     tiempo_max_bloqueo = attrs_planificacion->tiempo_maximo_bloqueado;
     ALFA = attrs_planificacion->alpha;
+    conexionCPUDispatch = attrs_planificacion->conexion_cpu_dispatch;
+    conexionCPUInterrupt = attrs_planificacion->conexion_cpu_interrupt;
 
     uint32_t atendi_dispatch = 0;
     sem_wait(&semGradoMultiprogramacion);
@@ -28,21 +30,10 @@ void iniciarPlanificacionCortoPlazo(t_attrs_planificacion* attrs_planificacion) 
     pthread_mutex_unlock(&mutexColaNew);
 
     pthread_mutex_lock(&mutexColaReady);
-    list_add(READY, pcbEnColaNew);
-    iniciar_algoritmo_planificacion(attrs_planificacion->algoritmo_planificacion);
+
+    iniciar_algoritmo_planificacion(attrs_planificacion->algoritmo_planificacion, pcbEnColaNew);
   
     pthread_mutex_unlock(&mutexColaReady);
-
-    pthread_mutex_lock(&mutexGradoMultiprogramacion);
-    GRADO_MULTIPROGRAMACION--;
-    printf("GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
-    pthread_mutex_unlock(&mutexGradoMultiprogramacion);
-
-    conexionCPUDispatch = attrs_planificacion->conexion_cpu_dispatch;
-    conexionCPUInterrupt = attrs_planificacion->conexion_cpu_interrupt;
-    t_pcb* pcb_a_ejecutar = obtener_proceso_en_READY();
-    enviarPCB(conexionCPUDispatch, pcb_a_ejecutar, PCB); 
-    eliminar_proceso_de_READY(pcb_a_ejecutar);
 
     time_t tiempo_inicial = time(NULL);
     
@@ -64,13 +55,10 @@ void iniciarPlanificacionCortoPlazo(t_attrs_planificacion* attrs_planificacion) 
                 t_pcb* pcbFinalizado = recibirPCB(conexionCPUDispatch);
                 printf("pcbFinalizado->idProceso: %zu\n", pcbFinalizado->idProceso);
                 printf("pcbFinalizado->tamanioProceso: %zu\n", pcbFinalizado->tamanioProceso);
-                pthread_mutex_lock(&mutexGradoMultiprogramacion);
-                GRADO_MULTIPROGRAMACION++;
-                printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
-                pthread_mutex_unlock(&mutexGradoMultiprogramacion);
+                incrementar_grado_multiprogramacion();
               //  avisarProcesoTerminado(pcbFinalizado->consola_fd);
                 enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
-                 sem_post(&semGradoMultiprogramacion);
+                sem_post(&semGradoMultiprogramacion);
                 atendi_dispatch = 1;
                 break;
             case DESALOJAR_PROCESO:
@@ -96,23 +84,39 @@ time_t calcular_tiempo_en_exec(time_t tiempo_inicial) {
     return tiempo_final - tiempo_inicial;
 }
 
- // si el proceso A es el seleccionado para ejecutar (ya que tiene menos ráfaga que el B y el C), 
- // ya se sabe que entre el A, B y C siempre el A va a ser el que tenga mas prioridad. 
+void decrementar_grado_multiprogramacion() {
+    pthread_mutex_lock(&mutexGradoMultiprogramacion);
+    GRADO_MULTIPROGRAMACION--;
+    printf("GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
+    pthread_mutex_unlock(&mutexGradoMultiprogramacion);
+}
+
+void incrementar_grado_multiprogramacion() {
+    pthread_mutex_lock(&mutexGradoMultiprogramacion);
+    GRADO_MULTIPROGRAMACION++;
+    printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
+    pthread_mutex_unlock(&mutexGradoMultiprogramacion);
+}
+
+// si el proceso A es el seleccionado para ejecutar (ya que tiene menos ráfaga que el B y el C), 
+// ya se sabe que entre el A, B y C siempre el A va a ser el que tenga mas prioridad. 
 // hacer la comparación de ráfagas solo en el caso de que entre un nuevo proceso a ready.
 
-void iniciar_algoritmo_planificacion(char* algoritmoPlanificacion) {
-    // obtengo la pcb de la primer posicion de la lista
-    t_pcb* pcb_a_ejecutar = obtener_proceso_en_READY();
-    // Si el algoritmo es SJF y la lista contiene mas de 1 proceso se checkea el proceso y se replanifica en caso de ser necesario
-    // El primer proceso se ejecuta siempre, por eso consulto si la lista contiene mas de un elemento
-    //Si no cumple estas condiciones sigue el camino normal y se manda a ejecutar el proceso normalmente 
-    if (strcmp("SJF", algoritmoPlanificacion)) { 
-        checkear_proceso_y_replanificar(pcb_a_ejecutar); 
-    }
+void iniciar_algoritmo_planificacion(char* algoritmoPlanificacion, t_pcb* pcb) {
+    strcmp("SJF", algoritmoPlanificacion) && list_size(READY) > 0 ?  
+    agregar_proceso_y_replanificar_READY(pcb) : planificacion_FIFO(pcb);
+}
+
+void planificacion_FIFO(t_pcb* pcb) {
+    decrementar_grado_multiprogramacion();
+    enviarPCB(conexionCPUDispatch, pcb, PCB); 
+    eliminar_proceso_de_READY(pcb);
 }
 
 void agregar_proceso_y_replanificar_READY(t_pcb* pcb) {
     list_add(READY, pcb);
+    // cuando un proceso llegue a la cola READY se deberá enviar una Interrupción al proceso CPU
+    enviar_interrupcion(conexionCPUInterrupt, DESALOJAR_PROCESO);
     ordenar_procesos_lista_READY();
 }
 
@@ -208,7 +212,6 @@ void checkear_proceso_y_replanificar(t_pcb* pcbEnExec) {
     t_pcb* pcb = obtener_proceso_en_READY();
 
     if (pcb->estimacionRafaga < pcbEnExec->estimacionRafaga) { 
-       enviar_interrupcion(conexionCPUInterrupt, DESALOJAR_PROCESO);
        replanificar_y_enviar_nuevo_proceso(pcb, pcbEnExec);
     }
 }
