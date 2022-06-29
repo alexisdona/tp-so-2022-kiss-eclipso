@@ -27,7 +27,7 @@ int main() {
     TIEMPO_MAXIMO_BLOQUEADO = config_get_int_value(config, "TIEMPO_MAXIMO_BLOQUEADO");
     sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
 
-    char* IP_KERNEL= config_get_string_value(config,"IP_KERNEL");
+    char* IP_KERNEL = config_get_string_value(config,"IP_KERNEL");
     char* PUERTO_KERNEL= config_get_string_value(config,"PUERTO_ESCUCHA");
     char* IP_MEMORIA= config_get_string_value(config,"IP_MEMORIA");
     int PUERTO_MEMORIA = config_get_int_value(config,"PUERTO_MEMORIA");
@@ -42,9 +42,10 @@ int main() {
     conexionMemoria = crearConexion(IP_MEMORIA, PUERTO_MEMORIA, "Kernel");
     conexionCPUDispatch = crearConexion(IP_CPU, PUERTO_CPU_DISPATCH, "Kernel");
     conexionCPUInterrupt = crearConexion(IP_CPU, PUERTO_CPU_INTERRUPT, "Kernel");
+
     enviarMensaje("hola CPU soy el kernel", conexionCPUDispatch);
     enviarMensaje("hola  MEMORIA soy el kernel", conexionMemoria);
-    enviarMensaje("Puerto de interrupcion --->", conexionCPUInterrupt);
+
     kernel_fd = iniciarServidor(IP_KERNEL, PUERTO_KERNEL, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
 
@@ -196,7 +197,6 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso, int so
 
     return pcb;
 }
-
 
 
 

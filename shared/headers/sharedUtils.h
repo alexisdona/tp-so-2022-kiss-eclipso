@@ -15,6 +15,7 @@
 #include <commons/log.h>
 #include<commons/collections/list.h>
 #include <commons/string.h>
+#include <pthread.h>
 
 extern int errno;
 

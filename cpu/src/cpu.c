@@ -30,8 +30,7 @@ int main(void) {
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
     log_info(logger, "CPU listo para recibir un kernel");
     cliente_dispatch = esperarCliente(cpu_dispatch,logger);
-
-    cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
+	hilo_interrupcion(ip, puerto_interrupt);
  	conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
  	enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
 	//log_info(logger, "Te conectaste con Memoria");
@@ -175,8 +174,26 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 
 //-----------Ciclo de interrupcion-----------
 
-void atender_interrupciones() {
-	log_info(logger,"Entro en atender_interrupciones");
+void hilo_interrupcion() {
+	pthread_t ATENDER_INTERRUPCION;
+    if(!pthread_create(&ATENDER_INTERRUPCION, NULL, (void*) atender_interrupcion, NULL))
+        pthread_detach(ATENDER_INTERRUPCION);
+    else {
+        log_error(logger, "ERROR CRITICO INICIANDO EL SERVIDOR. NO SE PUDO CREAR EL HILO PARA ATENDER INTERRUPCION. ABORTANDO...");
+        return EXIT_FAILURE;
+    }
+}
+
+void atender_interrupcion(char* ip, char* puerto_interrupt) {
+	cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger); 
+    free(puerto_interrupt);
+	printf("Inicializado el hilo para atender las interrupciones...");
+    logger(logger, "Inicializado el hilo para atender las interrupciones...");
+}
+
+void procesar_interrupcion() {
+	printf("El CPU esta atendiendo una interrupcion...");
+	log_info(logger,"El CPU esta atendiendo una interrupcion...");
 	if(cpuInterrupt != -1) {
 		op_code cod_op = recibirOperacion(cpuInterrupt);
 		t_pcb* pcbNuevo;
@@ -186,7 +203,7 @@ void atender_interrupciones() {
 				pcbNuevo = recibirPCB(cpuDispatch);
 				log_info(logger,"Recibi nuevo PCB");
 				enviarPCB(cpuDispatch, pcb, cod_op);
-				log_info(logger, "Envio PCB que estaba ejecutando");
+				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
 				pcb = pcbNuevo;
 			   break;
 			case -1:

@@ -158,7 +158,7 @@ void bloquearProceso(t_pcb* pcb){
     t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
     if (instruccion->codigo_operacion == IO) {
         operando tiempoBloqueado = instruccion->parametros[0];
-        if(tiempoBloqueado>=TIEMPO_MAXIMO_BLOQUEADO){
+        if(tiempoBloqueado >= TIEMPO_MAXIMO_BLOQUEADO){
             suspenderBlockedProceso(pcb);
         };
     }
@@ -173,11 +173,13 @@ void suspenderBlockedProceso(t_pcb* pcb){
     queue_push(SUSPENDED_BLOCKED, pcbEnColaBlocked);
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
 
-    pthread_mutex_lock(&mutexGradoMultiprogramacion);
-    GRADO_MULTIPROGRAMACION++;
+    incrementar_grado_multiprogramacion();
     printf("suspenderProceso() --> GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
-    pthread_mutex_unlock(&mutexGradoMultiprogramacion);
     sem_post(&semGradoMultiprogramacion);
+    // enviar mensaje a memoria con la información necesaria y se esperará la confirmación del mismo.
+
+    //pasar a suspended ready: transición que se da al dormir ese proceso durante el tiempo restante 
+    //entre el que se quiera bloquear y el maximo
 }
 
 void estimar_proxima_rafaga(time_t tiempo, t_pcb* pcb){
