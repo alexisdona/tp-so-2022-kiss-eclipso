@@ -17,11 +17,6 @@
 #define LOG_FILE "memoria.log"
 #define CONFIG_FILE "../memoriaswap/src/config/memoria.config"
 
-typedef struct {
-    t_log* log;
-    int fd;
-    char* nombre;
-} t_procesar_conexion_attrs;
 
 
 #endif /* SRC_MEMORIA_H_ */

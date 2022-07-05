@@ -21,7 +21,7 @@ pthread_mutex_t mutexColaSuspendedBloqued;
 pthread_mutex_t  mutexGradoMultiprogramacion;
 int valorSemaforoContador;
 uint32_t tiempo_max_bloqueo;
-int conexionCPUDispatch, conexionCPUInterrupt;
+int kernel_fd, conexionCPUDispatch, conexionCPUInterrupt, conexionMemoria;
 
 void iniciarPlanificacionCortoPlazo(t_attrs_planificacion*);
 void iniciarPlanificacion(t_attrs_planificacion*);

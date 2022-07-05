@@ -82,6 +82,14 @@ typedef struct
     double alpha;
 } t_attrs_planificacion;
 
+typedef struct {
+    char* ip;
+    int puerto;
+    t_log* log;
+    int fd;
+    char* nombre_kernel;
+} t_procesar_conexion_attrs;
+
 t_config* iniciarConfig(char*);
 t_log* iniciarLogger(char*, char*);
 t_paquete* crearPaquete(void);

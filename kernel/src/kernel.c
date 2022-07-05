@@ -5,7 +5,6 @@
 //Variables globales
 
 t_log* logger;
-int kernel_fd, conexionCPUDispatch, conexionCPUInterrupt, conexionMemoria;
 t_config * config;
 t_attrs_planificacion* info_planificacion;
 

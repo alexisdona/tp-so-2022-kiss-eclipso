@@ -10,6 +10,7 @@
 #include<commons/collections/list.h>
 #include "../../shared/headers/sharedUtils.h"
 #include "include/utils.h"
+#include <pthread.h>
 
 #define LOG_NAME "CPU_LOG"
 #define LOG_FILE "cpu.log"
@@ -25,7 +26,8 @@ void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo);
 void operacion_EXIT(op_code proceso_respuesta);
 void preparar_pcb_respuesta(t_paquete* paquete);
 void estimar_proxima_rafaga(time_t tiempo);
-void atender_interrupciones();
+int hilo_interrupcion2(char*, int);
 void loggearPCB(t_pcb* pcb);
+void procesar_conexion_interrupt(void*);
 
 #endif /* SRC_CPU_H_ */

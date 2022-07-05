@@ -23,14 +23,14 @@ int main(void) {
 
 	int puertoMemoria = config_get_int_value(config,"PUERTO_MEMORIA");
     char* puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
-    char* puerto_interrupt = config_get_string_value(config,"PUERTO_ESCUCHA_INTERRUPT");
+    int puerto_interrupt = config_get_int_value(config,"PUERTO_ESCUCHA_INTERRUPT");
     retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
     int tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
 
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
     log_info(logger, "CPU listo para recibir un kernel");
     cliente_dispatch = esperarCliente(cpu_dispatch,logger);
-	hilo_interrupcion(ip, puerto_interrupt);
+	//hilo_interrupcion2(ip, puerto_interrupt);
  	conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
  	enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
 	//log_info(logger, "Te conectaste con Memoria");
@@ -89,7 +89,7 @@ void comenzar_ciclo_instruccion(){
 		proceso_respuesta = fase_execute(instruccion, operador);
 
 		if(proceso_respuesta == CONTINUA_PROCESO) {
-			atender_interrupciones();
+
 		}
 
 	}
@@ -174,52 +174,45 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 
 //-----------Ciclo de interrupcion-----------
 
-void hilo_interrupcion() {
-	pthread_t ATENDER_INTERRUPCION;
-    if(!pthread_create(&ATENDER_INTERRUPCION, NULL, (void*) atender_interrupcion, NULL))
-        pthread_detach(ATENDER_INTERRUPCION);
-    else {
-        log_error(logger, "ERROR CRITICO INICIANDO EL SERVIDOR. NO SE PUDO CREAR EL HILO PARA ATENDER INTERRUPCION. ABORTANDO...");
-        return EXIT_FAILURE;
-    }
-}
-
-void atender_interrupcion(char* ip, char* puerto_interrupt) {
-	cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger); 
-    free(puerto_interrupt);
-	printf("Inicializado el hilo para atender las interrupciones...");
-    logger(logger, "Inicializado el hilo para atender las interrupciones...");
-}
-
-void procesar_interrupcion() {
-	printf("El CPU esta atendiendo una interrupcion...");
-	log_info(logger,"El CPU esta atendiendo una interrupcion...");
-	if(cpuInterrupt != -1) {
-		op_code cod_op = recibirOperacion(cpuInterrupt);
-		t_pcb* pcbNuevo;
-
-		switch (cod_op) {
-			case DESALOJAR_PROCESO:
-				pcbNuevo = recibirPCB(cpuDispatch);
-				log_info(logger,"Recibi nuevo PCB");
-				enviarPCB(cpuDispatch, pcb, cod_op);
-				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
-				pcb = pcbNuevo;
-			   break;
-			case -1:
-				log_info(logger, "El Kernel no envio ninguna interrupcion");
-				cliente_dispatch=-1;
-				break;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;
-		}
-	}
+int hilo_interrupcion2(char* ip, int puerto) {
+        pthread_t hilo;
+        t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
+        attrs->log = logger;
+        attrs->ip = ip;
+        attrs->puerto = puerto;
+        pthread_create(&hilo, NULL, (void*) procesar_conexion_interrupt, (void*) attrs);
+        pthread_detach(hilo);
+        return 1;
 }
 
 void loggearPCB(t_pcb* pcb){
 	log_info(logger, "PCB:");
 	log_info(logger, "ID: %zu",pcb->idProceso);
+}
+
+void procesar_conexion_interrupt(void* void_args) {
+    t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
+    cpuInterrupt = crearConexion(attrs->ip, attrs->puerto, NULL);
+    clienteInterrupt = esperarCliente(cpuInterrupt, attrs->log);
+    int cliente_fd = attrs->fd;
+
+    while (cliente_fd != -1) {
+        printf("entro un kernel nuevo por interrupt: %d\n", cliente_fd);
+        op_code cod_op = recibirOperacion(cliente_fd);
+
+        switch (cod_op) {
+            case MENSAJE:
+                recibirMensaje(cliente_fd, logger);
+                break;
+            case -1:
+                log_info(logger, "La consola se desconecto.");
+                //  cliente_fd = -1;
+                break;
+            default:
+                log_warning(logger,"Operacion desconocida.");
+                break;
+        }
+    }
 }
 
 
