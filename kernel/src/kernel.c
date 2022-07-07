@@ -34,28 +34,35 @@ int main() {
     char* IP_CPU = config_get_string_value(config,"IP_CPU");
     char* ALGORITMO_PLANIFICACION = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
     int PUERTO_CPU_DISPATCH = config_get_int_value(config,"PUERTO_CPU_DISPATCH");
-    char* PUERTO_CPU_INTERRUPT = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
+    int PUERTO_CPU_INTERRUPT = config_get_int_value(config,"PUERTO_CPU_INTERRUPT");
     double ALFA = config_get_double_value(config, "ALFA");
 
     /* CONEXIONES A MODULOS */
 
-    conexionMemoria = crearConexion(IP_MEMORIA, PUERTO_MEMORIA, "Kernel");
-    conexionCPUDispatch = crearConexion(IP_CPU, PUERTO_CPU_DISPATCH, "Kernel");
-    conexionCPUInterrupt = crearConexion(IP_CPU, PUERTO_CPU_INTERRUPT, "Kernel");
+    /* CONEXIONES A MODULOS */
+    printf("IP_CPU: %s\tDISPATCH: %d\tINTERRUPT: %d\n",IP_CPU,PUERTO_CPU_DISPATCH,PUERTO_CPU_INTERRUPT);
 
-    enviarMensaje("hola CPU soy el kernel", conexionCPUDispatch);
-    enviarMensaje("hola  MEMORIA soy el kernel", conexionMemoria);
+    conexionMemoria = crearConexion(IP_MEMORIA, PUERTO_MEMORIA, "Kernel");
+    printf("MEMORIA-SOCKET: %d\n",conexionMemoria);
+
+    conexionCPUDispatch = crearConexion(IP_CPU, PUERTO_CPU_DISPATCH, "Kernel");
+    printf("CPU-DISP-SOCKET: %d\n",conexionCPUDispatch);
+
+    conexionCPUInterrupt = crearConexion(IP_CPU, PUERTO_CPU_INTERRUPT, "Kernel");
+    printf("CPU-INT-SOCKET: %d\n",conexionCPUInterrupt);
 
     kernel_fd = iniciarServidor(IP_KERNEL, PUERTO_KERNEL, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
 
+    enviarMensaje("hola CPU soy el kernel", conexionCPUDispatch);
+    enviarMensaje("hola  MEMORIA soy el kernel", conexionMemoria);
     /* INICIALIZACION DE COLAS Y LISTAS */
 
     NEW = queue_create();
     READY = list_create();
     BLOCKED = queue_create();
-    SUSPENDED_BLOCKED = queue_create();
-
+    SUSPENDED_BLOCKED = list_create();
+    SUSPENDED_READY = list_create();
     /* Atributos a enviar para la planificacion */
 
     t_attrs_planificacion* attrs_planificacion = malloc(sizeof(t_attrs_planificacion));

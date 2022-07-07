@@ -1,7 +1,6 @@
 #include "cpu.h"
 
 t_log* logger;
-int cpuDispatch;
 int cpuInterrupt;
 t_config * config;
 int conexionMemoria;
@@ -27,14 +26,22 @@ int main(void) {
     retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
     int tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
 
+    printf("IP_CPU: %s\tDISPATCH: %s\tINTERRUPT: %s\n", ip, puerto_dispatch, puerto_interrupt);
+
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
+    printf("CPU-DISPATCH: %d\n",cpu_dispatch);
+
     log_info(logger, "CPU listo para recibir un kernel");
     cliente_dispatch = esperarCliente(cpu_dispatch,logger);
-	hilo_interrupcion(ip, puerto_interrupt);
- 	conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
- 	enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
-	//log_info(logger, "Te conectaste con Memoria");
-    //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
+    printf("CLIENTE DISPATCH: %d\n", cliente_dispatch);
+
+    cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
+    printf("[AI] CPU-INT: %d\n", cpuInterrupt);
+
+    conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
+    enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
+    //log_info(logger, "Te conectaste con Memoria");
+      //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
 
 	while(cliente_dispatch!=-1) {
 		op_code cod_op = recibirOperacion(cliente_dispatch);
@@ -89,7 +96,7 @@ void comenzar_ciclo_instruccion(){
 		proceso_respuesta = fase_execute(instruccion, operador);
 
 		if(proceso_respuesta == CONTINUA_PROCESO) {
-			atender_interrupciones();
+			escuchar_interrupcion();
 		}
 
 	}
@@ -98,7 +105,7 @@ void comenzar_ciclo_instruccion(){
 
 t_instruccion* fase_fetch(){
 	t_instruccion* instruccion = list_get(pcb->listaInstrucciones, pcb->programCounter);
-	pcb-> programCounter++;
+	pcb->programCounter++;
 	return instruccion;
 }
 
@@ -174,28 +181,32 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 
 //-----------Ciclo de interrupcion-----------
 
-void hilo_interrupcion() {
-	pthread_t ATENDER_INTERRUPCION;
-    if(!pthread_create(&ATENDER_INTERRUPCION, NULL, (void*) atender_interrupcion, NULL))
-        pthread_detach(ATENDER_INTERRUPCION);
-    else {
-        log_error(logger, "ERROR CRITICO INICIANDO EL SERVIDOR. NO SE PUDO CREAR EL HILO PARA ATENDER INTERRUPCION. ABORTANDO...");
-        return EXIT_FAILURE;
+int escuchar_interrupcion() {
+	int cpu_interrupt = esperarCliente(cpuInterrupt, logger);
+    if (cpu_interrupt != -1) {
+       pthread_t hilo_interrupcion;
+       attrs_interrupt* attrs = malloc(sizeof(attrs_interrupt));
+       attrs->cpu_interrupt = cpu_interrupt;
+
+        pthread_create(&hilo_interrupcion, NULL, (void*) atender_interrupcion, (void*) attrs);
+        pthread_detach(hilo_interrupcion);
+
+        return 1;
     }
+	log_error(logger, "ERROR CRITICO INICIANDO EL SERVIDOR. NO SE PUDO CREAR EL HILO PARA ATENDER INTERRUPCION. ABORTANDO...");
+    return 0;
 }
 
-void atender_interrupcion(char* ip, char* puerto_interrupt) {
-	cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger); 
-    free(puerto_interrupt);
-	printf("Inicializado el hilo para atender las interrupciones...");
-    logger(logger, "Inicializado el hilo para atender las interrupciones...");
-}
+void atender_interrupcion(void* void_args) {
+	attrs_interrupt* attrs = (attrs_interrupt*) void_args;
+	int cpu_interrupt = attrs->cpu_interrupt; // cree una estructura por si necesitamos luego saber algo mas de interrupciones
+  free(attrs);
 
-void procesar_interrupcion() {
 	printf("El CPU esta atendiendo una interrupcion...");
-	log_info(logger,"El CPU esta atendiendo una interrupcion...");
-	if(cpuInterrupt != -1) {
-		op_code cod_op = recibirOperacion(cpuInterrupt);
+	log_info(logger, "El CPU esta atendiendo una interrupcion...");
+
+	if (cpu_interrupt != -1) {
+		op_code cod_op = recibirOperacion(cpu_interrupt);
 		t_pcb* pcbNuevo;
 
 		switch (cod_op) {

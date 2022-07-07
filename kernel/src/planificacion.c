@@ -1,13 +1,12 @@
 
 #include <semaphore.h>
-#include <pthread.h>
 #include "include/planificacion.h"
 #include <commons/collections/queue.h>
 
 double ALFA;
 
 void iniciarPlanificacion(t_attrs_planificacion* attrs_planificacion) {
-    log_info(attrs_planificacion->logger, "Iniciando planificación");
+    log_info(attrs_planificacion->logger, "Iniciando planificación...");
     pthread_mutex_lock(&mutexColaNew);
     queue_push(NEW, attrs_planificacion->pcb);
   //  printf("dentro de mutex de cola de new. Tamaño de la cola de NEW: %d\n", queue_size(NEW));
@@ -36,7 +35,7 @@ void iniciarPlanificacionCortoPlazo(t_attrs_planificacion* attrs_planificacion) 
     pthread_mutex_unlock(&mutexColaReady);
 
     time_t tiempo_inicial = time(NULL);
-    
+
     while(conexionCPUDispatch != -1 && atendi_dispatch!=1){
         op_code cod_op = recibirOperacion(conexionCPUDispatch);
         switch(cod_op){
@@ -104,7 +103,7 @@ void incrementar_grado_multiprogramacion() {
 
 void iniciar_algoritmo_planificacion(char* algoritmoPlanificacion, t_pcb* pcb) {
     strcmp("SJF", algoritmoPlanificacion) && list_size(READY) > 0 ?  
-    agregar_proceso_y_replanificar_READY(pcb) : planificacion_FIFO(pcb);
+    planificacion_SJF(pcb) : planificacion_FIFO(pcb);
 }
 
 void planificacion_FIFO(t_pcb* pcb) {
@@ -113,10 +112,14 @@ void planificacion_FIFO(t_pcb* pcb) {
     eliminar_proceso_de_READY(pcb);
 }
 
-void agregar_proceso_y_replanificar_READY(t_pcb* pcb) {
+void agregar_proceso_READY(t_pcb* pcb) {
     list_add(READY, pcb);
-    // cuando un proceso llegue a la cola READY se deberá enviar una Interrupción al proceso CPU
+    // cuando un proceso llegue a la cola READY se deberá enviar una Interrupción al CPU
     enviar_interrupcion(conexionCPUInterrupt, DESALOJAR_PROCESO);
+}
+
+void planificacion_SJF(t_pcb* pcb) {
+    agregar_proceso_READY(pcb)
     ordenar_procesos_lista_READY();
 }
 
@@ -158,28 +161,60 @@ void bloquearProceso(t_pcb* pcb){
     t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
     if (instruccion->codigo_operacion == IO) {
         operando tiempoBloqueado = instruccion->parametros[0];
-        if(tiempoBloqueado >= TIEMPO_MAXIMO_BLOQUEADO){
-            suspenderBlockedProceso(pcb);
+        if(tiempoBloqueado > TIEMPO_MAXIMO_BLOQUEADO){
+            suspender_proceso(pcb);
         };
     }
 }
 
-void suspenderBlockedProceso(t_pcb* pcb){
+
+void suspender_proceso(t_pcb* pcb){
     pthread_mutex_lock(&mutexColaBloqueados);
-    t_pcb * pcbEnColaBlocked = queue_pop(BLOCKED);
+    t_pcb * pcb_a_suspended_blocked = queue_pop(BLOCKED);
     pthread_mutex_unlock(&mutexColaBloqueados);
 
-    pthread_mutex_lock(&mutexColaSuspendedBloqued);
-    queue_push(SUSPENDED_BLOCKED, pcbEnColaBlocked);
+    pthread_mutex_lock(&mutexColaSuspendedBloqued); 
+    list_add(SUSPENDED_BLOCKED, pcb_a_suspended_blocked);
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
-
+    
     incrementar_grado_multiprogramacion();
     printf("suspenderProceso() --> GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
     sem_post(&semGradoMultiprogramacion);
+
+    unsigned int tiempo_en_suspendido = tiempo_en_suspended_blocked(pcb_a_suspended_blocked);
+    sleep(tiempo_en_suspendido);
     // enviar mensaje a memoria con la información necesaria y se esperará la confirmación del mismo.
 
-    //pasar a suspended ready: transición que se da al dormir ese proceso durante el tiempo restante 
-    //entre el que se quiera bloquear y el maximo
+    pthread_mutex_lock(&mutexColaSuspendedBloqued); 
+    t_pcb* pcb_a_suspended_ready = list_get(SUSPENDED_BLOCKED, 0);
+    list_remove(SUSPENDED_BLOCKED, 0);
+    pthread_mutex_unlock(&mutexColaSuspendedBloqued);
+
+    agregar_proceso_SUSPENDED_READY(pcb_a_suspended_ready);    
+}
+
+void agregar_proceso_SUSPENDED_READY(t_pcb* pcb) {
+
+    pthread_mutex_lock(&mutex_cola_suspended_ready);
+    list_add(SUSPENDED_READY, pcb);
+    pthread_mutex_unlock(&mutex_cola_suspended_ready);
+
+    enviar_proceso_SUSPENDED_READY_a_READY();
+}
+
+void enviar_proceso_SUSPENDED_READY_a_READY() {
+    pthread_mutex_lock(&mutexColaReady);
+    t_pcb* pcb_a_ready = list_get(SUSPENDED_READY, 0);
+    list_remove(SUSPENDED_READY, 0);
+    agregar_proceso_READY(pcb_a_ready);
+    pthread_mutex_unlock(&mutexColaReady);
+}
+
+// diferencia entre el tiempo maximo y el tiempo de bloqueo para que un proceso en suspended-blocked pase a suspended-ready
+unsigned int tiempo_en_suspended_blocked(t_pcb* pcb) {
+    t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
+    operando tiempo_bloqueado = instruccion->parametros[0];
+    return tiempo_bloqueado - TIEMPO_MAXIMO_BLOQUEADO;
 }
 
 void estimar_proxima_rafaga(time_t tiempo, t_pcb* pcb){

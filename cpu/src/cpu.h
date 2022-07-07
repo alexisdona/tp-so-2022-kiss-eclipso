@@ -15,6 +15,11 @@
 #define LOG_FILE "cpu.log"
 #define CONFIG_FILE "../cpu/src/config/cpu.config"
 
+
+typedef struct {
+  int cpu_interrupt;
+} attrs_interrupt;
+
 void comenzar_ciclo_instruccion();
 t_instruccion* fase_fetch();
 int fase_decode(t_instruccion*);
@@ -25,7 +30,8 @@ void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo);
 void operacion_EXIT(op_code proceso_respuesta);
 void preparar_pcb_respuesta(t_paquete* paquete);
 void estimar_proxima_rafaga(time_t tiempo);
-void atender_interrupciones();
+void atender_interrupcion(void* void_args);
 void loggearPCB(t_pcb* pcb);
+int escuchar_interrupcion();
 
 #endif /* SRC_CPU_H_ */
