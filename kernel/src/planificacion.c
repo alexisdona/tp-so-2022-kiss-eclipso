@@ -118,7 +118,7 @@ void agregar_proceso_READY(t_pcb* pcb) {
 }
 
 void planificacion_SJF(t_pcb* pcb) {
-    agregar_proceso_READY(pcb)
+    agregar_proceso_READY(pcb);
     ordenar_procesos_lista_READY();
 }
 

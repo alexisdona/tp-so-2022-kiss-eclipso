@@ -211,9 +211,9 @@ void atender_interrupcion(void* void_args) {
 
 		switch (cod_op) {
 			case DESALOJAR_PROCESO:
-				pcbNuevo = recibirPCB(cpuDispatch);
+				pcbNuevo = recibirPCB(cpu_dispatch);
 				log_info(logger,"Recibi nuevo PCB");
-				enviarPCB(cpuDispatch, pcb, cod_op);
+				enviarPCB(cpu_dispatch, pcb, cod_op);
 				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
 				pcb = pcbNuevo;
 			   break;

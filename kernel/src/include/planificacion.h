@@ -30,7 +30,7 @@ void iniciarPlanificacion(t_attrs_planificacion*);
 int inicializarMutex();
 void avisarProcesoTerminado(int);
 void bloquearProceso(t_pcb*);
-void void suspender_proceso(t_pcb* pcb);
+void suspender_proceso(t_pcb* pcb);
 void estimar_proxima_rafaga(time_t, t_pcb*);
 time_t calcular_tiempo_en_exec(time_t); 
 void calcular_rafagas_restantes_proceso_desalojado(time_t, time_t, t_pcb*);
