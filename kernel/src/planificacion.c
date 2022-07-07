@@ -1,7 +1,6 @@
 
 #include <semaphore.h>
 #include "include/planificacion.h"
-#include <commons/collections/queue.h>
 
 double ALFA;
 
@@ -55,7 +54,7 @@ void iniciarPlanificacionCortoPlazo(t_attrs_planificacion* attrs_planificacion) 
                 printf("pcbFinalizado->idProceso: %zu\n", pcbFinalizado->idProceso);
                 printf("pcbFinalizado->tamanioProceso: %zu\n", pcbFinalizado->tamanioProceso);
                 incrementar_grado_multiprogramacion();
-              //  avisarProcesoTerminado(pcbFinalizado->consola_fd);
+                avisarProcesoTerminado(pcbFinalizado->consola_fd);
                 enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
                 sem_post(&semGradoMultiprogramacion);
                 atendi_dispatch = 1;
@@ -168,7 +167,7 @@ void bloquearProceso(t_pcb* pcb){
 }
 
 
-void suspender_proceso(t_pcb* pcb){
+void suspender_proceso(t_pcb* pcb) {
     pthread_mutex_lock(&mutexColaBloqueados);
     t_pcb * pcb_a_suspended_blocked = queue_pop(BLOCKED);
     pthread_mutex_unlock(&mutexColaBloqueados);

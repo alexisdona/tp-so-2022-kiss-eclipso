@@ -1,7 +1,6 @@
 #ifndef TP_2022_1C_ECLIPSO_PLANIFICACION_H
 #define TP_2022_1C_ECLIPSO_PLANIFICACION_H
 
-#include <commons/collections/queue.h>
 #include "../../../shared/headers/sharedUtils.h"
 #include <time.h>
 #include <stdbool.h>
@@ -31,7 +30,7 @@ void iniciarPlanificacion(t_attrs_planificacion*);
 int inicializarMutex();
 void avisarProcesoTerminado(int);
 void bloquearProceso(t_pcb*);
-void suspenderBlockedProceso(t_pcb*);
+void void suspender_proceso(t_pcb* pcb);
 void estimar_proxima_rafaga(time_t, t_pcb*);
 time_t calcular_tiempo_en_exec(time_t); 
 void calcular_rafagas_restantes_proceso_desalojado(time_t, time_t, t_pcb*);
