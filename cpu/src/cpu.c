@@ -9,6 +9,7 @@ t_pcb * pcb;
 int retardo_noop;
 int cpu_dispatch;
 int cliente_dispatch;
+pthread_t hilo_interrupcion;
 
 void imprimirListaInstrucciones(t_pcb *pcb);
 
@@ -37,6 +38,8 @@ int main(void) {
 
     cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
     printf("[AI] CPU-INT: %d\n", cpuInterrupt);
+
+    escuchar_interrupcion();
 
     conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
@@ -94,11 +97,11 @@ void comenzar_ciclo_instruccion(){
 		}
 
 		proceso_respuesta = fase_execute(instruccion, operador);
-
+/*
 		if(proceso_respuesta == CONTINUA_PROCESO) {
 			escuchar_interrupcion();
 		}
-
+*/
 	}
 
 }
@@ -162,7 +165,6 @@ void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 	log_info(logger,"Ejecutando I/O: %d",tiempo_bloqueo);
 	t_paquete* paquete = crearPaquete();
     enviarPCB(cliente_dispatch, pcb,  proceso_respuesta);
-
 }
 
 void operacion_EXIT(op_code proceso_respuesta){
@@ -184,7 +186,7 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 int escuchar_interrupcion() {
 	int cpu_interrupt = esperarCliente(cpuInterrupt, logger);
     if (cpu_interrupt != -1) {
-       pthread_t hilo_interrupcion;
+
        attrs_interrupt* attrs = malloc(sizeof(attrs_interrupt));
        attrs->cpu_interrupt = cpu_interrupt;
 
@@ -200,14 +202,16 @@ int escuchar_interrupcion() {
 void atender_interrupcion(void* void_args) {
 	attrs_interrupt* attrs = (attrs_interrupt*) void_args;
 	int cpu_interrupt = attrs->cpu_interrupt; // cree una estructura por si necesitamos luego saber algo mas de interrupciones
-  free(attrs);
+	free(attrs);
 
-	printf("El CPU esta atendiendo una interrupcion...");
-	log_info(logger, "El CPU esta atendiendo una interrupcion...");
+	printf("CPU-INTERRUPT: %d\n",cpu_interrupt);
 
 	if (cpu_interrupt != -1) {
+		log_info(logger, "El CPU esta atendiendo una interrupcion...");
 		op_code cod_op = recibirOperacion(cpu_interrupt);
 		t_pcb* pcbNuevo;
+
+		printf("COD-OP: %d\n",cod_op);
 
 		switch (cod_op) {
 			case DESALOJAR_PROCESO:

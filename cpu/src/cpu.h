@@ -13,7 +13,7 @@
 
 #define LOG_NAME "CPU_LOG"
 #define LOG_FILE "cpu.log"
-#define CONFIG_FILE "../cpu/src/config/cpu.config"
+#define CONFIG_FILE "../src/config/cpu.config"
 
 
 typedef struct {
@@ -33,5 +33,4 @@ void estimar_proxima_rafaga(time_t tiempo);
 void atender_interrupcion(void* void_args);
 void loggearPCB(t_pcb* pcb);
 int escuchar_interrupcion();
-
 #endif /* SRC_CPU_H_ */
