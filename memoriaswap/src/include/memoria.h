@@ -13,7 +13,7 @@
 
 #define LOG_NAME "MEMORIA_LOG"
 #define LOG_FILE "memoria.log"
-#define CONFIG_FILE "../src/config/memoria.config"
+#define CONFIG_FILE "../memoriaswap/src/config/memoria.config"
 
 typedef struct {
     t_log* log;
@@ -21,7 +21,22 @@ typedef struct {
     char* nombre;
 } t_procesar_conexion_attrs;
 
+typedef struct {
+   uint32_t indice;
+   uint32_t nro_tabla_segundo_nivel; //indice en el segundo array de tablas de segundo nivel
+} t_registro_primer_nivel;
+
+typedef struct {
+    uint32_t indice;
+    uint32_t frame;
+    bool modificado;
+    bool usado;
+    bool presencia;
+} t_registro_segundo_nivel;
+
+
 
 void preparar_modulo_swap();
-
+size_t crear_estructuras_administrativas(size_t);
+void iniciar_estructuras_administrativas();
 #endif /* SRC_MEMORIA_H_ */
