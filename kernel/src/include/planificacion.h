@@ -31,7 +31,7 @@ int inicializarMutex();
 void avisarProcesoTerminado(int);
 void bloquearProceso(t_pcb*);
 void suspenderBlockedProceso(t_pcb*);
-void crear_estructuras_memoria(int, t_pcb*);
-void proceso_en_ready(t_pcb*, int);
+void crear_estructuras_memoria(t_pcb*);
+void proceso_en_ready(t_pcb*);
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

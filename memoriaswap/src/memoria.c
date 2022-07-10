@@ -16,6 +16,7 @@ t_list* lista_registros_primer_nivel;
 t_list* lista_registros_segundo_nivel;
 t_list* lista_tablas_primer_nivel;
 t_list* lista_tablas_segundo_nivel;
+void* espacio_usuario_memoria;
 
 int main(void) {
 	//sem_t semMemoria;
@@ -63,15 +64,11 @@ int main(void) {
                 	swapear_proceso(pcb);
                 	break;
                 case CREAR_ESTRUCTURAS_ADMIN:
-                  //  enviarMensaje("Ya creo las estructuras administrativas", cliente_fd);
                     ;
-                    size_t tamanio_stream;
-                    size_t id_proceso;
-                    size_t tamanio_proceso;
-                    recv(cliente_fd, &tamanio_stream, sizeof(size_t), 0); //tamaño del stream, no me interesa en este momento
-                    recv(cliente_fd, &id_proceso, sizeof(size_t), 0);
-                    recv(cliente_fd, &tamanio_proceso, sizeof(size_t), 0);
-                    size_t indice_tabla_paginas = crear_estructuras_administrativas(tamanio_proceso)-1;
+                    t_pcb* pcb_kernel = recibirPCB(cliente_fd);
+                    size_t indice_tabla_paginas = crear_estructuras_administrativas(pcb->tamanioProceso)-1;
+                    pcb_kernel->tablaPaginas = indice_tabla_paginas;
+                    enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
                     break;
                 case -1:
                     log_info(logger, "El cliente se desconectó");
@@ -127,10 +124,17 @@ size_t crear_estructuras_administrativas(size_t tamanio_proceso) {
 }
 
 void iniciar_estructuras_administrativas() {
+    espacio_usuario_memoria = malloc(tamanio_memoria);
     lista_registros_primer_nivel = list_create();
     lista_registros_segundo_nivel = list_create();
     lista_tablas_primer_nivel = list_create();
     lista_tablas_segundo_nivel = list_create();
 }
 
+void enviar_indice_tabla_paginas(size_t indice_tabla_paginas, size_t id_proceso, int socketDestino) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = ACTUALIZAR_INDICE_TABLA_PAGINAS;
+    agregarEntero(paquete, indice_tabla_paginas);
+    enviarPaquete(paquete, socketDestino);
+}
 

@@ -41,4 +41,8 @@ typedef struct {
 void preparar_modulo_swap();
 size_t crear_estructuras_administrativas(size_t);
 void iniciar_estructuras_administrativas();
+void enviar_indice_tabla_paginas(size_t, size_t, int);
+
+
+
 #endif /* SRC_MEMORIA_H_ */

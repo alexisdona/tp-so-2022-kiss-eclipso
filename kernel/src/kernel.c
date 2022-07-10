@@ -78,7 +78,8 @@ void procesar_conexion(void* void_args) {
               //  printf("pcb->idProceso: %zu\n",pcb->idProceso);
                 iniciarPlanificacion(pcb, logger, conexionCPUDispatch, conexionMemoria);
                 break;
-
+		    case ACTUALIZAR_INDICE_TABLA_PAGINAS:
+		        printf("Entra a actualizar indice de tabla de paginas");
             case -1:
 				//log_info(logger, "La consola se desconecto.");
             	//cliente_fd = -1;

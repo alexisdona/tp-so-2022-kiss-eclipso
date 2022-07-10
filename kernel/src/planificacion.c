@@ -22,7 +22,7 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, int con
     pthread_mutex_unlock(&mutexColaNew);
 
     pthread_mutex_lock(&mutexColaReady);
-    proceso_en_ready(pcbEnColaNew, conexionMemoria);
+    proceso_en_ready(pcbEnColaNew);
     pthread_mutex_unlock(&mutexColaReady);
 
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
@@ -124,18 +124,28 @@ void suspenderBlockedProceso(t_pcb* pcb){
     sem_post(&semGradoMultiprogramacion);
 }
 
-void proceso_en_ready(t_pcb* pcbEnColaNew, int conexionMemoria ) {
+void proceso_en_ready(t_pcb* pcbEnColaNew ) {
     queue_push(READY, pcbEnColaNew);
-    crear_estructuras_memoria(conexionMemoria, pcbEnColaNew);
+    crear_estructuras_memoria(pcbEnColaNew);
 }
 
-void crear_estructuras_memoria(int conexionMemoria, t_pcb* pcb) {
+void crear_estructuras_memoria( t_pcb* pcb) {
+    int pcb_actualizado = 0;
     t_paquete* paquete = crearPaquete();
-    paquete->codigo_operacion = CREAR_ESTRUCTURAS_ADMIN;
-    agregarEntero(paquete, pcb->idProceso);
-    agregarEntero(paquete, pcb->tamanioProceso);
+    enviarPCB(conexionMemoria, pcb, CREAR_ESTRUCTURAS_ADMIN );
     printf("pcb->idProceso: %zu\n pcb->tamanioProceso:%zu", pcb->idProceso, pcb->tamanioProceso);
-    enviarPaquete(paquete, conexionMemoria);
+    while(conexionMemoria != -1 && pcb_actualizado == 0){
+        op_code cod_op = recibirOperacion(conexionMemoria);
+        switch(cod_op) {
+            case ACTUALIZAR_INDICE_TABLA_PAGINAS:
+                ;
+                t_pcb* pcb_aux = recibirPCB(conexionMemoria);
+                pcb->tablaPaginas = pcb_aux->tablaPaginas;
+                printf("\nACTUALIZAR_TABLA_PAGINAS: PCB->idProceso: %ld, PCB->tablaPaginas:%ld\n", pcb->idProceso, pcb->tablaPaginas);
+                pcb_actualizado=1;
+                break;
+        }
+    }
 }
 
 
