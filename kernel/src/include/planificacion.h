@@ -23,8 +23,9 @@ pthread_mutex_t mutex_cola_suspended_ready;
 pthread_mutex_t  mutexGradoMultiprogramacion;
 int valorSemaforoContador;
 uint32_t tiempo_max_bloqueo;
+uint32_t tiempo_en_ejecucion;
 int conexionCPUDispatch, conexionCPUInterrupt;
-bool proceso_en_ejecucion;
+bool hay_proceso_en_ejecucion;
 
 void iniciarPlanificacionCortoPlazo(t_attrs_planificacion*);
 void iniciarPlanificacion(t_attrs_planificacion*);
@@ -32,9 +33,9 @@ int inicializarMutex();
 void avisarProcesoTerminado(int);
 void bloquearProceso(t_pcb*);
 void suspender_proceso(t_pcb* pcb);
-void estimar_proxima_rafaga(time_t, t_pcb*);
+void estimar_proxima_rafaga(uint32_t, t_pcb*);
 time_t calcular_tiempo_en_exec(time_t); 
-void calcular_rafagas_restantes_proceso_desalojado(time_t, time_t, t_pcb*);
+void calcular_rafagas_restantes_proceso_desalojado(uint32_t tiempo_en_ejecucion, t_pcb* pcb_desalojada);
 void ordenar_procesos_lista_READY();
 void checkear_proceso_y_replanificar(t_pcb*);
 void replanificar_y_enviar_nuevo_proceso(t_pcb*, t_pcb*);
@@ -51,5 +52,6 @@ unsigned int tiempo_en_suspended_blocked(t_pcb*);
 void enviar_proceso_SUSPENDED_READY_a_READY();
 void agregar_proceso_SUSPENDED_READY(t_pcb*);
 void planificacion_SJF(t_pcb* pcb);
+void interrupcion_por_proceso_en_ready();
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

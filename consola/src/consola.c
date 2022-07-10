@@ -35,8 +35,9 @@ int main(int argc, char* argv[]) {
                 recibirMensaje(conexionKernel, logger);
                 break;
             case TERMINAR_PROCESO:
-                recibirMensaje(conexionKernel, logger);
+            	log_info(logger,"TERMINANDO PROGRAMA");
                 terminarPrograma(conexionKernel, logger, config);
+                return EXIT_SUCCESS;
                 break;
             default:
                 log_trace(logger, "Operación desconocida en consola");

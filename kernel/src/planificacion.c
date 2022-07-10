@@ -7,7 +7,6 @@ double ALFA;
 t_attrs_planificacion* attrs_plani;
 
 void iniciarPlanificacion(t_attrs_planificacion* attrs_planificacion) {
-	proceso_en_ejecucion=false;
 	attrs_plani = attrs_planificacion;
     log_info(attrs_plani->logger, "Iniciando planificación...");
     pthread_mutex_lock(&mutexColaNew);
@@ -41,45 +40,56 @@ void iniciarPlanificacionCortoPlazo(t_attrs_planificacion* attrs_planificacion) 
     printf("CPU-DISPATCH: %d\n",conexionCPUDispatch);
 
     while(conexionCPUDispatch != -1){
-    	printf("RECIBIENDO OPERACION\n");
         op_code cod_op = recibirOperacion(conexionCPUDispatch);
-        printf("COD-OP: %d\n",cod_op);
-        switch(cod_op){
-            case BLOQUEAR_PROCESO:
-                printf("BLOQUEAR PROCESO.......\n");
-                t_pcb* pcb = recibirPCB(conexionCPUDispatch);
-                printf("PCB ID: %zu\n",pcb->idProceso);
-                printf("PCB PC: %zu\n",pcb->programCounter);
-                bloquearProceso(pcb);
-                time_t tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
-                estimar_proxima_rafaga(tiempo_en_ejecucion, pcb);
-                break;
-            case TERMINAR_PROCESO:
-                log_info(attrs_planificacion->logger, "PCB recibido para terminar proceso");
-                t_pcb* pcbFinalizado = recibirPCB(conexionCPUDispatch);
-                printf("pcbFinalizado->idProceso: %zu\n", pcbFinalizado->idProceso);
-                printf("pcbFinalizado->tamanioProceso: %zu\n", pcbFinalizado->tamanioProceso);
-                incrementar_grado_multiprogramacion();
-                avisarProcesoTerminado(pcbFinalizado->consola_fd);
-                enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
-                sem_post(&semGradoMultiprogramacion);
-                //atendi_dispatch = 1;
-                break;
-            case DESALOJAR_PROCESO:
-            	log_info(attrs_planificacion->logger, "PCB recibido desalojado por la CPU");
-                t_pcb* pcb_desalojada = recibirPCB(conexionCPUDispatch);
-                tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
-                calcular_rafagas_restantes_proceso_desalojado(tiempo_inicial, tiempo_en_ejecucion, pcb_desalojada);
-                checkear_proceso_y_replanificar(pcb_desalojada);
-                break;
-            default:
-                printf("Cod_op=%d\n", cod_op);
+        if(cod_op!=-1) {
+        	printf("RECIBIENDO OPERACION\n");
+        	printf("COD-OP: %d\n",cod_op);
+
+            switch(cod_op){
+                case BLOQUEAR_PROCESO:
+                    printf("BLOQUEAR PROCESO.......\n");
+                    t_pcb* pcb = recibirPCB(conexionCPUDispatch);
+                    printf("PCB ID: %zu\n",pcb->idProceso);
+                    printf("PCB PC: %zu\n",pcb->programCounter);
+                    bloquearProceso(pcb);
+                    tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
+                    estimar_proxima_rafaga(tiempo_en_ejecucion, pcb);
+                    break;
+                case TERMINAR_PROCESO:
+                    log_info(attrs_planificacion->logger, "PCB recibido para terminar proceso");
+                    t_pcb* pcbFinalizado = recibirPCB(conexionCPUDispatch);
+                    printf("pcbFinalizado->idProceso: %zu\n", pcbFinalizado->idProceso);
+                    printf("pcbFinalizado->tamanioProceso: %zu\n", pcbFinalizado->tamanioProceso);
+                    incrementar_grado_multiprogramacion();
+                    printf("CONSOLA FD: %d\n",pcbFinalizado->consola_fd);
+                    avisarProcesoTerminado(pcbFinalizado->consola_fd);
+                    //enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
+                    sem_post(&semGradoMultiprogramacion);
+                    //proceso_en_ejecucion=0;
+                    //atendi_dispatch = 1;
+                    break;
+                case DESALOJAR_PROCESO:
+                	printf("CPU-DISPATCH: %d\n",conexionCPUDispatch);
+                	log_info(attrs_planificacion->logger, "PCB recibido desalojado por la CPU");
+                    t_pcb* pcb_desalojada = recibirPCB(conexionCPUDispatch);
+                    log_info(attrs_plani->logger,"PCB DESALOJADA RECIBIDA..");
+                    printf("\n PID-PCB DESALOJADA: %d\n",pcb_desalojada->idProceso);
+
+                    tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
+                    printf("Tiempo en ejecucion: %d\n",tiempo_en_ejecucion);
+
+                    calcular_rafagas_restantes_proceso_desalojado(tiempo_en_ejecucion,pcb_desalojada);
+                    checkear_proceso_y_replanificar(pcb_desalojada);
+                    break;
+            }
+
         }
+
     }
 }
 
 void eliminar_proceso_de_READY() {
-	proceso_en_ejecucion=true;
+
 	printf("TAM-LISTA: %d\n",list_size(READY));
     free(list_remove(READY, 0));
 }
@@ -117,23 +127,29 @@ void planificacion_FIFO(t_pcb* pcb) {
 	log_info(attrs_plani->logger,"ALGORITMO: FIFO");
 	agregar_proceso_READY(pcb);
     decrementar_grado_multiprogramacion();
-    enviarPCB(conexionCPUDispatch, pcb, PCB); 
+    enviarPCB(conexionCPUDispatch, pcb, PCB);
     eliminar_proceso_de_READY(pcb);
 }
 
 void agregar_proceso_READY(t_pcb* pcb) {
+	log_info(attrs_plani->logger,"AGREGANDO PROCESO A READY...");
     list_add(READY, pcb);
-    // cuando un proceso llegue a la cola READY se deberá enviar una Interrupción al CPU
-    if(list_size(READY)>0 && proceso_en_ejecucion) {
-    	printf("ENVIANDO INTERRUPCION %d\n",proceso_en_ejecucion);
-    	enviar_interrupcion(conexionCPUInterrupt, DESALOJAR_PROCESO);
-    }
     printf("AGRUEGUE PROCESO A READY: %d\n",list_size(READY));
 }
 
-void planificacion_SJF(t_pcb* pcb) {
+void interrupcion_por_proceso_en_ready(){
+    if(list_size(READY)>0 && hay_proceso_en_ejecucion) {
+    	log_info(attrs_plani->logger,"ENVIANDO INTERRUPCION");
+    	enviar_interrupcion(conexionCPUInterrupt, DESALOJAR_PROCESO);
+    }else{
+    	hay_proceso_en_ejecucion=true;
+    }
+}
+
+void planificacion_SJF(t_pcb* pcb){
 	log_info(attrs_plani->logger,"ALGORITMO: SJF");
     agregar_proceso_READY(pcb);
+    interrupcion_por_proceso_en_ready();
     ordenar_procesos_lista_READY();
 }
 
@@ -231,15 +247,18 @@ unsigned int tiempo_en_suspended_blocked(t_pcb* pcb) {
     return tiempo_bloqueado - TIEMPO_MAXIMO_BLOQUEADO;
 }
 
-void estimar_proxima_rafaga(time_t tiempo, t_pcb* pcb){
+void estimar_proxima_rafaga(uint32_t tiempo, t_pcb* pcb){
 	int tiempo_cpu = tiempo / 1000;
 	pcb->estimacionRafaga = ALFA*tiempo_cpu + (1-ALFA)*(pcb->estimacionRafaga);
 }
 
-void calcular_rafagas_restantes_proceso_desalojado(time_t tiempo_inicial, time_t tiempo_en_ejecucion, t_pcb* pcb_desalojada) {
-    time_t rafagas_restantes = tiempo_inicial - tiempo_en_ejecucion;
-    int tiempo_cpu = rafagas_restantes / 1000;
-    pcb_desalojada->estimacionRafaga = tiempo_cpu;
+void calcular_rafagas_restantes_proceso_desalojado(uint32_t tiempo_en_ejecucion, t_pcb* pcb_desalojada) {
+	tiempo_en_ejecucion = tiempo_en_ejecucion * 1000;
+	printf("INICIAL: %d\n",pcb_desalojada->estimacionRafaga);
+	printf("EXEC: %d\n",tiempo_en_ejecucion);
+	uint32_t rafagas_restantes = pcb_desalojada->estimacionRafaga - tiempo_en_ejecucion;
+	printf("RESTANTES: %d\n",rafagas_restantes);
+    pcb_desalojada->estimacionRafaga = rafagas_restantes;
 }
 
 void ordenar_procesos_lista_READY() {
@@ -247,6 +266,7 @@ void ordenar_procesos_lista_READY() {
 		list_sort(READY, sort_by_rafaga);
 	}
 	enviarPCB(conexionCPUDispatch,obtener_proceso_en_READY(),PCB);
+
 	eliminar_proceso_de_READY();
 	decrementar_grado_multiprogramacion();
 }
@@ -259,10 +279,14 @@ void checkear_proceso_y_replanificar(t_pcb* pcbEnExec) {
     t_pcb* pcb = obtener_proceso_en_READY();
     if (pcb->estimacionRafaga < pcbEnExec->estimacionRafaga) { 
        replanificar_y_enviar_nuevo_proceso(pcb, pcbEnExec);
+    }else{
+    	log_info(attrs_plani->logger,"ENVIO PCB DE REGRESO");
+    	enviarPCB(conexionCPUDispatch,pcbEnExec, PCB);
     }
 }
 
 void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
+	log_info(attrs_plani->logger,"ENVIO PCB PROCESO MAS CORTO");
     enviarPCB(conexionCPUDispatch, pcbNueva, PCB); 
     eliminar_proceso_de_READY(pcbNueva);
     planificacion_SJF(pcbEnExec);

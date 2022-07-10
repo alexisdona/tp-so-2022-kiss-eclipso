@@ -1,14 +1,13 @@
 #include "cpu.h"
 
 t_log* logger;
-int cpuInterrupt;
+int cpu_interrupt;
 t_config * config;
 int conexionMemoria;
-int clienteDispatch, clienteInterrupt;
+int cliente_dispatch;
 t_pcb * pcb;
 int retardo_noop;
 int cpu_dispatch;
-int cliente_dispatch;
 pthread_t hilo_interrupcion;
 
 void imprimirListaInstrucciones(t_pcb *pcb);
@@ -36,8 +35,8 @@ int main(void) {
     cliente_dispatch = esperarCliente(cpu_dispatch,logger);
     printf("CLIENTE DISPATCH: %d\n", cliente_dispatch);
 
-    cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
-    printf("[AI] CPU-INT: %d\n", cpuInterrupt);
+    cpu_interrupt = iniciarServidor(ip, puerto_interrupt, logger);
+    printf("[AI] CPU-INT: %d\n", cpu_interrupt);
 
     escuchar_interrupcion();
 
@@ -92,7 +91,7 @@ void comenzar_ciclo_instruccion(){
 	op_code proceso_respuesta = CONTINUA_PROCESO;
 	operando operador = 0;
 
-	while(proceso_respuesta == CONTINUA_PROCESO){
+	while(proceso_respuesta == CONTINUA_PROCESO && pcb!=NULL){
 		t_instruccion* instruccion = fase_fetch();
 		int requiero_operador = fase_decode(instruccion);
 
@@ -101,11 +100,7 @@ void comenzar_ciclo_instruccion(){
 		}
 
 		proceso_respuesta = fase_execute(instruccion, operador);
-/*
-		if(proceso_respuesta == CONTINUA_PROCESO) {
-			escuchar_interrupcion();
-		}
-*/
+
 	}
 
 }
@@ -188,11 +183,11 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 //-----------Ciclo de interrupcion-----------
 
 int escuchar_interrupcion() {
-	int cpu_interrupt = esperarCliente(cpuInterrupt, logger);
-    if (cpu_interrupt != -1) {
+	int cliente_interrupt = esperarCliente(cpu_interrupt, logger);
+    if (cliente_interrupt != -1) {
 
        attrs_interrupt* attrs = malloc(sizeof(attrs_interrupt));
-       attrs->cpu_interrupt = cpu_interrupt;
+       attrs->cpu_interrupt = cliente_interrupt;
 
         pthread_create(&hilo_interrupcion, NULL, (void*) atender_interrupcion, (void*) attrs);
         pthread_detach(hilo_interrupcion);
@@ -211,19 +206,17 @@ void atender_interrupcion(void* void_args) {
 	printf("CPU-INTERRUPT: %d\n",cpu_interrupt);
 
 	if (cpu_interrupt != -1) {
-		log_info(logger, "El CPU esta atendiendo una interrupcion...");
 		op_code cod_op = recibirOperacion(cpu_interrupt);
-		t_pcb* pcbNuevo;
-
 		printf("COD-OP: %d\n",cod_op);
 
 		switch (cod_op) {
 			case DESALOJAR_PROCESO:
-				pcbNuevo = recibirPCB(cpu_dispatch);
-				log_info(logger,"Recibi nuevo PCB");
-				enviarPCB(cpu_dispatch, pcb, cod_op);
+				log_info(logger, "El CPU esta atendiendo una interrupcion...");
+				log_info(logger,"DESALOJANDO PROCESO...");
+				log_info(logger,"DISPATCH: %d",cliente_dispatch);
+				enviarPCB(cliente_dispatch, pcb, cod_op);
 				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
-				pcb = pcbNuevo;
+				pcb = NULL;
 			   break;
 			case -1:
 				log_info(logger, "El Kernel no envio ninguna interrupcion");
