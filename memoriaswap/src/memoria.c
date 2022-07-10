@@ -95,9 +95,7 @@ void preparar_modulo_swap(){
 }
 
 size_t crear_estructuras_administrativas(size_t tamanio_proceso) {
-    int cantidad_entradas_tabla_segundo_nivel = floor(tamanio_proceso/tamanio_pagina);
-    int cantidad_tablas_segundo_nivel = cantidad_entradas_tabla_segundo_nivel/entradas_por_tabla;
-    int cantidad_entradas_tabla_primer_nivel = cantidad_tablas_segundo_nivel;
+    int cantidad_entradas_tabla_segundo_nivel = MAX((tamanio_proceso/tamanio_pagina),1);
     int indice_primer_nivel = 0;
     int indice_segundo_nivel=0;
 
