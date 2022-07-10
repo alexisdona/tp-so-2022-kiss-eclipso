@@ -68,6 +68,10 @@ int main(void) {
 		}
 	}
 
+	while(1) {
+		escuchar_interrupcion();
+	}
+
 	return EXIT_SUCCESS;
 }
 
