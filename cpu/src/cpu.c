@@ -32,7 +32,7 @@ int main(void) {
     cliente_dispatch = esperarCliente(cpu_dispatch,logger);
 
     cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
- 	conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
+ 	conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "CPU");
  	enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
 	//log_info(logger, "Te conectaste con Memoria");
     //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
