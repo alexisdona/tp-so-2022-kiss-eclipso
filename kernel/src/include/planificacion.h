@@ -22,13 +22,16 @@ pthread_mutex_t mutexColaBloqueados;
 pthread_mutex_t mutexColaSuspendedBloqued;
 pthread_mutex_t  mutexGradoMultiprogramacion;
 int valorSemaforoContador;
+int conexionMemoria;
+t_log* logger;
 
-void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int, t_log*);
-void iniciarPlanificacion(t_pcb*, t_log*, int);
+void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int, int, t_log*);
+void iniciarPlanificacion(t_pcb*, t_log*, int, int);
 int inicializarMutex();
 void avisarProcesoTerminado(int);
 void bloquearProceso(t_pcb*);
 void suspenderBlockedProceso(t_pcb*);
-
+void crear_estructuras_memoria(t_pcb*);
+void proceso_en_ready(t_pcb*);
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

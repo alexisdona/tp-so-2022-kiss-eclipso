@@ -12,7 +12,6 @@
 #include "include/utils.h"
 #include <commons/process.h>
 #include <commons/collections/queue.h>
-#include "include/estructuras.h"
 
 #define CONFIG_FILE "../kernel/src/config/kernel.config"
 
