@@ -10,11 +10,19 @@ t_pcb* pcb;
 int retardo_noop;
 t_list* interrupciones;
 int alpha = 0.5; //Provisorio, debiera ser enviado por el kernel al conectarse una unica vez.
+uint32_t cant_entradas_x_tabla_de_pagina;
+uint32_t tamanio_pagina;
+t_list* tlb;
+pthread_mutex_t mutex_algoritmos;
+char* algoritmo_reemplazo_tlb;
+uint32_t entradas_max_tlb;
+uint32_t pid =-1;
 
 int main(void) {
 
 	logger = iniciarLogger(LOG_FILE,"CPU");
     config = iniciarConfig(CONFIG_FILE);
+    tlb = list_create();
 
 	char* ip = config_get_string_value(config,"IP_CPU");
 	//char* ip_memoria = config_get_string_value(config,"IP_MEMORIA");
@@ -25,6 +33,9 @@ int main(void) {
     retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
     int tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
 
+	algoritmo_reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
+	entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
+
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
     log_info(logger, "CPU listo para recibir un kernel");
     cliente_dispatch = esperarCliente(cpu_dispatch,logger);
@@ -33,6 +44,8 @@ int main(void) {
  	//conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
 	//log_info(logger, "Te conectaste con Memoria");
     //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
+
+    //obtenerDatosDeMemoria();
 
 	while(cliente_dispatch!=-1) {
 		op_code cod_op = recibirOperacion(cliente_dispatch);
@@ -43,6 +56,7 @@ int main(void) {
 			case PCB:
 				log_info(logger,"Recibi un PCB");
 				pcb = recibirPCB(cliente_dispatch);
+				limpiar_tlb();
 				loggearPCB(pcb);
 				comenzar_ciclo_instruccion();
 			   break;
@@ -161,6 +175,11 @@ void operacion_EXIT(op_code proceso_respuesta){
 	eliminarPaquete(paquete);
 }
 
+void operacion_read(uint32_t dir_logica){
+
+
+}
+
 void preparar_pcb_respuesta(t_paquete* paquete){
 	agregarEntero(paquete, pcb->idProceso);
 	agregarEntero(paquete, pcb->tamanioProceso);
@@ -207,5 +226,111 @@ void loggearPCB(t_pcb* pcb){
 	log_info(logger, "PCB:");
 	log_info(logger, "ID: %d",pcb->idProceso);
 }
+
+//---------------------------------------------------------MMU -------------------------------------------------------------
+
+
+dir_fisica traducir_direccion_logica(uint32_t dir_logica_data, t_pcb pcb){
+
+	dir_fisica* dir_fisica = malloc(sizeof(dir_fisica));
+	uint32_t numero_pagina = (dir_logica_data/tamanio_pagina);
+	uint32_t offset = dir_logica_data - numero_pagina * tamanio_pagina;
+
+	uint32_t entrada = tlb_existe(numero_pagina);
+
+	if(entrada >= 0){
+
+		dir_fisica ->marco = tlb_obtener_marco(entrada);
+		dir_fisica -> offset = offset;
+
+		if(strcmp(algoritmo_reemplazo_tlb, "LRU")==0)
+		{
+			tlb_entrada entrada_aux = list_get(tlb, entrada);
+			list_remove(tlb, entrada);
+			list_add(tlb, entrada_aux);
+		}
+
+		return dir_fisica;
+
+	}else {
+
+		dir_logica* dir_logica = malloc(sizeof(dir_logica));
+
+		dir_logica -> offset = offset;
+		dir_logica -> entrada_tabla_primer_nivel = (numero_pagina / cant_entradas_x_tabla_de_pagina);
+		dir_logica -> entrada_tabla_segundo_nivel = numero_pagina % cant_entradas_x_tabla_de_pagina;
+
+		uint32_t numero_tabla_segundo_nivel = pedir_a_memoria_num_tabla_segundo_nivel(dir_logica ->entrada_tabla_primer_nivel);
+
+		dir_fisica = malloc(sizeof(dir_fisica));
+		dir_fisica -> marco = pedir_a_memoria_marco(numero_tabla_segundo_nivel, dir_logica ->entrada_tabla_segundo_nivel);
+		dir_fisica ->offset = dir_logica ->offset;
+
+		tlb_actualizar(numero_pagina, dir_fisica ->marco);
+		return dir_fisica;
+	}
+}
+
+uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato){
+	//paso los numeros y el pcb
+	return 0;
+}
+
+uint32_t pedir_a_memoria_marco(uint32_t dato,uint32_t dato2){
+	return 0;
+	//paso los numeros y el pcb
+}
+
+////--------------------------------------------------------TLB------------------------------------------------------------------
+
+//Retorna la entrada donde se encuentra esa estructura {pagina|marco}
+uint32_t tlb_existe(uint32_t numero_pagina){
+
+	tlb_entrada* aux;
+
+	for (int i=0; i < list_size(tlb); i++)
+	{
+		aux = list_get(tlb, i);
+		if (aux->pagina == numero_pagina){
+			return i;
+		}
+	}
+	return -1;
+
+}
+
+uint32_t tlb_obtener_marco(uint32_t entrada){
+
+	tlb_entrada tlb_entrada = list_get(tlb, entrada);
+
+	return tlb_entrada->marco;
+}
+
+void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
+
+	tlb_entrada tlb_entrada = malloc(sizeof(tlb_entrada));
+	tlb_entrada ->marco = marco;
+	tlb_entrada ->pagina = numero_pagina;
+
+	if(list_size(tlb) >= entradas_max_tlb){
+		//Reemplazo el primer elemento de la lista
+
+		list_remove(tlb, 0);
+		list_add(tlb, tlb_entrada);
+
+	}else {
+		list_add(tlb, tlb_entrada);
+	}
+}
+
+void limpiar_tlb(){
+
+	if(pcb->idProceso != pid){
+		list_clean(tlb);
+		pid = pcb->idProceso;
+	}
+}
+
+
 
 
