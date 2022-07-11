@@ -133,7 +133,6 @@ void crear_estructuras_memoria( t_pcb* pcb) {
     int pcb_actualizado = 0;
     t_paquete* paquete = crearPaquete();
     enviarPCB(conexionMemoria, pcb, CREAR_ESTRUCTURAS_ADMIN );
-    printf("pcb->idProceso: %zu\n pcb->tamanioProceso:%zu", pcb->idProceso, pcb->tamanioProceso);
     while(conexionMemoria != -1 && pcb_actualizado == 0){
         op_code cod_op = recibirOperacion(conexionMemoria);
         switch(cod_op) {

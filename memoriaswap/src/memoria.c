@@ -66,8 +66,8 @@ int main(void) {
                 case CREAR_ESTRUCTURAS_ADMIN:
                     ;
                     t_pcb* pcb_kernel = recibirPCB(cliente_fd);
-                    size_t indice_tabla_paginas = crear_estructuras_administrativas(pcb->tamanioProceso)-1;
-                    pcb_kernel->tablaPaginas = indice_tabla_paginas;
+                    crear_archivo_swap(pcb_kernel->idProceso, pcb_kernel->tamanioProceso);
+                    pcb_kernel->tablaPaginas =crear_estructuras_administrativas(pcb->tamanioProceso)-1;
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
                     break;
                 case -1:
@@ -131,10 +131,4 @@ void iniciar_estructuras_administrativas() {
     lista_tablas_segundo_nivel = list_create();
 }
 
-void enviar_indice_tabla_paginas(size_t indice_tabla_paginas, size_t id_proceso, int socketDestino) {
-    t_paquete* paquete = crearPaquete();
-    paquete->codigo_operacion = ACTUALIZAR_INDICE_TABLA_PAGINAS;
-    agregarEntero(paquete, indice_tabla_paginas);
-    enviarPaquete(paquete, socketDestino);
-}
 

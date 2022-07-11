@@ -15,7 +15,6 @@
 #define LOG_FILE "memoria.log"
 #define CONFIG_FILE "../memoriaswap/src/config/memoria.config"
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 typedef struct {
     t_log* log;
