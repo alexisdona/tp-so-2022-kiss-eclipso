@@ -141,6 +141,7 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 		case READ:
 			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
+			operacion_READ(instruccion->parametros[0]);
 			log_info(logger,"Ejecutando READ");
 			break;
 		case WRITE:
@@ -185,6 +186,21 @@ void operacion_EXIT(op_code proceso_respuesta){
 	enviarPaquete(paquete,cliente_dispatch);
 	eliminarPaquete(paquete);
 }
+
+void operacion_READ(operando dirLogica){
+
+	dir_fisica* dir_fisica = traducir_direccion_logica(dirLogica);
+
+	//Aca pedimos el dato que esta en esa direccion fisica
+	// ¿Lo muestra la cpu? o lo mostramos desde memoria y logueamos la operacion
+
+}
+
+void operacion_WRITE(){
+
+}
+
+//------------------------------------------------------------------------
 
 void preparar_pcb_respuesta(t_paquete* paquete){
 	agregarEntero(paquete, pcb->idProceso);
@@ -236,7 +252,7 @@ void loggearPCB(t_pcb* pcb){
 //---------------------------------------------------------MMU--------------------------------------------------------
 
 
-dir_fisica* traducir_direccion_logica(uint32_t dir_logica_data, t_pcb pcb){
+dir_fisica* traducir_direccion_logica(uint32_t dir_logica_data){
 
 	dir_fisica* dir_fisica = malloc(sizeof(dir_fisica));
 	uint32_t numero_pagina = (dir_logica_data/tamanio_pagina);
@@ -278,7 +294,7 @@ dir_fisica* traducir_direccion_logica(uint32_t dir_logica_data, t_pcb pcb){
 }
 
 uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato){
-	//paso los numeros y el pcb
+	//paso los numeros y el pcb (pcb es variable global)
 	return 0;
 }
 
