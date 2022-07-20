@@ -66,7 +66,7 @@ int main(void) {
                 case CREAR_ESTRUCTURAS_ADMIN:
                     ;
                     t_pcb* pcb_kernel = recibirPCB(cliente_fd);
-                    size_t indice_tabla_paginas = crear_estructuras_administrativas(pcb->tamanioProceso)-1;
+                    size_t indice_tabla_paginas = crear_estructuras_administrativas(pcb_kernel->tamanioProceso)-1;
                     pcb_kernel->tablaPaginas = indice_tabla_paginas;
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
                     break;

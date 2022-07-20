@@ -29,6 +29,7 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador);
 void operacion_NO_OP();
 void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo);
 void operacion_EXIT(op_code proceso_respuesta);
+void operacion_READ(operando);
 void preparar_pcb_respuesta(t_paquete* paquete);
 void estimar_proxima_rafaga(time_t tiempo);
 void atender_interrupciones();

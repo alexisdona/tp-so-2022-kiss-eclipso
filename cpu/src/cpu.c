@@ -55,6 +55,7 @@ int main(void) {
 				recibirMensaje(cliente_dispatch, logger);
 				break;
 			case PCB:
+			    printf("\n");
 				log_info(logger,"Recibi un PCB");
 				pcb = recibirPCB(cliente_dispatch);
 				limpiar_tlb();
