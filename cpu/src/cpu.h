@@ -35,7 +35,6 @@ void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo);
 void operacion_EXIT(op_code proceso_respuesta);
 void operacion_READ(operando);
 void preparar_pcb_respuesta(t_paquete* paquete);
-void estimar_proxima_rafaga(time_t tiempo);
 void atender_interrupcion(void* void_args);
 void loggearPCB(t_pcb* pcb);
 int escuchar_interrupcion();
@@ -46,5 +45,6 @@ uint32_t tlb_obtener_marco(uint32_t entrada);
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco);
 uint32_t tlb_existe(uint32_t numero_pagina);
 void limpiar_tlb();
+void imprimirListaInstrucciones(t_pcb *pcb);
 
 #endif /* SRC_CPU_H_ */

@@ -211,7 +211,7 @@ void suspender_proceso(t_pcb* pcb) {
     pthread_mutex_unlock(&mutexColaBloqueados);
 
     pthread_mutex_lock(&mutexColaSuspendedBloqued); 
-    enviarPCB(conexionMemoria,pcbEnColaBlocked,SWAPEAR_PROCESO);
+    enviarPCB(conexionMemoria,pcb_a_suspended_blocked,SWAPEAR_PROCESO);
     list_add(SUSPENDED_BLOCKED, pcb_a_suspended_blocked);
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
     
@@ -302,9 +302,9 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
 
 /* ---------> MEMORIA <--------- */
 
-void proceso_en_ready_memoria(t_pcb* pcb ) {
+void proceso_en_ready_memoria(t_pcb* pcb) {
     agregar_proceso_READY(pcb);
-    crear_estructuras_memoria(pcbEnColaNew);
+    crear_estructuras_memoria(pcb);
 }
 
 void crear_estructuras_memoria(t_pcb* pcb) {

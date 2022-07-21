@@ -18,7 +18,7 @@ char* algoritmo_reemplazo_tlb;
 uint32_t entradas_max_tlb;
 uint32_t pid =-1;
 
-void imprimirListaInstrucciones(t_pcb *pcb);
+
 
 int main(void) {
 
@@ -51,7 +51,7 @@ int main(void) {
 
     escuchar_interrupcion();
 
-    conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Memoria");
+    conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "Memoria");
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
     //log_info(logger, "Te conectaste con Memoria");
       //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
@@ -207,11 +207,6 @@ void preparar_pcb_respuesta(t_paquete* paquete){
 	agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
 	agregarEntero(paquete, pcb->estimacionRafaga);
 	agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
-}
-
-void estimar_proxima_rafaga(time_t tiempo){
-	int tiempo_cpu = tiempo / 1000;
-	pcb->estimacionRafaga = alpha*tiempo_cpu + (1-alpha)*(pcb->estimacionRafaga);
 }
 
 //-----------Ciclo de interrupcion-----------
