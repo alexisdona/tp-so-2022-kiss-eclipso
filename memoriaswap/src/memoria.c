@@ -81,7 +81,7 @@ void procesar_conexion(void* void_args) {
                     ;
                     t_pcb* pcb_kernel = recibirPCB(cliente_fd);
                     crear_archivo_swap(pcb_kernel->idProceso, pcb_kernel->tamanioProceso);
-                    pcb_kernel->tablaPaginas =crear_estructuras_administrativas(pcb->tamanioProceso)-1;
+                    pcb_kernel->tablaPaginas =crear_estructuras_administrativas(pcb_kernel->tamanioProceso)-1;
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
                     break;
                 case -1:
