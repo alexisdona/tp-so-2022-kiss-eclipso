@@ -10,6 +10,7 @@
 #include<commons/string.h>
 #include<commons/config.h>
 #include<commons/collections/list.h>
+#include<commons/bitarray.h>
 
 #define LOG_NAME "MEMORIA_LOG"
 #define LOG_FILE "memoria.log"
@@ -38,10 +39,11 @@ typedef struct {
 
 
 void preparar_modulo_swap();
-size_t crear_estructuras_administrativas(size_t);
-void iniciar_estructuras_administrativas();
-void enviar_indice_tabla_paginas(size_t, size_t, int);
+size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso);
+void iniciar_estructuras_administrativas_kernel();
 int escuchar_cliente(char *);
+void crear_bitmap_frames_libres();
+
 
 
 

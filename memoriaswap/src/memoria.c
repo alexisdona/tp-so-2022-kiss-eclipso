@@ -17,6 +17,11 @@ t_list* lista_registros_segundo_nivel;
 t_list* lista_tablas_primer_nivel;
 t_list* lista_tablas_segundo_nivel;
 void* espacio_usuario_memoria;
+t_bitarray	* frames_disponibles;
+void* bloque_frames_lilbres;
+
+
+void crear_espacio_usuario();
 
 int main(void) {
 	//sem_t semMemoria;
@@ -29,7 +34,9 @@ int main(void) {
     tamanio_memoria = config_get_int_value(config,"TAM_MEMORIA");
     tamanio_pagina = config_get_int_value(config,"TAM_PAGINA");
     preparar_modulo_swap();
-    iniciar_estructuras_administrativas();
+    iniciar_estructuras_administrativas_kernel();
+    crear_espacio_usuario();
+
 	//sem_init(&semMemoria, 0, 1);
 
 	// Inicio el servidor
@@ -81,7 +88,7 @@ void procesar_conexion(void* void_args) {
                     ;
                     t_pcb* pcb_kernel = recibirPCB(cliente_fd);
                     crear_archivo_swap(pcb_kernel->idProceso, pcb_kernel->tamanioProceso);
-                    pcb_kernel->tablaPaginas =crear_estructuras_administrativas(pcb_kernel->tamanioProceso)-1;
+                    pcb_kernel->tablaPaginas = crear_estructuras_administrativas_proceso(pcb_kernel->tamanioProceso) - 1;
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
                     break;
                 case -1:
@@ -117,7 +124,8 @@ void preparar_modulo_swap(){
 	RETARDO_SWAP = config_get_int_value(config,"RETARDO_SWAP");
 }
 
-size_t crear_estructuras_administrativas(size_t tamanio_proceso) {
+size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso) {
+
     int cantidad_entradas_tabla_segundo_nivel = MAX((tamanio_proceso/tamanio_pagina),1);
     int indice_primer_nivel = 0;
     int indice_segundo_nivel=0;
@@ -149,12 +157,23 @@ size_t crear_estructuras_administrativas(size_t tamanio_proceso) {
     return list_size(lista_tablas_primer_nivel);
 }
 
-void iniciar_estructuras_administrativas() {
-    espacio_usuario_memoria = malloc(tamanio_memoria);
+void crear_bitmap_frames_libres() {
+    uint32_t tamanio_bit_array = tamanio_memoria / tamanio_pagina;
+    bloque_frames_lilbres = malloc(tamanio_bit_array);
+    frames_disponibles = bitarray_create_with_mode(bloque_frames_lilbres, tamanio_bit_array, LSB_FIRST);
+}
+
+void iniciar_estructuras_administrativas_kernel() {
     lista_registros_primer_nivel = list_create();
     lista_registros_segundo_nivel = list_create();
     lista_tablas_primer_nivel = list_create();
     lista_tablas_segundo_nivel = list_create();
+    crear_bitmap_frames_libres();
+
+}
+
+void crear_espacio_usuario() {
+    espacio_usuario_memoria = malloc(tamanio_memoria);
 }
 
 

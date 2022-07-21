@@ -161,26 +161,17 @@ void operacion_NO_OP(){
 
 void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 	log_info(logger,"Ejecutando I/O: %d",tiempo_bloqueo);
-	t_paquete* paquete = crearPaquete();
-	paquete->codigo_operacion = proceso_respuesta;
-	preparar_pcb_respuesta(paquete);
-	agregarEntero(paquete,tiempo_bloqueo);
-	enviarPaquete(paquete,cliente_dispatch);
-	eliminarPaquete(paquete);
+    enviarPCB(cliente_dispatch, pcb, proceso_respuesta);
 }
 
 void operacion_EXIT(op_code proceso_respuesta){
 	log_info(logger,"Ejecutando EXIT");
-	t_paquete* paquete = crearPaquete();
-	paquete->codigo_operacion = proceso_respuesta;
-	preparar_pcb_respuesta(paquete);
-	enviarPaquete(paquete,cliente_dispatch);
-	eliminarPaquete(paquete);
+    enviarPCB(cliente_dispatch, pcb, proceso_respuesta);
 }
 
 void operacion_READ(operando dirLogica){
 
-	dir_fisica* dir_fisica = traducir_direccion_logica(dirLogica);
+	//dir_fisica* dir_fisica = traducir_direccion_logica(dirLogica);
 
 	//Aca pedimos el dato que esta en esa direccion fisica
 	// ¿Lo muestra la cpu? o lo mostramos desde memoria y logueamos la operacion
@@ -191,17 +182,6 @@ void operacion_WRITE(){
 
 }
 
-//------------------------------------------------------------------------
-
-void preparar_pcb_respuesta(t_paquete* paquete){
-	agregarEntero(paquete, pcb->idProceso);
-	agregarEntero(paquete, pcb->tamanioProceso);
-	agregarEntero(paquete, pcb->programCounter);
-	agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
-	agregarEntero(paquete, pcb->estimacionRafaga);
-	agregarEntero(paquete, pcb->duracionUltimaRafaga);
-	agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
-}
 
 void estimar_proxima_rafaga(time_t tiempo){
 	int tiempo_cpu = tiempo / 1000;
