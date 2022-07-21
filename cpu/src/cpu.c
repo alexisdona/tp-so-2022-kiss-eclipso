@@ -167,22 +167,12 @@ void operacion_NO_OP(){
 
 void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 	log_info(logger,"Ejecutando I/O: %d",tiempo_bloqueo);
-	t_paquete* paquete = crearPaquete();
     enviarPCB(cliente_dispatch, pcb,  proceso_respuesta);
-	paquete->codigo_operacion = proceso_respuesta;
-	preparar_pcb_respuesta(paquete);
-	agregarEntero(paquete,tiempo_bloqueo);
-	enviarPaquete(paquete,cliente_dispatch);
-	eliminarPaquete(paquete);
 }
 
 void operacion_EXIT(op_code proceso_respuesta){
 	log_info(logger,"Ejecutando EXIT");
-	t_paquete* paquete = crearPaquete();
-	paquete->codigo_operacion = proceso_respuesta;
-	preparar_pcb_respuesta(paquete);
-	enviarPaquete(paquete,cliente_dispatch);
-	eliminarPaquete(paquete);
+    enviarPCB(cliente_dispatch, pcb, proceso_respuesta);
 }
 
 void operacion_READ(operando dirLogica){
