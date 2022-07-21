@@ -109,7 +109,7 @@ void terminarPrograma(uint32_t conexion, t_log* logger, t_config* config) {
     if(config!=NULL) {
         config_destroy(config);
     }
-    liberarConexion(conexion);
+  //  liberarConexion(conexion);
 }
 
 void recibirMensaje(int socketCliente, t_log* logger)

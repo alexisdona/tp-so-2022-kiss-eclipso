@@ -24,8 +24,9 @@ pthread_mutex_t  mutexGradoMultiprogramacion;
 int valorSemaforoContador;
 uint32_t tiempo_max_bloqueo;
 uint32_t tiempo_en_ejecucion;
-int conexionCPUDispatch, conexionCPUInterrupt;
+int conexionCPUDispatch, conexionCPUInterrupt, conexionMemoria;
 bool hay_proceso_en_ejecucion;
+t_log* logger;
 
 void iniciarPlanificacionCortoPlazo(t_attrs_planificacion*);
 void iniciarPlanificacion(t_attrs_planificacion*);
@@ -53,5 +54,7 @@ void enviar_proceso_SUSPENDED_READY_a_READY();
 void agregar_proceso_SUSPENDED_READY(t_pcb*);
 void planificacion_SJF(t_pcb* pcb);
 void interrupcion_por_proceso_en_ready();
+void crear_estructuras_memoria(t_pcb*);
+void proceso_en_ready_memoria(t_pcb*);
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

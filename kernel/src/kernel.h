@@ -12,7 +12,6 @@
 #include "include/utils.h"
 #include <commons/process.h>
 #include <commons/collections/queue.h>
-#include "include/estructuras.h"
 
 #include "../../shared/headers/sharedUtils.h"
 
@@ -32,7 +31,7 @@ int recibir_opcion();
 int accion_kernel(int, int);
 t_pcb* crearEstructuraPcb(t_list*, int, int);
 void iterator(char*);
-int escucharClientes( char *nombre_kernel);
+int escuchar_cliente(char *nombre_kernel);
 void iterator(char*);
 int validar_y_ejecutar_opcion_consola(int, int, int );
 void enviarACpu(int, t_pcb*);

@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
 
 	t_list* listaInstrucciones = parsearInstrucciones(logger, rutaArchivo);
     enviarListaInstrucciones(conexionKernel, tamanioProceso, listaInstrucciones);
-    list_destroy(listaInstrucciones);
+    //list_destroy_and_destroy_elements(listaInstrucciones, free);
 
     while(conexionKernel!=-1){
 
@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
                 break;
             default:
                 log_trace(logger, "Operación desconocida en consola");
-                terminarPrograma(conexionKernel, logger, config);
+               // terminarPrograma(conexionKernel, logger, config);
                 break;
         }
     }

@@ -24,7 +24,6 @@ void iniciarPlanificacionCortoPlazo(t_attrs_planificacion* attrs_planificacion) 
     conexionCPUInterrupt = attrs_planificacion->conexion_cpu_interrupt;
 
     sem_wait(&semGradoMultiprogramacion);
-
     pthread_mutex_lock(&mutexColaNew);
     t_pcb *pcbEnColaNew = queue_pop(NEW);
     pthread_mutex_unlock(&mutexColaNew);
@@ -119,6 +118,7 @@ void incrementar_grado_multiprogramacion() {
 
 void iniciar_algoritmo_planificacion(char* algoritmoPlanificacion, t_pcb* pcb) {
 	printf("%s\n",algoritmoPlanificacion);
+    proceso_en_ready_memoria(pcb);
     (strcmp("SJF", algoritmoPlanificacion)==0) ?
     planificacion_SJF(pcb) : planificacion_FIFO(pcb);
 }
@@ -139,7 +139,7 @@ void agregar_proceso_READY(t_pcb* pcb) {
 
 void interrupcion_por_proceso_en_ready(){
     if(list_size(READY)>0 && hay_proceso_en_ejecucion) {
-    	log_info(attrs_plani->logger,"ENVIANDO INTERRUPCION");
+    	log_info(attrs_plani->logger, "ENVIANDO INTERRUPCION");
     	enviar_interrupcion(conexionCPUInterrupt, DESALOJAR_PROCESO);
     }else{
     	hay_proceso_en_ejecucion=true;
@@ -194,6 +194,13 @@ void bloquearProceso(t_pcb* pcb){
         if(tiempoBloqueado > TIEMPO_MAXIMO_BLOQUEADO){
             suspender_proceso(pcb);
         };
+        if(tiempoBloqueado > TIEMPO_MAXIMO_BLOQUEADO){
+            log_info(logger,"SUSPENDO EL PROCESO");
+            suspender_proceso(pcb);
+        } else {
+        	//log_info(logger,string_from_format("BLOQUEO AL PROCESO POR %ds",(tiempoBloqueado/1000)));
+        	usleep(tiempoBloqueado*1000);
+        }
     }
 }
 
@@ -204,6 +211,7 @@ void suspender_proceso(t_pcb* pcb) {
     pthread_mutex_unlock(&mutexColaBloqueados);
 
     pthread_mutex_lock(&mutexColaSuspendedBloqued); 
+    enviarPCB(conexionMemoria,pcbEnColaBlocked,SWAPEAR_PROCESO);
     list_add(SUSPENDED_BLOCKED, pcb_a_suspended_blocked);
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
     
@@ -290,4 +298,30 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
     enviarPCB(conexionCPUDispatch, pcbNueva, PCB); 
     eliminar_proceso_de_READY(pcbNueva);
     planificacion_SJF(pcbEnExec);
+}
+
+/* ---------> MEMORIA <--------- */
+
+void proceso_en_ready_memoria(t_pcb* pcb ) {
+    agregar_proceso_READY(pcb);
+    crear_estructuras_memoria(pcbEnColaNew);
+}
+
+void crear_estructuras_memoria(t_pcb* pcb) {
+    int pcb_actualizado = 0;
+    t_paquete* paquete = crearPaquete();
+    enviarPCB(conexionMemoria, pcb, CREAR_ESTRUCTURAS_ADMIN );
+    printf("pcb->idProceso: %zu\n pcb->tamanioProceso:%zu", pcb->idProceso, pcb->tamanioProceso);
+    while(conexionMemoria != -1 && pcb_actualizado == 0){
+        op_code cod_op = recibirOperacion(conexionMemoria);
+        switch(cod_op) {
+            case ACTUALIZAR_INDICE_TABLA_PAGINAS:
+                ;
+                t_pcb* pcb_aux = recibirPCB(conexionMemoria);
+                pcb->tablaPaginas = pcb_aux->tablaPaginas;
+                printf("\nACTUALIZAR_TABLA_PAGINAS: PCB->idProceso: %ld, PCB->tablaPaginas:%ld\n", pcb->idProceso, pcb->tablaPaginas);
+                pcb_actualizado=1;
+                break;
+        }
+    }
 }

@@ -31,7 +31,10 @@ typedef enum {
 	CONTINUA_PROCESO,
 	DESALOJAR_PROCESO,
     ESCRIBIR_MEMORIA,
-    LEER_MEMORIA
+    LEER_MEMORIA,
+	SWAPEAR_PROCESO,
+	CREAR_ESTRUCTURAS_ADMIN,
+	ACTUALIZAR_INDICE_TABLA_PAGINAS
 } op_code;
 
 typedef enum
@@ -74,14 +77,28 @@ typedef struct {
 
 typedef struct
 {
-    t_pcb* pcb;
-    int conexion_cpu_dispatch;
-    int conexion_cpu_interrupt;
-    char* algoritmo_planificacion;
-    t_log* logger;
-    uint32_t tiempo_maximo_bloqueado;
-    double alpha;
+	t_pcb* pcb;
+	int conexion_cpu_dispatch;
+	int conexion_cpu_interrupt;
+	int conexion_memoria;
+	char* algoritmo_planificacion;
+	t_log* logger;
+	uint32_t tiempo_maximo_bloqueado;
+	double alpha;
 } t_attrs_planificacion;
+
+typedef struct
+{
+	uint32_t entrada_tabla_primer_nivel;
+	uint32_t entrada_tabla_segundo_nivel;
+	uint32_t offset;
+} dir_logica;
+
+typedef struct
+{
+	uint32_t marco;
+	uint32_t offset;
+} dir_fisica;
 
 t_config* iniciarConfig(char*);
 t_log* iniciarLogger(char*, char*);

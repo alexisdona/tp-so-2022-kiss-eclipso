@@ -72,6 +72,7 @@ int main() {
 
     attrs_planificacion->conexion_cpu_dispatch = conexionCPUDispatch;
     attrs_planificacion->conexion_cpu_interrupt = conexionCPUInterrupt;
+    attrs_planificacion->conexion_memoria = conexionMemoria;
     attrs_planificacion->algoritmo_planificacion = ALGORITMO_PLANIFICACION;
     attrs_planificacion->logger = logger;
     attrs_planificacion->tiempo_maximo_bloqueado = TIEMPO_MAXIMO_BLOQUEADO;
@@ -80,7 +81,7 @@ int main() {
     info_planificacion = attrs_planificacion;
 
     while (1) {
-        escucharClientes("KERNEL");
+        escuchar_cliente("KERNEL");
     }
     //cerrar_programa(logger);
     return 0;
@@ -96,9 +97,10 @@ void procesar_conexion(void* void_args) {
 	t_log* logger = attrs->log;
     int cliente_fd = attrs->fd;
     free(attrs);
+    printf("\n***************EN MEMORIA ESTO ES UN HILO**************\n");
 
     while (cliente_fd != -1) {
-        printf("entro un cliente nuevo: %d\n", cliente_fd);
+        //printf("entro un cliente nuevo: %d\n", cliente_fd);
 		op_code cod_op = recibirOperacion(cliente_fd);
        
 		switch (cod_op) {
@@ -114,10 +116,11 @@ void procesar_conexion(void* void_args) {
                 //  printf("pcb->idProceso: %zu\n",pcb->idProceso);
                 iniciarPlanificacion(info_planificacion);
                 break;
-        
+		    case ACTUALIZAR_INDICE_TABLA_PAGINAS:
+		        printf("Entra a actualizar indice de tabla de paginas");
             case -1:
-				log_info(logger, "La consola se desconecto.");
-              //  cliente_fd = -1;
+				//log_info(logger, "La consola se desconecto.");
+            	//cliente_fd = -1;
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
@@ -175,14 +178,13 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 
 }
 
-int escucharClientes(char *nombre_kernel) {
+int escuchar_cliente(char *nombre_kernel) {
     int cliente = esperarCliente(kernel_fd, logger);
     if (cliente != -1) {
         pthread_t hilo;
         t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
         attrs->log = logger;
         attrs->fd = cliente;
-        attrs->nombre_kernel = nombre_kernel;
         pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
         pthread_detach(hilo);
         return 1;
