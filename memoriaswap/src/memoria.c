@@ -30,16 +30,14 @@ int main(void) {
     tamanio_pagina = config_get_int_value(config,"TAM_PAGINA");
     preparar_modulo_swap();
     iniciar_estructuras_administrativas();
-	//sem_init(&semMemoria, 0, 1);
 
 	// Inicio el servidor
 	memoria_fd = iniciarServidor(ipMemoria, puertoMemoria, logger);
 	log_info(logger, "Memoria lista para recibir a Kernel o CPU");
-   // cliente_fd = esperarCliente(memoria_fd, logger);
 
     while (1) {
-        escucharClientes("CPU");
-        escucharClientes("KERNEL");
+        escuchar_cliente("CPU");
+        escuchar_cliente("KERNEL");
     }
 
 	return EXIT_SUCCESS;
@@ -81,7 +79,7 @@ void procesar_conexion(void* void_args) {
                 case CREAR_ESTRUCTURAS_ADMIN:
                     ;
                     t_pcb* pcb_kernel = recibirPCB(cliente_fd);
-                    size_t indice_tabla_paginas = crear_estructuras_administrativas(pcb->tamanioProceso)-1;
+                    size_t indice_tabla_paginas = crear_estructuras_administrativas(pcb_kernel->tamanioProceso)-1;
                     pcb_kernel->tablaPaginas = indice_tabla_paginas;
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
                     break;
@@ -97,16 +95,14 @@ void procesar_conexion(void* void_args) {
 	}
 }
 
-int escucharClientes(char *nombre_cliente) {
+int escuchar_cliente(char *nombre_cliente) {
     int cliente = esperarCliente(memoria_fd, logger);
     if (cliente != -1) {
         pthread_t hilo;
         t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
         attrs->log = logger;
         attrs->fd = cliente;
-        attrs->nombre_kernel = nombre_cliente;
         pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
-        log_info(logger, "Se creo el hilo para recibir a %s", nombre_cliente);
         pthread_detach(hilo);
         return 1;
     }

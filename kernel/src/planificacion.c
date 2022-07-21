@@ -52,8 +52,8 @@ void iniciarPlanificacionCortoPlazo(t_pcb *pcb, int conexionCPUDispatch, int con
                 GRADO_MULTIPROGRAMACION++;
                 printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
                 pthread_mutex_unlock(&mutexGradoMultiprogramacion);
-                avisarProcesoTerminado(pcbFinalizado->consola_fd);
-                //enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
+              //  avisarProcesoTerminado(pcbFinalizado->consola_fd);
+                enviarMensaje("Proceso terminado", pcbFinalizado->consola_fd);
                  sem_post(&semGradoMultiprogramacion);
                 atendi_dispatch = 1;
                 break;
@@ -147,8 +147,3 @@ void crear_estructuras_memoria( t_pcb* pcb) {
         }
     }
 }
-
-
-
-
-
