@@ -35,9 +35,23 @@ int main(void) {
 	// Inicio el servidor
 	memoria_fd = iniciarServidor(ipMemoria, puertoMemoria, logger);
 	log_info(logger, "Memoria lista para recibir a Kernel o CPU");
-    cliente_fd = esperarCliente(memoria_fd,logger);
 
-    while(cliente_fd != -1) {
+    while (1) {
+        escuchar_cliente("CPU");
+        escuchar_cliente("KERNEL");
+    }
+
+	return EXIT_SUCCESS;
+}
+
+void procesar_conexion(void* void_args) {
+
+    t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
+	t_log* logger = attrs->log;
+    int cliente_fd = attrs->fd;
+    free(attrs);
+
+      while(cliente_fd != -1) {
 	        op_code cod_op = recibirOperacion(cliente_fd);
             switch (cod_op) {
                 case MENSAJE:
@@ -80,8 +94,20 @@ int main(void) {
             }
 
 	}
+}
 
-	return EXIT_SUCCESS;
+int escuchar_cliente(char *nombre_cliente) {
+    int cliente = esperarCliente(memoria_fd, logger);
+    if (cliente != -1) {
+        pthread_t hilo;
+        t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
+        attrs->log = logger;
+        attrs->fd = cliente;
+        pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
+        pthread_detach(hilo);
+        return 1;
+    }
+    return 0;
 }
 
 void preparar_modulo_swap(){

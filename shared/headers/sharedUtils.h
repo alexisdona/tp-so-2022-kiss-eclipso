@@ -72,6 +72,19 @@ typedef struct {
     size_t consola_fd;
 } t_pcb;
 
+typedef struct
+{
+uint32_t entrada_tabla_primer_nivel;
+uint32_t entrada_tabla_segundo_nivel;
+uint32_t offset;
+} dir_logica;
+
+typedef struct
+{
+uint32_t marco;
+uint32_t offset;
+} dir_fisica;
+
 t_config* iniciarConfig(char*);
 t_log* iniciarLogger(char*, char*);
 t_paquete* crearPaquete(void);

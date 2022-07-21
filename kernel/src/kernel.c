@@ -32,9 +32,8 @@ int main() {
 
     conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
     conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
-    //conexionInterrupt = crearConexion(ipCpu, puertoCpuInterrupt, "Kernel");
     enviarMensaje("hola CPU soy el kernel", conexionCPUDispatch);
-    enviarMensaje("hola  MEMORIA soy el kernel", conexionMemoria);
+    enviarMensaje("hola  MEMORIA soy el KERNEL", conexionMemoria);
 
     kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
 	log_info(logger, "Kernel listo para recibir una consola");
@@ -44,7 +43,7 @@ int main() {
     SUSPENDED_BLOCKED = queue_create();
 
     while (1) {
-        escucharClientes("KERNEL");
+        escuchar_cliente("KERNEL");
     }
 
     //cerrar_programa(logger);
@@ -62,6 +61,7 @@ void procesar_conexion(void* void_args) {
 	t_log* logger = attrs->log;
     int cliente_fd = attrs->fd;
     free(attrs);
+    printf("\n***************EN MEMORIA ESTO ES UN HILO**************\n");
 
     while (cliente_fd != -1) {
         //printf("entro un cliente nuevo: %d\n", cliente_fd);
@@ -140,14 +140,13 @@ int accion_kernel(int consola_fd, int kernel_fd) {
 
 }
 
-int escucharClientes(char *nombre_kernel) {
+int escuchar_cliente(char *nombre_kernel) {
     int cliente = esperarCliente(kernel_fd, logger);
     if (cliente != -1) {
         pthread_t hilo;
         t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
         attrs->log = logger;
         attrs->fd = cliente;
-        attrs->nombre_kernel = nombre_kernel;
         pthread_create(&hilo, NULL, (void*) procesar_conexion, (void*) attrs);
         pthread_detach(hilo);
         return 1;
