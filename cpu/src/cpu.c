@@ -68,7 +68,7 @@ int main(void) {
 			    printf("\n");
 				log_info(logger,"Recibi un PCB");
 				pcb = recibirPCB(cliente_dispatch);
-				limpiar_tlb();
+				//limpiar_tlb();
 				loggearPCB(pcb);
 				comenzar_ciclo_instruccion();
 			   break;
@@ -187,7 +187,7 @@ void operacion_EXIT(op_code proceso_respuesta){
 
 void operacion_READ(operando dirLogica){
 
-	dir_fisica* dir_fisica = traducir_direccion_logica(dirLogica);
+	//dir_fisica* dir_fisica = traducir_direccion_logica(dirLogica);
 
 	//Aca pedimos el dato que esta en esa direccion fisica
 	// ¿Lo muestra la cpu? o lo mostramos desde memoria y logueamos la operacion
