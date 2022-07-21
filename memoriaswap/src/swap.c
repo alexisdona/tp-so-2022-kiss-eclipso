@@ -74,8 +74,8 @@ void verificar_carpeta_swap(char* ruta){
 	if (estado == 0){
 		log_info(logger,"SE CREO LA CARPETA SWAP EXITOSAMENTE");
 	}else{
-		log_info(logger,"NO SE PUDO CREAR LA CARPETA SWAP");
-		perror("Error creando la carpeta swap: ");
+		log_info(logger,"La carpeta ya existe");
+		perror("La carpeta ya existe, se guardará el archivo dentro: ");
 	}
 }
 
