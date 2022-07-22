@@ -128,6 +128,6 @@ void enviar_interrupcion(int, op_code);
 t_pcb* recibirPCB(int);
 t_list* deserializarListaInstrucciones(void* , size_t , t_list*);
 void enviar_interrupcion(int, op_code);
-
+void logear_PCB(t_log* logger,t_pcb* pcb,char* enviado_recibido);
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H

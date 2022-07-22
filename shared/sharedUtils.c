@@ -348,5 +348,7 @@ t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucc
     return valores;
 }
 
-
+void logear_PCB(t_log* logger,t_pcb* pcb, char* enviado_recibido){
+	log_debug(logger,string_from_format("%s: PID[%d] CONSOLA[%d] KERNEL[%d] PC[%d] TAM[%d]",enviado_recibido,pcb->idProceso,pcb->consola_fd,pcb->kernel_fd,pcb->programCounter,pcb->tamanioProceso));
+}
 
