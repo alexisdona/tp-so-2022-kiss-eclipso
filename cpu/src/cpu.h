@@ -41,5 +41,7 @@ uint32_t tlb_obtener_marco(uint32_t entrada);
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco);
 uint32_t tlb_existe(uint32_t numero_pagina);
 void limpiar_tlb();
-
+void handshake_memoria(int);
+dir_fisica* obtener_direccion_fisica(uint32_t);
+uint32_t obtener_tabla_segundo_nivel(size_t, uint32_t);
 #endif /* SRC_CPU_H_ */

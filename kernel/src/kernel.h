@@ -28,8 +28,8 @@ int recibir_opcion();
 int accion_kernel(int, int);
 t_pcb* crearEstructuraPcb(t_list*, int, int);
 void iterator(char*);
-int escuchar_cliente(char *nombre_kernel);
 void iterator(char*);
 int validar_y_ejecutar_opcion_consola(int, int, int );
 void enviarACpu(int, t_pcb*);
+int escuchar_cliente();
 #endif /* KERNEL_H_ */

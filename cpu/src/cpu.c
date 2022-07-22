@@ -1,17 +1,17 @@
 #include "cpu.h"
+#include <math.h>
 
 t_log* logger;
 int cpu_dispatch;
 int cpuInterrupt;
 t_config * config;
 int conexionMemoria;
-int cliente_dispatch, clienteInterrupt;
+int cliente_dispatch;
 t_pcb* pcb;
 int retardo_noop;
 t_list* interrupciones;
 int alpha = 0.5; //Provisorio, debiera ser enviado por el kernel al conectarse una unica vez.
-uint32_t cant_entradas_x_tabla_de_pagina;
-uint32_t tamanio_pagina;
+int tamanio_pagina, entradas_por_tabla;
 t_list* tlb;
 pthread_mutex_t mutex_algoritmos;
 char* algoritmo_reemplazo_tlb;
@@ -43,7 +43,7 @@ int main(void) {
 
     cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
  	conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "CPU");
- 	enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
+ 	handshake_memoria(conexionMemoria);
 	//log_info(logger, "Te conectaste con Memoria");
     //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
 
@@ -171,7 +171,7 @@ void operacion_EXIT(op_code proceso_respuesta){
 
 void operacion_READ(operando dirLogica){
 
-	//dir_fisica* dir_fisica = traducir_direccion_logica(dirLogica);
+	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
 
 	//Aca pedimos el dato que esta en esa direccion fisica
 	// ¿Lo muestra la cpu? o lo mostramos desde memoria y logueamos la operacion
@@ -222,47 +222,32 @@ void loggearPCB(t_pcb* pcb){
 
 //---------------------------------------------------------MMU--------------------------------------------------------
 
+dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
 
-dir_fisica* traducir_direccion_logica(uint32_t dir_logica_data){
-
-	dir_fisica* dir_fisica = malloc(sizeof(dir_fisica));
-	uint32_t numero_pagina = (dir_logica_data/tamanio_pagina);
-	uint32_t offset = dir_logica_data - numero_pagina * tamanio_pagina;
-
-	uint32_t entrada = tlb_existe(numero_pagina);
-
-	if(entrada >= 0){
-
-		dir_fisica ->marco = tlb_obtener_marco(entrada);
-		dir_fisica -> offset = offset;
-
-		if(strcmp(algoritmo_reemplazo_tlb, "LRU")==0)
-		{
-			tlb_entrada* entrada_aux = list_get(tlb, entrada);
-			list_remove(tlb, entrada);
-			list_add(tlb, entrada_aux);
-		}
-
-		return dir_fisica;
-
-	}else {
-
-		dir_logica* dir_logica = malloc(sizeof(dir_logica));
-
-		dir_logica -> offset = offset;
-		dir_logica -> entrada_tabla_primer_nivel = (numero_pagina / cant_entradas_x_tabla_de_pagina);
-		dir_logica -> entrada_tabla_segundo_nivel = numero_pagina % cant_entradas_x_tabla_de_pagina;
-
-		uint32_t numero_tabla_segundo_nivel = pedir_a_memoria_num_tabla_segundo_nivel(dir_logica ->entrada_tabla_primer_nivel);
-
-		dir_fisica = malloc(sizeof(dir_fisica));
-		dir_fisica -> marco = pedir_a_memoria_marco(numero_tabla_segundo_nivel, dir_logica ->entrada_tabla_segundo_nivel);
-		dir_fisica ->offset = dir_logica ->offset;
-
-		tlb_actualizar(numero_pagina, dir_fisica ->marco);
-		return dir_fisica;
-	}
+    if (direccion_logica < pcb->tamanioProceso) {
+        uint32_t numero_pagina = floor(direccion_logica / tamanio_pagina);
+        uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
+       // uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
+        uint32_t desplazamiento = direccion_logica - (numero_pagina * tamanio_pagina);
+        uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel);
+    }
+    else {
+        log_error(logger, "El proceso intento acceder a una direccion logica invalida");
+        return EXIT_FAILURE;
+    }
 }
+
+uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabla_1er_nivel) {
+
+    t_paquete * paquete = crearPaquete();
+    paquete->codigo_operacion = OBTENER_ENTRADA_SEGUNDO_NIVEL;
+    agregarEntero(paquete, tabla_paginas);
+    agregarEntero4bytes(paquete, entrada_tabla_1er_nivel);
+    enviarPaquete(paquete, conexionMemoria);
+
+}
+
+
 
 uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato){
 	//paso los numeros y el pcb (pcb es variable global)
@@ -322,6 +307,16 @@ void limpiar_tlb(){
 		list_clean(tlb);
 		pid = pcb->idProceso;
 	}
+}
+
+void handshake_memoria(int conexionMemoria){
+  op_code opCode = recibirOperacion(conexionMemoria);
+  size_t tamanio_stream;
+  if (opCode==HANDSHAKE_MEMORIA) {
+      recv(conexionMemoria, &tamanio_stream, sizeof(size_t), 0);
+      recv(conexionMemoria, &tamanio_pagina, sizeof(int), 0);
+      recv(conexionMemoria, &entradas_por_tabla, sizeof(int), 0);
+  }
 }
 
 

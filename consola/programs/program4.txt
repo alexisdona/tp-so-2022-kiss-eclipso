@@ -1,0 +1,3 @@
+NO_OP 2
+READ 704
+EXIT

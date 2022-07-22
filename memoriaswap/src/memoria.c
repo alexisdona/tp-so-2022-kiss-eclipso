@@ -56,6 +56,7 @@ void procesar_conexion(void* void_args) {
     t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
 	t_log* logger = attrs->log;
     int cliente_fd = attrs->fd;
+    handshake_cpu_memoria(cliente_fd, tamanio_pagina, entradas_por_tabla, HANDSHAKE_MEMORIA);
     free(attrs);
 
       while(cliente_fd != -1) {
@@ -90,6 +91,17 @@ void procesar_conexion(void* void_args) {
                     crear_archivo_swap(pcb_kernel->idProceso, pcb_kernel->tamanioProceso);
                     pcb_kernel->tablaPaginas = crear_estructuras_administrativas_proceso(pcb_kernel->tamanioProceso) - 1;
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
+                    break;
+                case OBTENER_ENTRADA_SEGUNDO_NIVEL:
+                    printf("\nMEMORIA entró en OBTENER_ENTRADA_SEGUNDO_NIVEL\n");
+                    void* buffer = recibirBuffer(cliente_fd);
+
+                    size_t nro_tabla_primer_nivel;
+                    uint32_t entrada_tabla_primer_nivel;
+                    memcpy(&nro_tabla_primer_nivel, buffer, sizeof(size_t));
+                    memcpy(&entrada_tabla_primer_nivel, buffer+sizeof(size_t), sizeof(uint32_t));
+                    printf("\ntabla_primer_nivel: %d\n", nro_tabla_primer_nivel);
+                    printf("\nentrada_tabla_primer_nivel: %d\n", entrada_tabla_primer_nivel);
                     break;
                 case -1:
                     log_info(logger, "El cliente se desconectó");
@@ -176,4 +188,7 @@ void crear_espacio_usuario() {
     espacio_usuario_memoria = malloc(tamanio_memoria);
 }
 
+int tiene_marcos_disponibles() {
+
+}
 

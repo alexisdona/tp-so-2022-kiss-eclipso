@@ -30,7 +30,9 @@ typedef enum {
     LEER_MEMORIA,
 	SWAPEAR_PROCESO,
 	CREAR_ESTRUCTURAS_ADMIN,
-	ACTUALIZAR_INDICE_TABLA_PAGINAS
+	ACTUALIZAR_INDICE_TABLA_PAGINAS,
+	HANDSHAKE_MEMORIA,
+	OBTENER_ENTRADA_SEGUNDO_NIVEL
 } op_code;
 
 typedef enum
@@ -82,7 +84,7 @@ uint32_t offset;
 typedef struct
 {
 uint32_t marco;
-uint32_t offset;
+uint32_t desplazamiento;
 } dir_fisica;
 
 t_config* iniciarConfig(char*);
@@ -108,9 +110,11 @@ void agregarInstruccion(t_paquete*, void*);
 void agregarListaInstrucciones(t_paquete *, t_list *);
 void agregarTamanioProceso(t_paquete*, int);
 void agregarEntero(t_paquete *, size_t);
+void agregarEntero4bytes(t_paquete *, uint32_t);
 void enviarPCB(int, t_pcb*, op_code);
 t_pcb* recibirPCB(int);
 t_list* deserializarListaInstrucciones(void* , size_t , t_list*) ;
+void handshake_cpu_memoria(int, size_t, size_t, op_code);
 
 
 #endif //TP_2022_1C_ECLIPSO_SHAREDUTILS_H
