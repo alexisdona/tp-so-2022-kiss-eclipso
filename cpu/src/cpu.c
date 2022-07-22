@@ -173,6 +173,7 @@ void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 void operacion_EXIT(op_code proceso_respuesta){
 	log_info(logger,"Ejecutando EXIT");
     enviarPCB(cliente_dispatch, pcb, proceso_respuesta);
+    pcb=NULL;
 }
 
 void operacion_READ(operando dirLogica){
