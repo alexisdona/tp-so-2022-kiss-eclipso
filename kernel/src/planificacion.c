@@ -36,6 +36,7 @@ void iniciarPlanificacionCortoPlazo() {
                 case BLOQUEAR_PROCESO:
                     log_info(logger,"BLOQUEANDO PROCESO");
                     t_pcb* pcb = recibirPCB(conexion_cpu_dispatch);
+                    logear_PCB(logger,pcb,"RECIBIDO");
                     bloquearProceso(pcb);
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     estimar_proxima_rafaga(tiempo_en_ejecucion, pcb);
@@ -43,7 +44,7 @@ void iniciarPlanificacionCortoPlazo() {
                 case TERMINAR_PROCESO:
                     log_info(logger, "TERMINANDO PROCESO");
                     t_pcb* pcbFinalizado = recibirPCB(conexion_cpu_dispatch);
-                    log_info(logger, string_from_format("PROCESO A FINALIZAR [%d]",pcbFinalizado->idProceso));
+                    logear_PCB(logger,pcb,"RECIBIDO");
                     incrementar_grado_multiprogramacion();
                     avisarProcesoTerminado(pcbFinalizado->consola_fd);
                     sem_post(&semGradoMultiprogramacion);
@@ -51,7 +52,7 @@ void iniciarPlanificacionCortoPlazo() {
                 case DESALOJAR_PROCESO:
                 	log_info(logger,"DESALOJANDO PROCESO");
                     t_pcb* pcb_desalojada = recibirPCB(conexion_cpu_dispatch);
-                    log_info(logger,string_from_format("PCB DESALOJADA [%d]",pcb_desalojada->idProceso));
+                    logear_PCB(logger,pcb,"RECIBIDO");
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     calcular_rafagas_restantes_proceso_desalojado(tiempo_en_ejecucion,pcb_desalojada);
                     checkear_proceso_y_replanificar(pcb_desalojada);
@@ -102,6 +103,7 @@ void planificacion_FIFO(t_pcb* pcb) {
 	agregar_proceso_READY(pcb);
     decrementar_grado_multiprogramacion();
     enviarPCB(conexion_cpu_dispatch, pcb, PCB);
+    logear_PCB(logger,pcb,"ENVIADO");
     eliminar_proceso_de_READY(pcb);
 }
 
@@ -186,6 +188,7 @@ void suspender_proceso(t_pcb* pcb) {
 
     pthread_mutex_lock(&mutexColaSuspendedBloqued); 
     enviarPCB(conexion_memoria,pcb_a_suspended_blocked,SWAPEAR_PROCESO);
+    logear_PCB(logger,pcb,"ENVIADO");
     list_add(SUSPENDED_BLOCKED, pcb_a_suspended_blocked);
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
     
@@ -247,8 +250,9 @@ void ordenar_procesos_lista_READY() {
 	if(list_size(READY)>1){
 		list_sort(READY, sort_by_rafaga);
 	}
-	enviarPCB(conexion_cpu_dispatch,obtener_proceso_en_READY(),PCB);
-
+	t_pcb* pcb_ready = obtener_proceso_en_READY();
+	enviarPCB(conexion_cpu_dispatch,pcb_ready,PCB);
+	logear_PCB(logger,pcb_ready,"ENVIADO");
 	eliminar_proceso_de_READY();
 	decrementar_grado_multiprogramacion();
 }
@@ -264,12 +268,14 @@ void checkear_proceso_y_replanificar(t_pcb* pcbEnExec) {
     }else{
     	log_info(logger,"ENVIO PCB DE REGRESO");
     	enviarPCB(conexion_cpu_dispatch,pcbEnExec, PCB);
+    	logear_PCB(logger,pcb,"ENVIADO");
     }
 }
 
 void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
 	log_info(logger,"ENVIO PCB PROCESO MAS CORTO");
     enviarPCB(conexion_cpu_dispatch, pcbNueva, PCB);
+    logear_PCB(logger,pcbNueva,"ENVIADO");
     eliminar_proceso_de_READY(pcbNueva);
     planificacion_SJF(pcbEnExec);
 }
@@ -285,20 +291,18 @@ void crear_estructuras_memoria(t_pcb* pcb) {
     int pcb_actualizado = 0;
     t_paquete* paquete = crearPaquete();
     enviarPCB(conexion_memoria, pcb, CREAR_ESTRUCTURAS_ADMIN );
+    logear_PCB(logger,pcb,"ENVIADO");
     while(conexion_memoria != -1 && pcb_actualizado == 0){
         op_code cod_op = recibirOperacion(conexion_memoria);
         switch(cod_op) {
             case ACTUALIZAR_INDICE_TABLA_PAGINAS:
                 ;
                 t_pcb* pcb_aux = recibirPCB(conexion_memoria);
+                logear_PCB(logger,pcb,"RECIBIDO");
                 pcb->tablaPaginas = pcb_aux->tablaPaginas;
                 //printf("\nACTUALIZAR_TABLA_PAGINAS: PCB->idProceso: %ld, PCB->tablaPaginas:%ld\n", pcb->idProceso, pcb->tablaPaginas);
                 pcb_actualizado=1;
                 break;
         }
     }
-}
-
-void logear_pcb(t_pcb* pcb){
-	log_debug(logger,string_from_format("PCB: PID [%d] CONSOLA [%d] KERNEL [%d] PC [%d] TAM [%d] TP [%d]",pcb->idProceso,pcb->consola_fd,pcb->kernel_fd,pcb->tamanioProceso,pcb->tablaPaginas));
 }

@@ -66,19 +66,17 @@ int main(void) {
 				break;
 			case PCB:
 			    printf("\n");
-				log_info(logger,"Recibi un PCB");
+				log_info(logger,"RECIBI PCB");
 				pcb = recibirPCB(cliente_dispatch);
+				logear_PCB(logger,pcb,"RECIBIDO");
 				//limpiar_tlb();
-				loggearPCB(pcb);
 				comenzar_ciclo_instruccion();
-			   break;
+			   break;/*
 			case -1:
-				log_info(logger, "El cliente se desconecto.");
-				cliente_dispatch=-1;
-				break;
+				;
 			default:
 				log_warning(logger,"Operacion desconocida.");
-				break;
+				break;*/
 		}
 	}
 
@@ -168,11 +166,13 @@ void operacion_NO_OP(){
 void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 	log_info(logger,"Ejecutando I/O: %d",tiempo_bloqueo);
     enviarPCB(cliente_dispatch, pcb,  proceso_respuesta);
+    logear_PCB(logger,pcb,"ENVIADO");
 }
 
 void operacion_EXIT(op_code proceso_respuesta){
 	log_info(logger,"Ejecutando EXIT");
     enviarPCB(cliente_dispatch, pcb, proceso_respuesta);
+    logear_PCB(logger,pcb,"ENVIADO");
     pcb=NULL;
 }
 
@@ -227,7 +227,6 @@ void atender_interrupcion(void* void_args) {
 
 	if (cpu_interrupt != -1) {
 		op_code cod_op = recibirOperacion(cpu_interrupt);
-		printf("COD-OP: %d\n",cod_op);
 
 		switch (cod_op) {
 			case DESALOJAR_PROCESO:
@@ -235,23 +234,19 @@ void atender_interrupcion(void* void_args) {
 				log_info(logger,"DESALOJANDO PROCESO...");
 				log_info(logger,"DISPATCH: %d",cliente_dispatch);
 				enviarPCB(cliente_dispatch, pcb, cod_op);
+				logear_PCB(logger,pcb,"ENVIADO");
 				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
 				pcb = NULL;
-			   break;
+			   break;/*
 			case -1:
 				log_info(logger, "El Kernel no envio ninguna interrupcion");
-				cliente_dispatch=-1;
+				//cliente_dispatch=-1;
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
-				break;
+				break;*/
 		}
 	}
-}
-
-void loggearPCB(t_pcb* pcb){
-	log_info(logger, "PCB:");
-	log_info(logger, "ID: %zu",pcb->idProceso);
 }
 
 //---------------------------------------------------------MMU--------------------------------------------------------
