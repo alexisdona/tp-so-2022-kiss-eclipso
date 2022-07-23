@@ -74,6 +74,16 @@ void procesar_conexion(void* void_args) {
                 case LEER_MEMORIA:
                     ;
                     void* buffer_lectura = recibirBuffer(cliente_fd);
+                    uint32_t marco_lectura;
+                    uint32_t desplazamiento;
+                    memcpy(&marco_lectura, buffer_lectura, sizeof(uint32_t));
+                    memcpy(&desplazamiento, buffer_lectura+sizeof(uint32_t), sizeof(uint32_t));
+                    printf("\nmarco_lectura: %d\n", marco_lectura);
+                    printf("\ndesplazamiento: %d\n", desplazamiento);
+                    uint32_t desplazamiento_final_lectura = marco_lectura*tamanio_pagina+desplazamiento;
+                    uint32_t* valor = (uint32_t*) espacio_usuario_memoria + desplazamiento_final_lectura;
+                    printf("\nMEMORIA valor leido en el espacio de usuario : %d\n", *valor);
+                    enviar_entero(cliente_fd, *valor, LEER_MEMORIA);
                     break;
                 case SWAPEAR_PROCESO:
                 	log_info(logger, "Recibi un PCB a swapear");
@@ -199,10 +209,18 @@ void iniciar_estructuras_administrativas_kernel() {
 
 void crear_espacio_usuario() {
     espacio_usuario_memoria = malloc(tamanio_memoria);
+    uint32_t valor=0;
+    for(int i=0; i< tamanio_memoria/sizeof(uint32_t); i++) {
+        valor = i;
+        memcpy(espacio_usuario_memoria + sizeof(uint32_t) *i , &valor, sizeof(uint32_t));
+    }
+  /*  printf("\nMEMORIA --> IMPRIMO VALORES EN ESPACIO DE USUARIO\n");
+    for(int i=0; i< tamanio_memoria/sizeof(uint32_t); i++) {
+        uint32_t* apuntado=  espacio_usuario_memoria + i*sizeof(uint32_t);
+       printf("\nvalor apuntado en posición %d-->%d",i, *apuntado);
+    }
+    */
 }
 
-int tiene_marcos_disponibles() {
-
-}
 
 

@@ -175,9 +175,8 @@ void operacion_READ(operando dirLogica){
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
 	printf("\ndir_fisica->marco: %d\n", dir_fisica->marco);
     printf("\ndir_fisica->desplazamiento: %d\n", dir_fisica->desplazamiento);
-
-	//Aca pedimos el dato que esta en esa direccion fisica
-	// ¿Lo muestra la cpu? o lo mostramos desde memoria y logueamos la operacion
+    uint32_t valor = leer_en_memoria(dir_fisica);
+    printf("\nCPU --El valor leido en memoria es>  %d\n", valor);
 }
 
 void operacion_WRITE(){
@@ -307,8 +306,6 @@ uint32_t obtener_marco_memoria(uint32_t nro_tabla_segundo_nivel, uint32_t entrad
 
 ////--------------------------------------------------------TLB------------------------------------------------------------------
 
-
-//Retorna la entrada donde se encuentra esa estructura {pagina|marco}
 uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
     tlb_entrada * entrada_tlb;
     if (list_size(tlb) > 0) {
@@ -357,7 +354,31 @@ void handshake_memoria(int conexionMemoria){
   }
 }
 
+uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = LEER_MEMORIA;
+    agregarEntero4bytes(paquete, direccion_fisica->marco);
+    agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
+    enviarPaquete(paquete, conexionMemoria);
+    eliminarPaquete(paquete);
+    uint32_t valor_leido;
 
+    int obtuve_valor = 0;
+    while (conexionMemoria != -1 && obtuve_valor == 0) {
+        op_code cod_op = recibirOperacion(conexionMemoria);
+        switch(cod_op) {
+            case LEER_MEMORIA:
+                ;
+                void* buffer = recibirBuffer(conexionMemoria);
+                memcpy(&valor_leido, buffer, sizeof(uint32_t));
+                printf("\nvalor leido de memoria: %d\n", valor_leido);
+                obtuve_valor = 1;
+                break;
+        }
+    }
+    return valor_leido;
+
+}
 
 
 
