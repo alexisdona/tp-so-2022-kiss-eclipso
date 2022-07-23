@@ -36,7 +36,6 @@ int main(void) {
     preparar_modulo_swap();
     iniciar_estructuras_administrativas_kernel();
     crear_espacio_usuario();
-
 	//sem_init(&semMemoria, 0, 1);
 
 	// Inicio el servidor
@@ -94,14 +93,30 @@ void procesar_conexion(void* void_args) {
                     break;
                 case OBTENER_ENTRADA_SEGUNDO_NIVEL:
                     printf("\nMEMORIA entró en OBTENER_ENTRADA_SEGUNDO_NIVEL\n");
-                    void* buffer = recibirBuffer(cliente_fd);
+                    void* buffer_tabla_segundo_nivel = recibirBuffer(cliente_fd);
 
                     size_t nro_tabla_primer_nivel;
                     uint32_t entrada_tabla_primer_nivel;
-                    memcpy(&nro_tabla_primer_nivel, buffer, sizeof(size_t));
-                    memcpy(&entrada_tabla_primer_nivel, buffer+sizeof(size_t), sizeof(uint32_t));
-                    printf("\ntabla_primer_nivel: %d\n", nro_tabla_primer_nivel);
+                    memcpy(&nro_tabla_primer_nivel, buffer_tabla_segundo_nivel, sizeof(size_t));
+                    memcpy(&entrada_tabla_primer_nivel, buffer_tabla_segundo_nivel + sizeof(size_t), sizeof(uint32_t));
+                    printf("\ntabla_primer_nivel: %zu\n", nro_tabla_primer_nivel);
                     printf("\nentrada_tabla_primer_nivel: %d\n", entrada_tabla_primer_nivel);
+                    t_registro_primer_nivel* registro_primer_nivel = (list_get(list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel), entrada_tabla_primer_nivel)) ;
+                    uint32_t nro_tabla_segundo_nivel = registro_primer_nivel->nro_tabla_segundo_nivel;
+                    enviar_entero(cliente_fd, nro_tabla_segundo_nivel, OBTENER_ENTRADA_SEGUNDO_NIVEL);
+                    break;
+                case OBTENER_MARCO:
+                    printf("\nMEMORIA entró en OBTENER_MARCO\n");
+                    void* buffer_marco = recibirBuffer(cliente_fd);
+
+                    uint32_t entrada_tabla_segundo_nivel;
+                    memcpy(&nro_tabla_segundo_nivel, buffer_marco, sizeof(uint32_t));
+                    memcpy(&entrada_tabla_segundo_nivel, buffer_marco+sizeof(uint32_t), sizeof(uint32_t));
+                    printf("\nnro de tabla de segundo nivel es: %zu\n", nro_tabla_segundo_nivel);
+                    printf("\nla entrada en la tabla de segundo nivel es: %zu\n", entrada_tabla_segundo_nivel);
+                    t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel), entrada_tabla_segundo_nivel);
+                    uint32_t marco = 84; //registro_segundo_nivel->frame;
+                    enviar_entero(cliente_fd, marco, OBTENER_MARCO);
                     break;
                 case -1:
                     log_info(logger, "El cliente se desconectó");
@@ -154,16 +169,18 @@ size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso) {
         for (int j=0; j<entradas_por_tabla; j++){
             registro_tabla_segundo_nivel = malloc(sizeof(t_registro_segundo_nivel));
             registro_tabla_segundo_nivel->indice = j;
+            registro_tabla_segundo_nivel->frame = 0;
             registro_tabla_segundo_nivel->modificado=false;
             registro_tabla_segundo_nivel->usado=false;
             registro_tabla_segundo_nivel->presencia=false;
+
             list_add(lista_registros_segundo_nivel, registro_tabla_segundo_nivel);
             indice_segundo_nivel++;
         }
         indice_primer_nivel++;
 
         list_add(lista_tablas_segundo_nivel, lista_registros_segundo_nivel);
-        list_clean(lista_registros_segundo_nivel);
+       // list_clean(lista_registros_segundo_nivel);
     }
     list_add(lista_tablas_primer_nivel, lista_registros_primer_nivel);
     return list_size(lista_tablas_primer_nivel);
@@ -191,4 +208,6 @@ void crear_espacio_usuario() {
 int tiene_marcos_disponibles() {
 
 }
+
+
 

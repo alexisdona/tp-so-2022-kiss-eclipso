@@ -45,6 +45,4 @@ int escuchar_cliente(char *);
 void crear_bitmap_frames_libres();
 
 
-
-
 #endif /* SRC_MEMORIA_H_ */

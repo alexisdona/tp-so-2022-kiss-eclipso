@@ -227,9 +227,11 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
     if (direccion_logica < pcb->tamanioProceso) {
         uint32_t numero_pagina = floor(direccion_logica / tamanio_pagina);
         uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
-       // uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
+        uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
         uint32_t desplazamiento = direccion_logica - (numero_pagina * tamanio_pagina);
         uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel);
+        uint32_t marco = obtener_marco(tabla_segundo_nivel, entrada_tabla_2do_nivel);
+        printf("\nMARCO = %d\n", marco);
     }
     else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
@@ -238,15 +240,55 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
 }
 
 uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabla_1er_nivel) {
-
+// primer acceso a memoria para obtener la entrada de la tabla de segundo nivel
     t_paquete * paquete = crearPaquete();
     paquete->codigo_operacion = OBTENER_ENTRADA_SEGUNDO_NIVEL;
     agregarEntero(paquete, tabla_paginas);
     agregarEntero4bytes(paquete, entrada_tabla_1er_nivel);
     enviarPaquete(paquete, conexionMemoria);
+    uint32_t entrada_segundo_nivel;
+    //obtener entrada de tabla de segundo nivel
+    int obtuve_valor_tabla = 0;
+    while (conexionMemoria != -1 && obtuve_valor_tabla == 0) {
+            op_code cod_op = recibirOperacion(conexionMemoria);
+            switch(cod_op) {
+                case OBTENER_ENTRADA_SEGUNDO_NIVEL:
+                    ;
+                    void* buffer = recibirBuffer(conexionMemoria);
+                    memcpy(&entrada_segundo_nivel, buffer, sizeof(uint32_t));
+                    printf("\nentrada_tabla_segundo_nivel: %d\n", entrada_segundo_nivel);
+                    obtuve_valor_tabla = 1;
+                    break;
+            }
+        }
+        return entrada_segundo_nivel;
+    }
+
+uint32_t obtener_marco(uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel) {
+    t_paquete * paquete = crearPaquete();
+    paquete->codigo_operacion = OBTENER_MARCO;
+    agregarEntero4bytes(paquete, nro_tabla_segundo_nivel);
+    agregarEntero4bytes(paquete, entrada_tabla_2do_nivel);
+    enviarPaquete(paquete, conexionMemoria);
+    eliminarPaquete(paquete);
+    uint32_t marco;
+
+    int obtuve_marco = 0;
+    while (conexionMemoria != -1 && obtuve_marco == 0) {
+        op_code cod_op = recibirOperacion(conexionMemoria);
+        switch(cod_op) {
+            case OBTENER_MARCO:
+                ;
+                void* buffer = recibirBuffer(conexionMemoria);
+                memcpy(&marco, buffer, sizeof(uint32_t));
+                printf("\nmarco de memoria: %d\n", marco);
+                obtuve_marco = 1;
+                break;
+        }
+    }
+    return marco;
 
 }
-
 
 
 uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato){
@@ -313,7 +355,7 @@ void handshake_memoria(int conexionMemoria){
   op_code opCode = recibirOperacion(conexionMemoria);
   size_t tamanio_stream;
   if (opCode==HANDSHAKE_MEMORIA) {
-      recv(conexionMemoria, &tamanio_stream, sizeof(size_t), 0);
+      recv(conexionMemoria, &tamanio_stream, sizeof(size_t), 0); // no me importa en este caso
       recv(conexionMemoria, &tamanio_pagina, sizeof(int), 0);
       recv(conexionMemoria, &entradas_por_tabla, sizeof(int), 0);
   }
