@@ -115,7 +115,7 @@ void procesar_conexion(void* void_args) {
                     printf("\nnro de tabla de segundo nivel es: %zu\n", nro_tabla_segundo_nivel);
                     printf("\nla entrada en la tabla de segundo nivel es: %zu\n", entrada_tabla_segundo_nivel);
                     t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel), entrada_tabla_segundo_nivel);
-                    uint32_t marco = 84; //registro_segundo_nivel->frame;
+                    uint32_t marco = registro_segundo_nivel->frame;
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
                     break;
                 case -1:
@@ -178,9 +178,8 @@ size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso) {
             indice_segundo_nivel++;
         }
         indice_primer_nivel++;
-
-        list_add(lista_tablas_segundo_nivel, lista_registros_segundo_nivel);
-       // list_clean(lista_registros_segundo_nivel);
+        list_add(lista_tablas_segundo_nivel, list_duplicate(lista_registros_segundo_nivel));
+        list_clean(lista_registros_segundo_nivel);
     }
     list_add(lista_tablas_primer_nivel, lista_registros_primer_nivel);
     return list_size(lista_tablas_primer_nivel);
@@ -208,6 +207,5 @@ void crear_espacio_usuario() {
 int tiene_marcos_disponibles() {
 
 }
-
 
 
