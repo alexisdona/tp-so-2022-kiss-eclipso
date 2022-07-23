@@ -133,6 +133,7 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
 			operacion_READ(instruccion->parametros[0]);
+			printf("\nejecuto read\n");
 			log_info(logger,"Ejecutando READ");
 			break;
 		case WRITE:
@@ -172,10 +173,11 @@ void operacion_EXIT(op_code proceso_respuesta){
 void operacion_READ(operando dirLogica){
 
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
+	printf("\ndir_fisica->marco: %d\n", dir_fisica->marco);
+    printf("\ndir_fisica->desplazamiento: %d\n", dir_fisica->desplazamiento);
 
 	//Aca pedimos el dato que esta en esa direccion fisica
 	// ¿Lo muestra la cpu? o lo mostramos desde memoria y logueamos la operacion
-
 }
 
 void operacion_WRITE(){
@@ -229,10 +231,22 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
         uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
         uint32_t desplazamiento = direccion_logica - (numero_pagina * tamanio_pagina);
-        uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel);
-        uint32_t marco = obtener_marco(tabla_segundo_nivel, entrada_tabla_2do_nivel);
+
+        uint32_t marco;
+        marco = tlb_obtener_marco(numero_pagina);
+        if (marco == -1 ) {
+         //TLB_MISS
+            uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel);
+            marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel);
+            tlb_actualizar(numero_pagina, marco);
+        }
         printf("\nMARCO = %d\n", marco);
+        dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
+        direccion_fisica->marco = marco;
+        direccion_fisica->desplazamiento = desplazamiento;
+        return direccion_fisica;
     }
+
     else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
         return EXIT_FAILURE;
@@ -264,7 +278,7 @@ uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabl
         return entrada_segundo_nivel;
     }
 
-uint32_t obtener_marco(uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel) {
+uint32_t obtener_marco_memoria(uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel) {
     t_paquete * paquete = crearPaquete();
     paquete->codigo_operacion = OBTENER_MARCO;
     agregarEntero4bytes(paquete, nro_tabla_segundo_nivel);
@@ -291,40 +305,23 @@ uint32_t obtener_marco(uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_
 }
 
 
-uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato){
-	//paso los numeros y el pcb (pcb es variable global)
-	return 0;
-}
-
-uint32_t pedir_a_memoria_marco(uint32_t dato,uint32_t dato2){
-	return 0;
-	//paso los numeros y el pcb
-}
-
 ////--------------------------------------------------------TLB------------------------------------------------------------------
 
+
 //Retorna la entrada donde se encuentra esa estructura {pagina|marco}
-uint32_t tlb_existe(uint32_t numero_pagina){
-
-	tlb_entrada* aux;
-
-	for (int i=0; i < list_size(tlb); i++)
-	{
-		aux = list_get(tlb, i);
-		if (aux->pagina == numero_pagina){
-			return i;
-		}
-	}
-	return -1;
-
+uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
+    tlb_entrada * entrada_tlb;
+    if (list_size(tlb) > 0) {
+        for (int i=0; i < list_size(tlb); i++) {
+            entrada_tlb = list_get(tlb,i);
+            if (entrada_tlb->pagina == numero_pagina) {
+                return entrada_tlb->marco;
+            }
+        }
+    }
+    return -1;
 }
 
-uint32_t tlb_obtener_marco(uint32_t entrada){
-
-	tlb_entrada* tlb_entrada = list_get(tlb, entrada);
-
-	return tlb_entrada->marco;
-}
 
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 
@@ -334,7 +331,6 @@ void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 
 	if(list_size(tlb) >= entradas_max_tlb){
 		//Reemplazo el primer elemento de la lista
-
 		list_remove(tlb, 0);
 		list_add(tlb, tlb_entrada);
 

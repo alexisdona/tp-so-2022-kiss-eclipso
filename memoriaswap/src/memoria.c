@@ -72,11 +72,8 @@ void procesar_conexion(void* void_args) {
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
                     break;
                 case LEER_MEMORIA:
-                    enviarMensaje("Voy a leer la memoria...", cliente_fd);
-                    // sem_wait(&semMemoria);
-                    // Leer memoria...
-                    // sem_signal(&semMemoria);
-                    enviarMensaje("Ya leí la memoria!", cliente_fd);
+                    ;
+                    void* buffer_lectura = recibirBuffer(cliente_fd);
                     break;
                 case SWAPEAR_PROCESO:
                 	log_info(logger, "Recibi un PCB a swapear");
