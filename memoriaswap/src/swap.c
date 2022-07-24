@@ -50,16 +50,20 @@ char* obtener_ruta_archivo_swap(){
 void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
 
     void *str = malloc(tamanio);
-    uint32_t valor=0;
-    for(int i=0; i< tamanio/sizeof(uint32_t); i++) {
-        valor += i;
+    uint32_t valor= (uint32_t) id_proceso;
+    uint32_t cantidad_bloques = tamanio/sizeof(uint32_t);
+    // lleno las páginas del proceso con enteros partiendo desde id_proceso
+    for(int i=0; i< cantidad_bloques ; i++) {
         memcpy(str + sizeof(uint32_t) *i , &valor, sizeof(uint32_t));
+        valor += 1;
     }
-      /*printf("\nswap --> IMPRIMO VALORES EN el archivo\n");
-      for(int i=0; i< tamanio/sizeof(uint32_t); i++) {
-          uint32_t* apuntado=  str + i*sizeof(uint32_t);
+/*
+    printf("\nswap --> IMPRIMO VALORES EN el archivo\n");
+      for(int i=0; i< cantidad_bloques; i++) {
+          uint32_t* apuntado=  str+ sizeof(uint32_t) *i;
          printf("\nvalor apuntado en posición del arhivo%d-->%d",i, *apuntado);
-   }*/
+   }
+*/
        char *ruta = string_new();
        string_append(&ruta, PATH_SWAP);
        verificar_carpeta_swap(ruta);

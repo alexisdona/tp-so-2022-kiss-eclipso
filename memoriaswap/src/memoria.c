@@ -115,7 +115,7 @@ void procesar_conexion(void* void_args) {
                     uint32_t numero_pagina;
                     uint32_t nro_tabla_segundo_nivel_obtener_marco;
                     int despl = 0;
-
+                    uint32_t marco;
                     memcpy(&id_proceso, buffer_marco+despl, sizeof(size_t));
                     despl+= sizeof(size_t);
                     memcpy(&nro_tabla_segundo_nivel_obtener_marco, buffer_marco+despl, sizeof(uint32_t));
@@ -125,12 +125,20 @@ void procesar_conexion(void* void_args) {
                     memcpy(&numero_pagina, buffer_marco+despl, sizeof(uint32_t));
 
                     t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel_obtener_marco), entrada_tabla_segundo_nivel);
-                    uint32_t marco;
+
                     if(registro_segundo_nivel->presencia) {
                         marco = registro_segundo_nivel->frame;
                     }
+                    // primero validar que el proceso tenga marcos disponibles
+
                     void* bloque = obtener_bloque_proceso_desde_swap(id_proceso, numero_pagina);
+                    uint32_t nro_frame_libre = obtener_numero_frame_libre();
+
+                    registro_segundo_nivel->presencia = true;
+                    registro_segundo_nivel->frame = nro_frame_libre;
+                    marco = registro_segundo_nivel->frame;
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
+                    memcpy(espacio_usuario_memoria+marco*tamanio_pagina, bloque, tamanio_pagina ); //agrego bloque en el espacio de usuario
                     break;
                 case -1:
                     log_info(logger, "El cliente se desconectó");
@@ -248,6 +256,18 @@ void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagin
      memcpy(bloque, contenido_swap+ubicacion_bloque, tamanio_pagina);
      return bloque; //devuelve la pagina entera que es del tamano de pagina
 }
+
+uint32_t obtener_numero_frame_libre() {
+
+    for(int i= 0; frames_disponibles->size; i++) {
+        if ( bitarray_test_bit(frames_disponibles, i) == 0) {
+            bitarray_set_bit(frames_disponibles, i);
+            return i;
+        }
+    }
+    return -1;
+}
+
 
 
 

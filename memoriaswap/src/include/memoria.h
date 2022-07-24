@@ -44,5 +44,5 @@ void iniciar_estructuras_administrativas_kernel();
 int escuchar_cliente(char *);
 void crear_bitmap_frames_libres();
 void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagina);
-
+uint32_t obtener_numero_frame_libre();
 #endif /* SRC_MEMORIA_H_ */
