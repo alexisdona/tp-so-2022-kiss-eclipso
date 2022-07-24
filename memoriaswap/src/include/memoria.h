@@ -43,5 +43,12 @@ size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso);
 void iniciar_estructuras_administrativas_kernel();
 int escuchar_cliente(char *);
 void crear_bitmap_frames_libres();
+void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagina);
+uint32_t obtener_numero_frame_libre();
+uint32_t obtener_cantidad_marcos_ocupados(size_t);
+void cargar_pagina(uint32_t );
+void algoritmo_clock_modificado(uint32_t, uint32_t, uint32_t);
+void algoritmo_clock(uint32_t, uint32_t, uint32_t, uint32_t);
+
 
 #endif /* SRC_MEMORIA_H_ */

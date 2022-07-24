@@ -366,7 +366,7 @@ void handshake_cpu_memoria(int socketDestino, size_t tamanio_pagina, size_t cant
     eliminarPaquete(paquete);
 }
 
-enviar_entero(int cliente_fd, uint32_t valor, op_code opCode) {
+void enviar_entero(int cliente_fd, uint32_t valor, op_code opCode) {
     t_paquete* paquete = crearPaquete();
     paquete->codigo_operacion = opCode;
     agregarEntero4bytes(paquete, valor);

@@ -149,6 +149,7 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 		case EXIT:
 			proceso_respuesta = TERMINAR_PROCESO;
 			operacion_EXIT(proceso_respuesta);
+			list_clean(tlb); //se limpia la tlb para usar en el próximo proceso
 			break;
 	}
 	return proceso_respuesta;
@@ -236,7 +237,7 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         if (marco == -1 ) {
          //TLB_MISS
             uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel);
-            marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel);
+            marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina);
             tlb_actualizar(numero_pagina, marco);
         }
         printf("\nMARCO = %d\n", marco);
@@ -277,11 +278,13 @@ uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabl
         return entrada_segundo_nivel;
     }
 
-uint32_t obtener_marco_memoria(uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel) {
+uint32_t obtener_marco_memoria(uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel, uint32_t numero_pagina) {
     t_paquete * paquete = crearPaquete();
     paquete->codigo_operacion = OBTENER_MARCO;
+    agregarEntero(paquete, pcb->idProceso);
     agregarEntero4bytes(paquete, nro_tabla_segundo_nivel);
     agregarEntero4bytes(paquete, entrada_tabla_2do_nivel);
+    agregarEntero4bytes(paquete, numero_pagina);
     enviarPaquete(paquete, conexionMemoria);
     eliminarPaquete(paquete);
     uint32_t marco;
