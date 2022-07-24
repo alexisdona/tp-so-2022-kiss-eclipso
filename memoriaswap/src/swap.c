@@ -50,59 +50,73 @@ char* obtener_ruta_archivo_swap(){
 void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
 
     void *str = malloc(tamanio);
-    char *ruta = string_new();
-    string_append(&ruta, PATH_SWAP);
-    verificar_carpeta_swap(ruta);
-
-    string_append(&ruta, string_itoa(id_proceso));
-    string_append(&ruta, ".swap");
-
-    FILE *archivo_swap = fopen(ruta, "wb");
-    if (archivo_swap != NULL) {
-        fwrite(str, 1, tamanio, archivo_swap);
+    uint32_t valor= (uint32_t) id_proceso;
+    uint32_t cantidad_bloques = tamanio/sizeof(uint32_t);
+    // lleno las páginas del proceso con enteros partiendo desde id_proceso
+    for(int i=0; i< cantidad_bloques ; i++) {
+        memcpy(str + sizeof(uint32_t) *i , &valor, sizeof(uint32_t));
+        valor += 1;
     }
-    else {
-        perror("Error abriendo el archivo: ");
-    }
-    fclose(archivo_swap);
-}
+/*
+    printf("\nswap --> IMPRIMO VALORES EN el archivo\n");
+      for(int i=0; i< cantidad_bloques; i++) {
+          uint32_t* apuntado=  str+ sizeof(uint32_t) *i;
+         printf("\nvalor apuntado en posición del arhivo%d-->%d",i, *apuntado);
+   }
+*/
+       char *ruta = string_new();
+       string_append(&ruta, PATH_SWAP);
+       verificar_carpeta_swap(ruta);
 
-void verificar_carpeta_swap(char* ruta){
-	log_info(logger,PATH_SWAP);
-	mode_t modo_carpeta = 0777;
-	int estado = mkdir(PATH_SWAP, modo_carpeta);
-	if (estado == 0){
-		log_info(logger,"SE CREO LA CARPETA SWAP EXITOSAMENTE");
-	}else{
-		log_info(logger,"La carpeta ya existe");
-		perror("La carpeta ya existe, se guardará el archivo dentro: ");
-	}
-}
+       string_append(&ruta, string_itoa(id_proceso));
+       string_append(&ruta, ".swap");
+
+       FILE *archivo_swap = fopen(ruta, "wb");
+       if (archivo_swap != NULL) {
+           fwrite(str, 1, tamanio, archivo_swap);
+       }
+       else {
+           perror("Error abriendo el archivo: ");
+       }
+       fclose(archivo_swap);
+   }
+
+   void verificar_carpeta_swap(char* ruta){
+       log_info(logger,PATH_SWAP);
+       mode_t modo_carpeta = 0777;
+       int estado = mkdir(PATH_SWAP, modo_carpeta);
+       if (estado == 0){
+           log_info(logger,"SE CREO LA CARPETA SWAP EXITOSAMENTE");
+       }else{
+           log_info(logger,"La carpeta ya existe");
+           perror("La carpeta ya existe, se guardará el archivo dentro: ");
+       }
+   }
 
 
-void actualizar_archivo_swap(t_config* proceso_swap){
+   void actualizar_archivo_swap(t_config* proceso_swap){
 
-	dictionary_put(proceso_swap->properties,"PID",string_itoa(pcb_atendiendo->idProceso));
-	dictionary_put(proceso_swap->properties,"TAM_PROCESO",string_itoa(pcb_atendiendo->tamanioProceso));
-	dictionary_put(proceso_swap->properties,"PC",string_itoa(pcb_atendiendo->programCounter));
-	dictionary_put(proceso_swap->properties,"TABLA_PAGINAS",string_itoa(pcb_atendiendo->tablaPaginas));
-	dictionary_put(proceso_swap->properties,"ESTIMACION",string_itoa(pcb_atendiendo->estimacionRafaga));
+       dictionary_put(proceso_swap->properties,"PID",string_itoa(pcb_atendiendo->idProceso));
+       dictionary_put(proceso_swap->properties,"TAM_PROCESO",string_itoa(pcb_atendiendo->tamanioProceso));
+       dictionary_put(proceso_swap->properties,"PC",string_itoa(pcb_atendiendo->programCounter));
+       dictionary_put(proceso_swap->properties,"TABLA_PAGINAS",string_itoa(pcb_atendiendo->tablaPaginas));
+       dictionary_put(proceso_swap->properties,"ESTIMACION",string_itoa(pcb_atendiendo->estimacionRafaga));
 
-	t_list* lista_instrucciones = pcb_atendiendo->listaInstrucciones;
-	t_instruccion* instruccion;
-	char* instrucciones = string_new();
+       t_list* lista_instrucciones = pcb_atendiendo->listaInstrucciones;
+       t_instruccion* instruccion;
+       char* instrucciones = string_new();
 
-	for(uint32_t i=0; i<list_size(lista_instrucciones); i++){
+       for(uint32_t i=0; i<list_size(lista_instrucciones); i++){
 
-		instruccion = list_get(lista_instrucciones,i);
-		string_append(&instrucciones,string_itoa(instruccion->codigo_operacion));
-		string_append(&instrucciones," ");
-		string_append(&instrucciones,string_itoa(instruccion->parametros[0]));
-		string_append(&instrucciones," ");
-		string_append(&instrucciones,string_itoa(instruccion->parametros[1]));
-		string_append(&instrucciones,";");
+           instruccion = list_get(lista_instrucciones,i);
+           string_append(&instrucciones,string_itoa(instruccion->codigo_operacion));
+           string_append(&instrucciones," ");
+           string_append(&instrucciones,string_itoa(instruccion->parametros[0]));
+           string_append(&instrucciones," ");
+           string_append(&instrucciones,string_itoa(instruccion->parametros[1]));
+           string_append(&instrucciones,";");
 
-	}
-	dictionary_put(proceso_swap->properties,"INSTRUCCIONES",instrucciones);
+       }
+       dictionary_put(proceso_swap->properties,"INSTRUCCIONES",instrucciones);
 
-}
+   }

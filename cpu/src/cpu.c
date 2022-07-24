@@ -1,24 +1,22 @@
 #include "cpu.h"
+#include <math.h>
 
 t_log* logger;
 int cpu_interrupt;
 t_config * config;
 int conexionMemoria;
 int cliente_dispatch;
-t_pcb * pcb;
+t_pcb* pcb;
 int retardo_noop;
 int cpu_dispatch;
 pthread_t hilo_interrupcion;
 t_list* interrupciones;
-uint32_t cant_entradas_x_tabla_de_pagina;
-uint32_t tamanio_pagina;
+int tamanio_pagina, entradas_por_tabla;
 t_list* tlb;
 pthread_mutex_t mutex_algoritmos;
 char* algoritmo_reemplazo_tlb;
 uint32_t entradas_max_tlb;
 uint32_t pid =-1;
-
-
 
 int main(void) {
 
@@ -51,6 +49,7 @@ int main(void) {
 
     escuchar_interrupcion();
 
+ 	handshake_memoria(conexionMemoria);
     conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "Memoria");
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
     //log_info(logger, "Te conectaste con Memoria");
@@ -137,6 +136,7 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
 			operacion_READ(instruccion->parametros[0]);
+			printf("\nejecuto read\n");
 			log_info(logger,"Ejecutando READ");
 			break;
 		case WRITE:
@@ -152,6 +152,7 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 		case EXIT:
 			proceso_respuesta = TERMINAR_PROCESO;
 			operacion_EXIT(proceso_respuesta);
+			list_clean(tlb); //se limpia la tlb para usar en el próximo proceso
 			break;
 	}
 	return proceso_respuesta;
@@ -177,19 +178,16 @@ void operacion_EXIT(op_code proceso_respuesta){
 }
 
 void operacion_READ(operando dirLogica){
-
-	//dir_fisica* dir_fisica = traducir_direccion_logica(dirLogica);
-
-	//Aca pedimos el dato que esta en esa direccion fisica
-	// ¿Lo muestra la cpu? o lo mostramos desde memoria y logueamos la operacion
-
+	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
+	printf("\ndir_fisica->marco: %d\n", dir_fisica->marco);
+    printf("\ndir_fisica->desplazamiento: %d\n", dir_fisica->desplazamiento);
+    uint32_t valor = leer_en_memoria(dir_fisica);
+    printf("\nCPU --El valor leido en memoria es>  %d\n", valor);
 }
 
 void operacion_WRITE(){
 
 }
-
-//------------------------------------------------------------------------
 
 void preparar_pcb_respuesta(t_paquete* paquete){
 	agregarEntero(paquete, pcb->idProceso);
@@ -251,82 +249,104 @@ void atender_interrupcion(void* void_args) {
 
 //---------------------------------------------------------MMU--------------------------------------------------------
 
+dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
 
-dir_fisica* traducir_direccion_logica(uint32_t dir_logica_data){
+    if (direccion_logica < pcb->tamanioProceso) {
+        uint32_t numero_pagina = floor(direccion_logica / tamanio_pagina);
+        uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
+        uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
+        uint32_t desplazamiento = direccion_logica - (numero_pagina * tamanio_pagina);
 
-	dir_fisica* dir_fisica = malloc(sizeof(dir_fisica));
-	uint32_t numero_pagina = (dir_logica_data/tamanio_pagina);
-	uint32_t offset = dir_logica_data - numero_pagina * tamanio_pagina;
+        uint32_t marco;
+        marco = tlb_obtener_marco(numero_pagina);
+        if (marco == -1 ) {
+         //TLB_MISS
+            uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel);
+            marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina);
+            tlb_actualizar(numero_pagina, marco);
+        }
+        printf("\nMARCO = %d\n", marco);
+        dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
+        direccion_fisica->marco = marco;
+        direccion_fisica->desplazamiento = desplazamiento;
+        return direccion_fisica;
+    }
 
-	uint32_t entrada = tlb_existe(numero_pagina);
-
-	if(entrada >= 0){
-
-		dir_fisica ->marco = tlb_obtener_marco(entrada);
-		dir_fisica -> offset = offset;
-
-		if(strcmp(algoritmo_reemplazo_tlb, "LRU")==0)
-		{
-			tlb_entrada* entrada_aux = list_get(tlb, entrada);
-			list_remove(tlb, entrada);
-			list_add(tlb, entrada_aux);
-		}
-
-		return dir_fisica;
-
-	}else {
-
-		dir_logica* dir_logica = malloc(sizeof(dir_logica));
-
-		dir_logica -> offset = offset;
-		dir_logica -> entrada_tabla_primer_nivel = (numero_pagina / cant_entradas_x_tabla_de_pagina);
-		dir_logica -> entrada_tabla_segundo_nivel = numero_pagina % cant_entradas_x_tabla_de_pagina;
-
-		uint32_t numero_tabla_segundo_nivel = pedir_a_memoria_num_tabla_segundo_nivel(dir_logica ->entrada_tabla_primer_nivel);
-
-		dir_fisica = malloc(sizeof(dir_fisica));
-		dir_fisica -> marco = pedir_a_memoria_marco(numero_tabla_segundo_nivel, dir_logica ->entrada_tabla_segundo_nivel);
-		dir_fisica ->offset = dir_logica ->offset;
-
-		tlb_actualizar(numero_pagina, dir_fisica ->marco);
-		return dir_fisica;
-	}
+    else {
+        log_error(logger, "El proceso intento acceder a una direccion logica invalida");
+        return EXIT_FAILURE;
+    }
 }
 
-uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato){
-	//paso los numeros y el pcb (pcb es variable global)
-	return 0;
+uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabla_1er_nivel) {
+// primer acceso a memoria para obtener la entrada de la tabla de segundo nivel
+    t_paquete * paquete = crearPaquete();
+    paquete->codigo_operacion = OBTENER_ENTRADA_SEGUNDO_NIVEL;
+    agregarEntero(paquete, tabla_paginas);
+    agregarEntero4bytes(paquete, entrada_tabla_1er_nivel);
+    enviarPaquete(paquete, conexionMemoria);
+    uint32_t entrada_segundo_nivel;
+    //obtener entrada de tabla de segundo nivel
+    int obtuve_valor_tabla = 0;
+    while (conexionMemoria != -1 && obtuve_valor_tabla == 0) {
+            op_code cod_op = recibirOperacion(conexionMemoria);
+            switch(cod_op) {
+                case OBTENER_ENTRADA_SEGUNDO_NIVEL:
+                    ;
+                    void* buffer = recibirBuffer(conexionMemoria);
+                    memcpy(&entrada_segundo_nivel, buffer, sizeof(uint32_t));
+                    printf("\nentrada_tabla_segundo_nivel: %d\n", entrada_segundo_nivel);
+                    obtuve_valor_tabla = 1;
+                    break;
+            }
+        }
+        return entrada_segundo_nivel;
+    }
+
+uint32_t obtener_marco_memoria(uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel, uint32_t numero_pagina) {
+    t_paquete * paquete = crearPaquete();
+    paquete->codigo_operacion = OBTENER_MARCO;
+    agregarEntero(paquete, pcb->idProceso);
+    agregarEntero4bytes(paquete, nro_tabla_segundo_nivel);
+    agregarEntero4bytes(paquete, entrada_tabla_2do_nivel);
+    agregarEntero4bytes(paquete, numero_pagina);
+    enviarPaquete(paquete, conexionMemoria);
+    eliminarPaquete(paquete);
+    uint32_t marco;
+
+    int obtuve_marco = 0;
+    while (conexionMemoria != -1 && obtuve_marco == 0) {
+        op_code cod_op = recibirOperacion(conexionMemoria);
+        switch(cod_op) {
+            case OBTENER_MARCO:
+                ;
+                void* buffer = recibirBuffer(conexionMemoria);
+                memcpy(&marco, buffer, sizeof(uint32_t));
+                printf("\nmarco de memoria: %d\n", marco);
+                obtuve_marco = 1;
+                break;
+        }
+    }
+    return marco;
+
 }
 
-uint32_t pedir_a_memoria_marco(uint32_t dato,uint32_t dato2){
-	return 0;
-	//paso los numeros y el pcb
-}
 
 ////--------------------------------------------------------TLB------------------------------------------------------------------
 
-//Retorna la entrada donde se encuentra esa estructura {pagina|marco}
-uint32_t tlb_existe(uint32_t numero_pagina){
-
-	tlb_entrada* aux;
-
-	for (int i=0; i < list_size(tlb); i++)
-	{
-		aux = list_get(tlb, i);
-		if (aux->pagina == numero_pagina){
-			return i;
-		}
-	}
-	return -1;
-
+uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
+    tlb_entrada * entrada_tlb;
+    if (list_size(tlb) > 0) {
+        for (int i=0; i < list_size(tlb); i++) {
+            entrada_tlb = list_get(tlb,i);
+            if (entrada_tlb->pagina == numero_pagina) {
+                return entrada_tlb->marco;
+            }
+        }
+    }
+    return -1;
 }
 
-uint32_t tlb_obtener_marco(uint32_t entrada){
-
-	tlb_entrada* tlb_entrada = list_get(tlb, entrada);
-
-	return tlb_entrada->marco;
-}
 
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 
@@ -336,7 +356,6 @@ void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 
 	if(list_size(tlb) >= entradas_max_tlb){
 		//Reemplazo el primer elemento de la lista
-
 		list_remove(tlb, 0);
 		list_add(tlb, tlb_entrada);
 
@@ -353,7 +372,41 @@ void limpiar_tlb(){
 	}
 }
 
+void handshake_memoria(int conexionMemoria){
+  op_code opCode = recibirOperacion(conexionMemoria);
+  size_t tamanio_stream;
+  if (opCode==HANDSHAKE_MEMORIA) {
+      recv(conexionMemoria, &tamanio_stream, sizeof(size_t), 0); // no me importa en este caso
+      recv(conexionMemoria, &tamanio_pagina, sizeof(int), 0);
+      recv(conexionMemoria, &entradas_por_tabla, sizeof(int), 0);
+  }
+}
 
+uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = LEER_MEMORIA;
+    agregarEntero4bytes(paquete, direccion_fisica->marco);
+    agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
+    enviarPaquete(paquete, conexionMemoria);
+    eliminarPaquete(paquete);
+    uint32_t valor_leido;
+
+    int obtuve_valor = 0;
+    while (conexionMemoria != -1 && obtuve_valor == 0) {
+        op_code cod_op = recibirOperacion(conexionMemoria);
+        switch(cod_op) {
+            case LEER_MEMORIA:
+                ;
+                void* buffer = recibirBuffer(conexionMemoria);
+                memcpy(&valor_leido, buffer, sizeof(uint32_t));
+                printf("\nvalor leido de memoria: %d\n", valor_leido);
+                obtuve_valor = 1;
+                break;
+        }
+    }
+    return valor_leido;
+
+}
 
 
 

@@ -1,5 +1,6 @@
 
 
+#include <pthread.h>
 #include "headers/sharedUtils.h"
 
 t_config* iniciarConfig(char* file) {
@@ -267,6 +268,12 @@ void agregarEntero(t_paquete * paquete, size_t entero) {
     paquete->buffer->size += sizeof(entero);
 }
 
+void agregarEntero4bytes(t_paquete * paquete, uint32_t entero) {
+    paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(entero));
+    memcpy(paquete->buffer->stream + paquete->buffer->size, &entero, sizeof(entero));
+    paquete->buffer->size += sizeof(entero);
+}
+
 void enviar_interrupcion(int socket, op_code cod_op) {
     t_paquete* paquete = crearPaquete();
     paquete->codigo_operacion = cod_op;
@@ -346,6 +353,24 @@ t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucc
         list_add(valores, valor);
     }
     return valores;
+}
+
+void handshake_cpu_memoria(int socketDestino, size_t tamanio_pagina, size_t cantidad_entradas_tabla, op_code codigoOperacion) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = codigoOperacion;
+
+    agregarEntero4bytes(paquete, tamanio_pagina);
+    agregarEntero4bytes(paquete, cantidad_entradas_tabla);
+    enviarPaquete(paquete, socketDestino);
+    eliminarPaquete(paquete);
+}
+
+void enviar_entero(int cliente_fd, uint32_t valor, op_code opCode) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = opCode;
+    agregarEntero4bytes(paquete, valor);
+    enviarPaquete(paquete, cliente_fd);
+    eliminarPaquete(paquete);
 }
 
 void logear_PCB(t_log* logger,t_pcb* pcb, char* enviado_recibido){
