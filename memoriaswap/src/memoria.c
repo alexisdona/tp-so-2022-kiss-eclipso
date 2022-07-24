@@ -1,7 +1,7 @@
 #include "include/swap.h"
 #include "include/memoria.h"
-#include <math.h>
-
+#include <fcntl.h>
+#include <sys/mman.h>
 t_log* logger;
 t_config * config;
 
@@ -78,11 +78,8 @@ void procesar_conexion(void* void_args) {
                     uint32_t desplazamiento;
                     memcpy(&marco_lectura, buffer_lectura, sizeof(uint32_t));
                     memcpy(&desplazamiento, buffer_lectura+sizeof(uint32_t), sizeof(uint32_t));
-                    printf("\nmarco_lectura: %d\n", marco_lectura);
-                    printf("\ndesplazamiento: %d\n", desplazamiento);
                     uint32_t desplazamiento_final_lectura = marco_lectura*tamanio_pagina+desplazamiento;
                     uint32_t* valor = (uint32_t*) espacio_usuario_memoria + desplazamiento_final_lectura;
-                    printf("\nMEMORIA valor leido en el espacio de usuario : %d\n", *valor);
                     enviar_entero(cliente_fd, *valor, LEER_MEMORIA);
                     break;
                 case SWAPEAR_PROCESO:
@@ -106,8 +103,6 @@ void procesar_conexion(void* void_args) {
                     uint32_t entrada_tabla_primer_nivel;
                     memcpy(&nro_tabla_primer_nivel, buffer_tabla_segundo_nivel, sizeof(size_t));
                     memcpy(&entrada_tabla_primer_nivel, buffer_tabla_segundo_nivel + sizeof(size_t), sizeof(uint32_t));
-                    printf("\ntabla_primer_nivel: %zu\n", nro_tabla_primer_nivel);
-                    printf("\nentrada_tabla_primer_nivel: %d\n", entrada_tabla_primer_nivel);
                     t_registro_primer_nivel* registro_primer_nivel = (list_get(list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel), entrada_tabla_primer_nivel)) ;
                     uint32_t nro_tabla_segundo_nivel = registro_primer_nivel->nro_tabla_segundo_nivel;
                     enviar_entero(cliente_fd, nro_tabla_segundo_nivel, OBTENER_ENTRADA_SEGUNDO_NIVEL);
@@ -115,14 +110,26 @@ void procesar_conexion(void* void_args) {
                 case OBTENER_MARCO:
                     printf("\nMEMORIA entró en OBTENER_MARCO\n");
                     void* buffer_marco = recibirBuffer(cliente_fd);
-
+                    size_t id_proceso;
                     uint32_t entrada_tabla_segundo_nivel;
-                    memcpy(&nro_tabla_segundo_nivel, buffer_marco, sizeof(uint32_t));
-                    memcpy(&entrada_tabla_segundo_nivel, buffer_marco+sizeof(uint32_t), sizeof(uint32_t));
-                    printf("\nnro de tabla de segundo nivel es: %zu\n", nro_tabla_segundo_nivel);
-                    printf("\nla entrada en la tabla de segundo nivel es: %zu\n", entrada_tabla_segundo_nivel);
-                    t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel), entrada_tabla_segundo_nivel);
-                    uint32_t marco = registro_segundo_nivel->frame;
+                    uint32_t numero_pagina;
+                    uint32_t nro_tabla_segundo_nivel_obtener_marco;
+                    int despl = 0;
+
+                    memcpy(&id_proceso, buffer_marco+despl, sizeof(size_t));
+                    despl+= sizeof(size_t);
+                    memcpy(&nro_tabla_segundo_nivel_obtener_marco, buffer_marco+despl, sizeof(uint32_t));
+                    despl+= sizeof(uint32_t);
+                    memcpy(&entrada_tabla_segundo_nivel, buffer_marco+despl, sizeof(uint32_t));
+                    despl+= sizeof(uint32_t);
+                    memcpy(&numero_pagina, buffer_marco+despl, sizeof(uint32_t));
+
+                    t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel_obtener_marco), entrada_tabla_segundo_nivel);
+                    uint32_t marco;
+                    if(registro_segundo_nivel->presencia) {
+                        marco = registro_segundo_nivel->frame;
+                    }
+                    void* bloque = obtener_bloque_proceso_desde_swap(id_proceso, numero_pagina);
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
                     break;
                 case -1:
@@ -220,6 +227,26 @@ void crear_espacio_usuario() {
        printf("\nvalor apuntado en posición %d-->%d",i, *apuntado);
     }
     */
+}
+
+void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagina) {
+
+    char *ruta = string_new();
+    string_append(&ruta, PATH_SWAP);
+    verificar_carpeta_swap(ruta);
+
+    string_append(&ruta, string_itoa(id_proceso));
+    string_append(&ruta, ".swap");
+     int ubicacion_bloque = numero_pagina*tamanio_pagina;
+     int archivo_swap = open(ruta, O_RDONLY, S_IRWXU);
+     struct stat sb;
+     if (fstat(archivo_swap,&sb) == -1) {
+         perror("No se pudo obtener el size del archivo swap: ");
+     }
+     void* contenido_swap = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, archivo_swap, 0);
+     void* bloque = malloc(tamanio_pagina);
+     memcpy(bloque, contenido_swap+ubicacion_bloque, tamanio_pagina);
+     return bloque; //devuelve la pagina entera que es del tamano de pagina
 }
 
 
