@@ -10,7 +10,7 @@ t_config* config;
 int memoria_fd;
 int cliente_fd;
 char* ipMemoria, *puertoMemoria;
-int entradas_por_tabla, tamanio_memoria, tamanio_pagina;
+int marcos_por_proceso, entradas_por_tabla, tamanio_memoria, tamanio_pagina;
 
 t_list* lista_registros_primer_nivel;
 t_list* lista_registros_segundo_nivel;
@@ -33,6 +33,7 @@ int main(void) {
     entradas_por_tabla = config_get_int_value(config,"ENTRADAS_POR_TABLA");
     tamanio_memoria = config_get_int_value(config,"TAM_MEMORIA");
     tamanio_pagina = config_get_int_value(config,"TAM_PAGINA");
+    marcos_por_proceso = config_get_int_value(config,"MARCOS_POR_PROCESO");
     preparar_modulo_swap();
     iniciar_estructuras_administrativas_kernel();
     crear_espacio_usuario();
@@ -85,7 +86,6 @@ void procesar_conexion(void* void_args) {
                 case SWAPEAR_PROCESO:
                 	log_info(logger, "Recibi un PCB a swapear");
                 	t_pcb* pcb = recibirPCB(cliente_fd);
-                	printf("PID: %zud\n",pcb->idProceso);
                 	swapear_proceso(pcb);
                 	break;
                 case CREAR_ESTRUCTURAS_ADMIN:
@@ -96,7 +96,7 @@ void procesar_conexion(void* void_args) {
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
                     break;
                 case OBTENER_ENTRADA_SEGUNDO_NIVEL:
-                    printf("\nMEMORIA entró en OBTENER_ENTRADA_SEGUNDO_NIVEL\n");
+                    ;
                     void* buffer_tabla_segundo_nivel = recibirBuffer(cliente_fd);
 
                     size_t nro_tabla_primer_nivel;
@@ -108,7 +108,7 @@ void procesar_conexion(void* void_args) {
                     enviar_entero(cliente_fd, nro_tabla_segundo_nivel, OBTENER_ENTRADA_SEGUNDO_NIVEL);
                     break;
                 case OBTENER_MARCO:
-                    printf("\nMEMORIA entró en OBTENER_MARCO\n");
+                    ;
                     void* buffer_marco = recibirBuffer(cliente_fd);
                     size_t id_proceso;
                     uint32_t entrada_tabla_segundo_nivel;
@@ -129,16 +129,27 @@ void procesar_conexion(void* void_args) {
                     if(registro_segundo_nivel->presencia) {
                         marco = registro_segundo_nivel->frame;
                     }
-                    // primero validar que el proceso tenga marcos disponibles
+                    else {
+                        void *bloque = obtener_bloque_proceso_desde_swap(id_proceso, numero_pagina);
 
-                    void* bloque = obtener_bloque_proceso_desde_swap(id_proceso, numero_pagina);
-                    uint32_t nro_frame_libre = obtener_numero_frame_libre();
+                        // primero validar que el proceso tenga marcos disponibles
+                        uint32_t cantidad_marcos_ocupados_proceso = obtener_cantidad_marcos_ocupados(entrada_tabla_primer_nivel);
+                        printf("\nCantidad de marcos ocupados: %d\n", cantidad_marcos_ocupados_proceso);
+                        if (cantidad_marcos_ocupados_proceso < marcos_por_proceso) {
 
-                    registro_segundo_nivel->presencia = true;
-                    registro_segundo_nivel->frame = nro_frame_libre;
-                    marco = registro_segundo_nivel->frame;
+                            uint32_t nro_frame_libre = obtener_numero_frame_libre();
+
+                            registro_segundo_nivel->presencia = true;
+                            registro_segundo_nivel->frame = nro_frame_libre;
+                            marco = registro_segundo_nivel->frame;
+                            memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina); //agrego bloque en el espacio de usuario
+
+                        } else {
+                            // algoritmo de reemplazo
+                        }
+                    }
+
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
-                    memcpy(espacio_usuario_memoria+marco*tamanio_pagina, bloque, tamanio_pagina ); //agrego bloque en el espacio de usuario
                     break;
                 case -1:
                     log_info(logger, "El cliente se desconectó");
@@ -268,6 +279,23 @@ uint32_t obtener_numero_frame_libre() {
     return -1;
 }
 
+uint32_t obtener_cantidad_marcos_ocupados(size_t nro_tabla_primer_nivel) {
+    uint32_t cantidad_marcos_ocupados = 0;
+    t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
+
+    for(int i=0; i<tabla_primer_nivel->elements_count; i++){
+        t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+
+        for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
+            t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
+            if(registro_segundo_nivel->presencia == 1) {
+                cantidad_marcos_ocupados+=1;
+            }
+        }
+    }
+    return cantidad_marcos_ocupados;
+}
 
 
 
