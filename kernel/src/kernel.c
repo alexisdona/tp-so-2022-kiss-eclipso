@@ -1,9 +1,9 @@
 #include <semaphore.h>
-#include "../src/include/planificacion.h"
+#include "include/planificacion.h"
 #include "kernel.h"
 
 //Variables globales
-int kernel_fd, conexionCPUDispatch, conexionInterrupt;
+
 t_config * config;
 
 void sighandler(int s) {
@@ -12,6 +12,9 @@ void sighandler(int s) {
 }
 
 int main() {
+
+	hay_proceso_en_ejecucion=false;
+
     signal(SIGINT, sighandler);
     if (inicializarMutex() != 0){
         return EXIT_FAILURE;
@@ -19,35 +22,69 @@ int main() {
 
     logger = iniciarLogger("kernel.log", "KERNEL");
     config = iniciarConfig(CONFIG_FILE);
+
     GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
     TIEMPO_MAXIMO_BLOQUEADO = config_get_int_value(config, "TIEMPO_MAXIMO_BLOQUEADO");
-    sem_init(&semGradoMultiprogramacion,0, GRADO_MULTIPROGRAMACION);
-    char* ipKernel= config_get_string_value(config,"IP_KERNEL");
-    char* puertoKernel= config_get_string_value(config,"PUERTO_ESCUCHA");
-    char* ipMemoria= config_get_string_value(config,"IP_MEMORIA");
-    int puertoMemoria= config_get_int_value(config,"PUERTO_MEMORIA");
-    char* ipCpu= config_get_string_value(config,"IP_CPU");
-    int puertoCpuDispatch= config_get_int_value(config,"PUERTO_CPU_DISPATCH");
-    char* puertoCpuInterrupt = config_get_string_value(config,"PUERTO_CPU_INTERRUPT");
+    sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
 
-    conexionMemoria = crearConexion(ipMemoria, puertoMemoria, "Kernel");
-    conexionCPUDispatch = crearConexion(ipCpu, puertoCpuDispatch, "Kernel");
-    enviarMensaje("hola CPU soy el kernel", conexionCPUDispatch);
-    enviarMensaje("hola  MEMORIA soy el KERNEL", conexionMemoria);
+    char* IP_KERNEL = config_get_string_value(config,"IP_KERNEL");
+    char* PUERTO_KERNEL= config_get_string_value(config,"PUERTO_ESCUCHA");
+    char* IP_MEMORIA= config_get_string_value(config,"IP_MEMORIA");
+    int PUERTO_MEMORIA = config_get_int_value(config,"PUERTO_MEMORIA");
+    char* IP_CPU = config_get_string_value(config,"IP_CPU");
+    ALGORITMO_PLANIFICACION = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    int PUERTO_CPU_DISPATCH = config_get_int_value(config,"PUERTO_CPU_DISPATCH");
+    int PUERTO_CPU_INTERRUPT = config_get_int_value(config,"PUERTO_CPU_INTERRUPT");
+    ALFA = config_get_double_value(config, "ALFA");
 
-    kernel_fd = iniciarServidor(ipKernel, puertoKernel, logger);
-	log_info(logger, "Kernel listo para recibir una consola");
+    /* CONEXIONES A MODULOS */
+    log_info(logger,"### INICIANDO CONEXIONES A MODULOS ###");
+
+    conexion_memoria = crearConexion(IP_MEMORIA, PUERTO_MEMORIA, "Kernel");
+    log_info(logger,string_from_format("MEMORIA:\tSOCKET [%d] IP [%s] PUERTO [%d]",conexion_memoria,IP_MEMORIA,PUERTO_MEMORIA));
+
+    conexion_cpu_dispatch = crearConexion(IP_CPU, PUERTO_CPU_DISPATCH, "Kernel");
+    log_info(logger,string_from_format("CPU-DISPATCH:\tSOCKET [%d] IP [%s] PUERTO [%d]",conexion_cpu_dispatch,IP_CPU,PUERTO_CPU_DISPATCH));
+
+    conexion_cpu_interrupt = crearConexion(IP_CPU, PUERTO_CPU_INTERRUPT, "Kernel");
+    log_info(logger,string_from_format("CPU-INTERRUPT:SOCKET [%d] IP [%s] PUERTO [%d]",conexion_cpu_interrupt,IP_CPU,PUERTO_CPU_INTERRUPT));
+
+    kernel_fd = iniciarServidor(IP_KERNEL, PUERTO_KERNEL, logger);
+    log_info(logger,string_from_format("KERNEL:\tSOCKET [%d] IP [%s] PUERTO [%s]",kernel_fd,IP_KERNEL,PUERTO_KERNEL));
+    printf("\n");
+    log_info(logger, "### ESPERANDO CONSOLAS ###");
+
+    enviarMensaje("CPU, soy el Kernel", conexion_cpu_dispatch);
+    enviarMensaje("MEMORIA, soy el kernel", conexion_memoria);
+    /* CONEXIONES A MODULOS */
+
+    /* INICIALIZACION DE COLAS Y LISTAS */
+
     NEW = queue_create();
-    READY = queue_create();
+    READY = list_create();
     BLOCKED = queue_create();
-    SUSPENDED_BLOCKED = queue_create();
+    SUSPENDED_BLOCKED = list_create();
+    SUSPENDED_READY = list_create();
+    /* Atributos a enviar para la planificacion */
+
+    /*
+    t_attrs_planificacion* attrs_planificacion = malloc(sizeof(t_attrs_planificacion));
+
+    attrs_planificacion->conexion_cpu_dispatch = conexion_cpu_dispatch;
+    attrs_planificacion->conexion_cpu_interrupt = conexion_cpu_interrupt;
+    attrs_planificacion->conexion_memoria = conexion_memoria;
+    attrs_planificacion->algoritmo_planificacion = ALGORITMO_PLANIFICACION;
+    attrs_planificacion->logger = logger;
+    attrs_planificacion->tiempo_maximo_bloqueado = TIEMPO_MAXIMO_BLOQUEADO;
+    attrs_planificacion->alpha = ALFA;
+
+    info_planificacion = attrs_planificacion;
+	*/
 
     while (1) {
         escuchar_cliente("KERNEL");
     }
-
     //cerrar_programa(logger);
-
     return 0;
 }
 
@@ -61,31 +98,26 @@ void procesar_conexion(void* void_args) {
 	t_log* logger = attrs->log;
     int cliente_fd = attrs->fd;
     free(attrs);
-    printf("\n***************EN MEMORIA ESTO ES UN HILO**************\n");
 
-    while (cliente_fd != -1) {
-        //printf("entro un cliente nuevo: %d\n", cliente_fd);
+    while (cliente_fd > -1) {
+
 		op_code cod_op = recibirOperacion(cliente_fd);
 		switch (cod_op) {
 			case MENSAJE:
                 recibirMensaje(cliente_fd, logger);
 				break;
 			case LISTA_INSTRUCCIONES:
-                enviarMensaje("Recibí la lista de instrucciones. Termino de ejecutar y te aviso", cliente_fd);
+                enviarMensaje("Recibí las instrucciones. Termino de ejecutar y te aviso", cliente_fd);
 			    t_list* listaInstrucciones = recibirListaInstrucciones(cliente_fd);
                 int tamanioProceso = recibirTamanioProceso(cliente_fd);
                 t_pcb* pcb = crearEstructuraPcb(listaInstrucciones, tamanioProceso, cliente_fd);
-              //  printf("pcb->idProceso: %zu\n",pcb->idProceso);
-                iniciarPlanificacion(pcb, logger, conexionCPUDispatch, conexionMemoria);
+                iniciarPlanificacion(pcb);
                 break;
 		    case ACTUALIZAR_INDICE_TABLA_PAGINAS:
-		        printf("Entra a actualizar indice de tabla de paginas");
-            case -1:
-				//log_info(logger, "La consola se desconecto.");
-            	//cliente_fd = -1;
-				break;
+		        log_info(logger,"Entra a actualizar indice de tabla de paginas");
+		        break;
 			default:
-				log_warning(logger,"Operacion desconocida.");
+				log_warning(logger,string_from_format("OPERACION DESCONOCIDA: COD-OP [%d]",cod_op));
 				break;
 			}
 	}
@@ -158,21 +190,20 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso, int so
 
     t_pcb *pcb =  malloc(sizeof(t_pcb));
     t_instruccion *instruccion = list_get(listaInstrucciones,0);
+    int estimacionInicial = config_get_int_value(config,"ESTIMACION_INICIAL");
 
     pcb->idProceso = process_get_thread_id();
     pcb->tamanioProceso = tamanioProceso;
     pcb->listaInstrucciones = listaInstrucciones;
     pcb->programCounter= instruccion->codigo_operacion;
-    pcb->estimacionRafaga =1; // por ahora dejamos 1 como valor
-    pcb->duracionUltimaRafaga =0; //Arranca en cero
+    pcb->estimacionRafaga = estimacionInicial; 
     pcb->consola_fd = socketConsola;
     pcb->kernel_fd = kernel_fd;
     pcb->listaInstrucciones = listaInstrucciones;
-
+    logear_PCB(logger,pcb,"GENERADO");
 
     return pcb;
 }
-
 
 
 

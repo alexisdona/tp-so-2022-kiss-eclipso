@@ -270,12 +270,16 @@ void agregarEntero(t_paquete * paquete, size_t entero) {
 
 void agregarEntero4bytes(t_paquete * paquete, uint32_t entero) {
     paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + sizeof(entero));
-
     memcpy(paquete->buffer->stream + paquete->buffer->size, &entero, sizeof(entero));
-
     paquete->buffer->size += sizeof(entero);
 }
 
+void enviar_interrupcion(int socket, op_code cod_op) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = cod_op;
+    enviarPaquete(paquete, socket);
+    eliminarPaquete(paquete);
+}
 
 void enviarPCB(int socketDestino, t_pcb* pcb, op_code codigoOperacion) {
     t_paquete* paquete = crearPaquete();
@@ -286,7 +290,6 @@ void enviarPCB(int socketDestino, t_pcb* pcb, op_code codigoOperacion) {
     agregarEntero(paquete, pcb->programCounter);
     agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
     agregarEntero(paquete, pcb->estimacionRafaga);
-    agregarEntero(paquete, pcb->duracionUltimaRafaga);
     agregarEntero(paquete, pcb->consola_fd);
     agregarEntero(paquete, pcb->kernel_fd);
     agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
@@ -294,6 +297,7 @@ void enviarPCB(int socketDestino, t_pcb* pcb, op_code codigoOperacion) {
     enviarPaquete(paquete, socketDestino);
     eliminarPaquete(paquete);
 }
+
 
 t_pcb* recibirPCB(int socketDesde){
 
@@ -320,10 +324,6 @@ t_pcb* recibirPCB(int socketDesde){
     tamanioValoresFijos+=sizeof(size_t);
     recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
     pcb->estimacionRafaga = (size_t) auxiliar;
-    tamanioValoresFijos+=sizeof(size_t);
-    recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
-    pcb->duracionUltimaRafaga = (size_t) auxiliar;
-    tamanioValoresFijos+=sizeof(size_t);
     recv(socketDesde, &auxiliar ,sizeof(size_t),0 );
     pcb->consola_fd = (size_t) auxiliar;
     tamanioValoresFijos+=sizeof(size_t);
@@ -355,7 +355,6 @@ t_list* deserializarListaInstrucciones(void* stream, size_t tamanioListaInstrucc
     return valores;
 }
 
-
 void handshake_cpu_memoria(int socketDestino, size_t tamanio_pagina, size_t cantidad_entradas_tabla, op_code codigoOperacion) {
     t_paquete* paquete = crearPaquete();
     paquete->codigo_operacion = codigoOperacion;
@@ -372,5 +371,9 @@ void enviar_entero(int cliente_fd, uint32_t valor, op_code opCode) {
     agregarEntero4bytes(paquete, valor);
     enviarPaquete(paquete, cliente_fd);
     eliminarPaquete(paquete);
+}
+
+void logear_PCB(t_log* logger,t_pcb* pcb, char* enviado_recibido){
+	log_debug(logger,string_from_format("%s: PID[%d] CONSOLA[%d] KERNEL[%d] PC[%d] TAM[%d]",enviado_recibido,pcb->idProceso,pcb->consola_fd,pcb->kernel_fd,pcb->programCounter,pcb->tamanioProceso));
 }
 
