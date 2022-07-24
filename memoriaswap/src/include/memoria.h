@@ -31,9 +31,9 @@ typedef struct {
 typedef struct {
     uint32_t indice;
     uint32_t frame;
-    bool modificado;
-    bool usado;
-    bool presencia;
+    uint modificado;
+    uint usado;
+    uint presencia;
 } t_registro_segundo_nivel;
 
 
