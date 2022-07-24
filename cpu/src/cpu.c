@@ -237,7 +237,7 @@ void atender_interrupcion(void* void_args) {
 				logear_PCB(logger,pcb,"ENVIADO");
 				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
 				pcb = NULL;
-			   break;/*
+			    break;/*
 			case -1:
 				log_info(logger, "El Kernel no envio ninguna interrupcion");
 				//cliente_dispatch=-1;

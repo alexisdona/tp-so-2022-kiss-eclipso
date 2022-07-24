@@ -200,7 +200,7 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso, int so
     pcb->consola_fd = socketConsola;
     pcb->kernel_fd = kernel_fd;
     pcb->listaInstrucciones = listaInstrucciones;
-    logear_PCB(logger,pcb,"PCB GENERADO");
+    logear_PCB(logger,pcb,"GENERADO");
 
     return pcb;
 }

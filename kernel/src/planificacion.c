@@ -44,7 +44,7 @@ void iniciarPlanificacionCortoPlazo() {
                 case TERMINAR_PROCESO:
                     log_info(logger, "TERMINANDO PROCESO");
                     t_pcb* pcbFinalizado = recibirPCB(conexion_cpu_dispatch);
-                    logear_PCB(logger,pcb,"RECIBIDO");
+                    logear_PCB(logger,pcbFinalizado,"RECIBIDO");
                     incrementar_grado_multiprogramacion();
                     avisarProcesoTerminado(pcbFinalizado->consola_fd);
                     sem_post(&semGradoMultiprogramacion);
@@ -52,7 +52,7 @@ void iniciarPlanificacionCortoPlazo() {
                 case DESALOJAR_PROCESO:
                 	log_info(logger,"DESALOJANDO PROCESO");
                     t_pcb* pcb_desalojada = recibirPCB(conexion_cpu_dispatch);
-                    logear_PCB(logger,pcb,"RECIBIDO");
+                    logear_PCB(logger,pcb_desalojada,"RECIBIDO");
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     calcular_rafagas_restantes_proceso_desalojado(tiempo_en_ejecucion,pcb_desalojada);
                     checkear_proceso_y_replanificar(pcb_desalojada);
@@ -76,23 +76,18 @@ time_t calcular_tiempo_en_exec(time_t tiempo_inicial) {
 void decrementar_grado_multiprogramacion() {
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
     GRADO_MULTIPROGRAMACION--;
-    //printf("GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
+    log_info(logger,string_from_format("GRADO MULTIPROGRAMACION [%d]",GRADO_MULTIPROGRAMACION));
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
 }
 
 void incrementar_grado_multiprogramacion() {
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
     GRADO_MULTIPROGRAMACION++;
-    //printf("GRADO_MULTIPROGRAMACION++: %d\n", GRADO_MULTIPROGRAMACION);
+    log_info(logger,string_from_format("GRADO MULTIPROGRAMACION [%d]",GRADO_MULTIPROGRAMACION));
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
 }
 
-// si el proceso A es el seleccionado para ejecutar (ya que tiene menos ráfaga que el B y el C), 
-// ya se sabe que entre el A, B y C siempre el A va a ser el que tenga mas prioridad. 
-// hacer la comparación de ráfagas solo en el caso de que entre un nuevo proceso a ready.
-
 void iniciar_algoritmo_planificacion(char* algoritmoPlanificacion, t_pcb* pcb) {
-	log_info(logger,"INICIO ALGORITMO PLANIFICACION");
     proceso_en_ready_memoria(pcb);
     (strcmp("SJF", algoritmoPlanificacion)==0) ?
     planificacion_SJF(pcb) : planificacion_FIFO(pcb);
@@ -158,7 +153,6 @@ void avisarProcesoTerminado(int socketDestino) {
 }
 
 void bloquearProceso(t_pcb* pcb){
-
     pthread_mutex_lock(&mutexColaBloqueados);
     queue_push(BLOCKED, pcb);
     pthread_mutex_unlock(&mutexColaBloqueados);
@@ -168,13 +162,10 @@ void bloquearProceso(t_pcb* pcb){
     if (instruccion->codigo_operacion == IO) {
         operando tiempoBloqueado = instruccion->parametros[0];
         if(tiempoBloqueado > TIEMPO_MAXIMO_BLOQUEADO){
-            suspender_proceso(pcb);
-        };
-        if(tiempoBloqueado > TIEMPO_MAXIMO_BLOQUEADO){
             log_info(logger,"SUSPENDO EL PROCESO");
             suspender_proceso(pcb);
         } else {
-        	//log_info(logger,string_from_format("BLOQUEO AL PROCESO POR %ds",(tiempoBloqueado/1000)));
+        	log_info(logger,string_from_format("BLOQUEO AL PROCESO POR %ds",(tiempoBloqueado/1000)));
         	usleep(tiempoBloqueado*1000);
         }
     }
@@ -278,6 +269,10 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
     logear_PCB(logger,pcbNueva,"ENVIADO");
     eliminar_proceso_de_READY(pcbNueva);
     planificacion_SJF(pcbEnExec);
+}
+
+bool hay_proceso_ejecutando(){
+	list_size(READY)+queue_size(BLOCKED);
 }
 
 /* ---------> MEMORIA <--------- */
