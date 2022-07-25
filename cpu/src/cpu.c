@@ -197,11 +197,6 @@ void operacion_WRITE(uint32_t direccion_logica, uint32_t valor){
     escribir_en_memoria(dir_fisica, valor);
 }
 
-void estimar_proxima_rafaga(time_t tiempo){
-	int tiempo_cpu = tiempo / 1000;
-	pcb->estimacionRafaga = alpha*tiempo_cpu + (1-alpha)*(pcb->estimacionRafaga);
-}
-
 //-----------Ciclo de interrupcion-----------
 
 int escuchar_interrupcion() {
@@ -368,13 +363,6 @@ void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 	}
 }
 
-void limpiar_tlb(){
-
-	if(pcb->idProceso != pid){
-		list_clean(tlb);
-		pid = pcb->idProceso;
-	}
-}
 
 void handshake_memoria(int conexionMemoria){
   op_code opCode = recibirOperacion(conexionMemoria);
