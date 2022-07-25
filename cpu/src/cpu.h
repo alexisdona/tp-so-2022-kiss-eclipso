@@ -38,17 +38,12 @@ void preparar_pcb_respuesta(t_paquete* paquete);
 void atender_interrupcion(void* void_args);
 void loggearPCB(t_pcb* pcb);
 int escuchar_interrupcion();
-uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato);
-uint32_t pedir_a_memoria_marco(uint32_t dato,uint32_t dato2);
-dir_fisica* traducir_direccion_logica(uint32_t dir_logica);
 uint32_t tlb_obtener_marco(uint32_t entrada);
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco);
-uint32_t tlb_existe(uint32_t numero_pagina);
 void limpiar_tlb();
 void handshake_memoria(int);
 dir_fisica* obtener_direccion_fisica(uint32_t);
 uint32_t obtener_tabla_segundo_nivel(size_t, uint32_t);
 uint32_t obtener_marco_memoria(uint32_t, uint32_t, uint32_t);
 uint32_t leer_en_memoria(dir_fisica *);
-void imprimirListaInstrucciones(t_pcb *pcb);
 #endif /* SRC_CPU_H_ */

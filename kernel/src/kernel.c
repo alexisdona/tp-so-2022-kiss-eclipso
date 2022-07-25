@@ -13,7 +13,6 @@ void sighandler(int s) {
 
 int main() {
 
-	hay_proceso_en_ejecucion=false;
 
     signal(SIGINT, sighandler);
     if (inicializarMutex() != 0){

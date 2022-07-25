@@ -5,7 +5,7 @@
 #include <commons/string.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/dictionary.h>
-#include "../shared/headers/sharedUtils.h"
+#include "../../shared/headers/sharedUtils.h"
 
 t_log* logger;
 t_queue* cola_swap;

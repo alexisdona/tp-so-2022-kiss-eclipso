@@ -109,11 +109,9 @@ void agregar_proceso_READY(t_pcb* pcb) {
 }
 
 void interrupcion_por_proceso_en_ready(){
-    if(list_size(READY)>0 && hay_proceso_en_ejecucion) {
+    if(list_size(READY)>0 ) {
     	log_info(logger, "ENVIANDO INTERRUPCION");
     	enviar_interrupcion(conexion_cpu_interrupt, DESALOJAR_PROCESO);
-    }else{
-    	hay_proceso_en_ejecucion=true;
     }
 }
 
@@ -149,7 +147,6 @@ void avisarProcesoTerminado(int socketDestino) {
     t_paquete* paqueteProcesoTerminado = crearPaquete();
     paqueteProcesoTerminado->codigo_operacion = TERMINAR_PROCESO;
     enviarPaquete(paqueteProcesoTerminado, socketDestino);
-    hay_proceso_en_ejecucion=false;
 }
 
 void bloquearProceso(t_pcb* pcb){
