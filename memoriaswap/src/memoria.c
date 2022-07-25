@@ -68,10 +68,17 @@ void procesar_conexion(void* void_args) {
                     recibirMensaje(cliente_fd, logger);
                     break;
                 case ESCRIBIR_MEMORIA:
-                    enviarMensaje("Voy a escribir en memoria...", cliente_fd);
-                    // sem_wait(&semMemoria);
-                    // Escribir en memoria...
-                    // sem_signal(&semMemoria);
+                    ;
+                    void* buffer_escritura = recibirBuffer(cliente_fd);
+                    uint32_t marco_escritura;
+                    uint32_t desplazamiento_escritura;
+                    uint32_t valor_a_escribir;
+                    memcpy(&marco_escritura, buffer_escritura, sizeof(uint32_t));
+                    memcpy(&desplazamiento_escritura, (buffer_escritura+sizeof(uint32_t)), sizeof(uint32_t));
+                    memcpy(&valor_a_escribir, (buffer_escritura+sizeof(uint32_t)+sizeof(uint32_t)), sizeof(uint32_t));
+                    //escribo en el espacio de usuario el valor
+                    uint32_t desplazamiento_final_escritura = (marco_escritura*tamanio_pagina+desplazamiento_escritura);
+                    memcpy((espacio_usuario_memoria+desplazamiento_final_escritura), &valor_a_escribir, sizeof(uint32_t))      ;
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
                     break;
                 case LEER_MEMORIA:
@@ -80,9 +87,9 @@ void procesar_conexion(void* void_args) {
                     uint32_t marco_lectura;
                     uint32_t desplazamiento;
                     memcpy(&marco_lectura, buffer_lectura, sizeof(uint32_t));
-                    memcpy(&desplazamiento, buffer_lectura+sizeof(uint32_t), sizeof(uint32_t));
-                    uint32_t desplazamiento_final_lectura = marco_lectura*tamanio_pagina+desplazamiento;
-                    uint32_t* valor = (uint32_t*) espacio_usuario_memoria + desplazamiento_final_lectura;
+                    memcpy(&desplazamiento, (buffer_lectura+sizeof(uint32_t)), sizeof(uint32_t));
+                    uint32_t desplazamiento_final_lectura = (marco_lectura*tamanio_pagina+desplazamiento);
+                    uint32_t* valor = (uint32_t*) (espacio_usuario_memoria + desplazamiento_final_lectura);
                     enviar_entero(cliente_fd, *valor, LEER_MEMORIA);
                     break;
                 case SWAPEAR_PROCESO:
