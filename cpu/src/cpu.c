@@ -181,10 +181,8 @@ void operacion_READ(operando dirLogica){
 void operacion_COPY(uint32_t direccion_logica_destino, uint32_t direccion_logica_origen){
     dir_fisica* dir_fisica_destino = obtener_direccion_fisica(direccion_logica_destino);
     dir_fisica* dir_fisica_origen =  obtener_direccion_fisica(direccion_logica_origen);
-    uint32_t valor_en_destino =  leer_en_memoria(dir_fisica_destino);
     uint32_t valor_en_origen = leer_en_memoria(dir_fisica_origen);
     escribir_en_memoria(dir_fisica_destino, valor_en_origen);
-    valor_en_destino =  leer_en_memoria(dir_fisica_destino);
 
 }
 
