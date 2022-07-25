@@ -36,7 +36,7 @@ int main(void) {
 
 	algoritmo_reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
 	entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
-	
+
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
     printf("CPU-DISPATCH: %d\n",cpu_dispatch);
 
@@ -142,11 +142,12 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 		case WRITE:
 			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
+            operacion_WRITE(instruccion->parametros[0], instruccion->parametros[1]);
 			log_info(logger,"Ejecutando WRITE");
 			break;
 		case COPY:
-			//Provisorio
-			proceso_respuesta = CONTINUA_PROCESO;
+		    proceso_respuesta = CONTINUA_PROCESO;
+			operacion_COPY(instruccion->parametros[0], instruccion->parametros[1]);
 			log_info(logger,"Ejecutando COPY");
 			break;
 		case EXIT:
@@ -179,23 +180,26 @@ void operacion_EXIT(op_code proceso_respuesta){
 
 void operacion_READ(operando dirLogica){
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
-	printf("\ndir_fisica->marco: %d\n", dir_fisica->marco);
-    printf("\ndir_fisica->desplazamiento: %d\n", dir_fisica->desplazamiento);
     uint32_t valor = leer_en_memoria(dir_fisica);
     printf("\nCPU --El valor leido en memoria es>  %d\n", valor);
 }
 
-void operacion_WRITE(){
+void operacion_COPY(uint32_t direccion_logica_destino, uint32_t direccion_logica_origen){
+    dir_fisica* dir_fisica_destino = obtener_direccion_fisica(direccion_logica_destino);
+    dir_fisica* dir_fisica_origen =  obtener_direccion_fisica(direccion_logica_origen);
+    uint32_t valor_en_origen = leer_en_memoria(dir_fisica_origen);
+    escribir_en_memoria(dir_fisica_destino, valor_en_origen);
 
 }
 
-void preparar_pcb_respuesta(t_paquete* paquete){
-	agregarEntero(paquete, pcb->idProceso);
-	agregarEntero(paquete, pcb->tamanioProceso);
-	agregarEntero(paquete, pcb->programCounter);
-	agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
-	agregarEntero(paquete, pcb->estimacionRafaga);
-	agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
+void operacion_WRITE(uint32_t direccion_logica, uint32_t valor){
+    dir_fisica* dir_fisica = obtener_direccion_fisica(direccion_logica);
+    escribir_en_memoria(dir_fisica, valor);
+}
+
+void estimar_proxima_rafaga(time_t tiempo){
+	int tiempo_cpu = tiempo / 1000;
+	pcb->estimacionRafaga = alpha*tiempo_cpu + (1-alpha)*(pcb->estimacionRafaga);
 }
 
 //-----------Ciclo de interrupcion-----------
@@ -265,7 +269,6 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
             marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina);
             tlb_actualizar(numero_pagina, marco);
         }
-        printf("\nMARCO = %d\n", marco);
         dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
@@ -274,6 +277,7 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
 
     else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
+        //operacion_EXIT() ? Se lo tiene que matar si intenta acceder a una direccion no valida?
         return EXIT_FAILURE;
     }
 }
@@ -389,8 +393,8 @@ uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
     agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
     enviarPaquete(paquete, conexionMemoria);
     eliminarPaquete(paquete);
-    uint32_t valor_leido;
 
+    uint32_t valor_leido;
     int obtuve_valor = 0;
     while (conexionMemoria != -1 && obtuve_valor == 0) {
         op_code cod_op = recibirOperacion(conexionMemoria);
@@ -408,6 +412,27 @@ uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
 
 }
 
+
+void escribir_en_memoria(dir_fisica * direccion_fisica, uint32_t valor) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = ESCRIBIR_MEMORIA;
+    agregarEntero4bytes(paquete, direccion_fisica->marco);
+    agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
+    agregarEntero4bytes(paquete, valor);
+    enviarPaquete(paquete, conexionMemoria);
+    eliminarPaquete(paquete);
+
+    int recibi_mensaje = 0;
+    while (conexionMemoria != -1 && recibi_mensaje == 0) {
+        op_code cod_op = recibirOperacion(conexionMemoria);
+        switch(cod_op) {
+            case MENSAJE:
+                recibirMensaje(conexionMemoria, logger);
+                recibi_mensaje = 1;
+                break;
+        }
+    }
+}
 
 
 
