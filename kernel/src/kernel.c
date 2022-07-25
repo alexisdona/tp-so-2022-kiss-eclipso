@@ -4,7 +4,7 @@
 
 //Variables globales
 
-t_config * config;
+t_config* config;
 
 void sighandler(int s) {
     cerrar_programa(logger);
@@ -13,9 +13,7 @@ void sighandler(int s) {
 
 int main() {
 
-	hay_proceso_en_ejecucion=false;
-
-    signal(SIGINT, sighandler);
+	signal(SIGINT, sighandler);
     if (inicializarMutex() != 0){
         return EXIT_FAILURE;
     }
@@ -24,6 +22,7 @@ int main() {
     config = iniciarConfig(CONFIG_FILE);
 
     GRADO_MULTIPROGRAMACION = config_get_int_value(config,"GRADO_MULTIPROGRAMACION");
+    MAX_GRADO_MULTIPROGRAMACION = GRADO_MULTIPROGRAMACION;
     TIEMPO_MAXIMO_BLOQUEADO = config_get_int_value(config, "TIEMPO_MAXIMO_BLOQUEADO");
     sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
 
@@ -65,26 +64,12 @@ int main() {
     BLOCKED = queue_create();
     SUSPENDED_BLOCKED = list_create();
     SUSPENDED_READY = list_create();
-    /* Atributos a enviar para la planificacion */
-
-    /*
-    t_attrs_planificacion* attrs_planificacion = malloc(sizeof(t_attrs_planificacion));
-
-    attrs_planificacion->conexion_cpu_dispatch = conexion_cpu_dispatch;
-    attrs_planificacion->conexion_cpu_interrupt = conexion_cpu_interrupt;
-    attrs_planificacion->conexion_memoria = conexion_memoria;
-    attrs_planificacion->algoritmo_planificacion = ALGORITMO_PLANIFICACION;
-    attrs_planificacion->logger = logger;
-    attrs_planificacion->tiempo_maximo_bloqueado = TIEMPO_MAXIMO_BLOQUEADO;
-    attrs_planificacion->alpha = ALFA;
-
-    info_planificacion = attrs_planificacion;
-	*/
 
     while (1) {
         escuchar_cliente("KERNEL");
     }
     //cerrar_programa(logger);
+    log_info(logger,"FINALIZANDO KERNEL");
     return 0;
 }
 

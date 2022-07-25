@@ -57,6 +57,7 @@ void iniciarPlanificacionCortoPlazo() {
                     calcular_rafagas_restantes_proceso_desalojado(tiempo_en_ejecucion,pcb_desalojada);
                     checkear_proceso_y_replanificar(pcb_desalojada);
                     break;
+                default: ;
             }
         }
     }
@@ -64,7 +65,6 @@ void iniciarPlanificacionCortoPlazo() {
 }
 
 void eliminar_proceso_de_READY() {
-	//printf("TAM-LISTA: %d\n",list_size(READY));
     free(list_remove(READY, 0));
 }
 
@@ -109,11 +109,9 @@ void agregar_proceso_READY(t_pcb* pcb) {
 }
 
 void interrupcion_por_proceso_en_ready(){
-    if(list_size(READY)>0 && hay_proceso_en_ejecucion) {
+    if(hay_proceso_ejecutando()) {
     	log_info(logger, "ENVIANDO INTERRUPCION");
     	enviar_interrupcion(conexion_cpu_interrupt, DESALOJAR_PROCESO);
-    }else{
-    	hay_proceso_en_ejecucion=true;
     }
 }
 
@@ -149,7 +147,6 @@ void avisarProcesoTerminado(int socketDestino) {
     t_paquete* paqueteProcesoTerminado = crearPaquete();
     paqueteProcesoTerminado->codigo_operacion = TERMINAR_PROCESO;
     enviarPaquete(paqueteProcesoTerminado, socketDestino);
-    hay_proceso_en_ejecucion=false;
 }
 
 void bloquearProceso(t_pcb* pcb){
@@ -272,7 +269,7 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
 }
 
 bool hay_proceso_ejecutando(){
-	list_size(READY)+queue_size(BLOCKED);
+	return (GRADO_MULTIPROGRAMACION < MAX_GRADO_MULTIPROGRAMACION);
 }
 
 /* ---------> MEMORIA <--------- */
@@ -287,7 +284,7 @@ void crear_estructuras_memoria(t_pcb* pcb) {
     t_paquete* paquete = crearPaquete();
     enviarPCB(conexion_memoria, pcb, CREAR_ESTRUCTURAS_ADMIN );
     logear_PCB(logger,pcb,"ENVIADO");
-    while(conexion_memoria != -1 && pcb_actualizado == 0){
+    while(conexion_memoria != -1 && pcb_actualizado != 0){
         op_code cod_op = recibirOperacion(conexion_memoria);
         switch(cod_op) {
             case ACTUALIZAR_INDICE_TABLA_PAGINAS:

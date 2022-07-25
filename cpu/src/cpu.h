@@ -51,4 +51,6 @@ uint32_t obtener_tabla_segundo_nivel(size_t, uint32_t);
 uint32_t obtener_marco_memoria(uint32_t, uint32_t, uint32_t);
 uint32_t leer_en_memoria(dir_fisica *);
 void imprimirListaInstrucciones(t_pcb *pcb);
+uint32_t obtener_entero_division_decimal(uint32_t numerador, uint32_t denominador);
+uint32_t obtener_entero_resto_decimal(uint32_t numerador, uint32_t denominador);
 #endif /* SRC_CPU_H_ */

@@ -13,6 +13,7 @@ t_list* SUSPENDED_READY;
 t_list* SUSPENDED_BLOCKED;
 
 unsigned int GRADO_MULTIPROGRAMACION;
+unsigned int MAX_GRADO_MULTIPROGRAMACION;
 unsigned int TIEMPO_MAXIMO_BLOQUEADO;
 sem_t semGradoMultiprogramacion;
 pthread_mutex_t mutexColaNew;

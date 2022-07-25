@@ -3,7 +3,7 @@
 
 t_log* logger;
 int cpu_interrupt;
-t_config * config;
+t_config* config;
 int conexionMemoria;
 int cliente_dispatch;
 t_pcb* pcb;
@@ -136,7 +136,6 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
 			operacion_READ(instruccion->parametros[0]);
-			printf("\nejecuto read\n");
 			log_info(logger,"Ejecutando READ");
 			break;
 		case WRITE:
@@ -178,11 +177,12 @@ void operacion_EXIT(op_code proceso_respuesta){
 }
 
 void operacion_READ(operando dirLogica){
+	printf("Intento obtener direccion fisica\n");
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
 	printf("\ndir_fisica->marco: %d\n", dir_fisica->marco);
     printf("\ndir_fisica->desplazamiento: %d\n", dir_fisica->desplazamiento);
-    uint32_t valor = leer_en_memoria(dir_fisica);
-    printf("\nCPU --El valor leido en memoria es>  %d\n", valor);
+    //uint32_t valor = leer_en_memoria(dir_fisica);
+    //printf("\nCPU --El valor leido en memoria es>  %d\n", valor);
 }
 
 void operacion_WRITE(){
@@ -228,12 +228,11 @@ void atender_interrupcion(void* void_args) {
 
 		switch (cod_op) {
 			case DESALOJAR_PROCESO:
-				log_info(logger, "El CPU esta atendiendo una interrupcion...");
+				log_info(logger, "### ATENDIENDO INTERRUPCION ###");
 				log_info(logger,"DESALOJANDO PROCESO...");
-				log_info(logger,"DISPATCH: %d",cliente_dispatch);
 				enviarPCB(cliente_dispatch, pcb, cod_op);
 				logear_PCB(logger,pcb,"ENVIADO");
-				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
+				log_info(logger, "SE ENVIO EL PCB EN EJECUCION");
 				pcb = NULL;
 			    break;/*
 			case -1:
@@ -250,13 +249,13 @@ void atender_interrupcion(void* void_args) {
 //---------------------------------------------------------MMU--------------------------------------------------------
 
 dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
+	printf("Obteniendo direccion fisica\n");
 
     if (direccion_logica < pcb->tamanioProceso) {
-        uint32_t numero_pagina = floor(direccion_logica / tamanio_pagina);
-        uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
-        uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
+    	uint32_t numero_pagina = obtener_entero_division_decimal(direccion_logica,tamanio_pagina);
+        uint32_t entrada_tabla_1er_nivel = obtener_entero_division_decimal(numero_pagina,entradas_por_tabla);
+        uint32_t entrada_tabla_2do_nivel = obtener_entero_resto_decimal(numero_pagina,entradas_por_tabla);
         uint32_t desplazamiento = direccion_logica - (numero_pagina * tamanio_pagina);
-
         uint32_t marco;
         marco = tlb_obtener_marco(numero_pagina);
         if (marco == -1 ) {
@@ -271,8 +270,8 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         direccion_fisica->desplazamiento = desplazamiento;
         return direccion_fisica;
     }
-
-    else {
+    else{
+    	printf("No se pudo obtener dir. fisica\n");
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
         return EXIT_FAILURE;
     }
@@ -408,6 +407,13 @@ uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
 
 }
 
+uint32_t obtener_entero_division_decimal(uint32_t numerador, uint32_t denominador){
+	return (denominador==0) ? 0 : (uint32_t) floor(numerador/denominador);
+}
+
+uint32_t obtener_entero_resto_decimal(uint32_t numerador, uint32_t denominador){
+	return (denominador==0) ? 0 : (uint32_t) (numerador % denominador);
+}
 
 
 
