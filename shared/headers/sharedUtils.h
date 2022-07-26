@@ -84,8 +84,9 @@ uint32_t offset;
 
 typedef struct
 {
-uint32_t marco;
-uint32_t desplazamiento;
+    uint32_t numero_pagina;
+    uint32_t marco;
+    uint32_t desplazamiento;
 } dir_fisica;
 
 t_config* iniciarConfig(char*);

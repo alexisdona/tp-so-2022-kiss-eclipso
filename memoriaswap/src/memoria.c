@@ -10,7 +10,7 @@ t_config* config;
 int memoria_fd;
 int cliente_fd;
 char* ipMemoria, *puertoMemoria;
-int marcos_por_proceso, entradas_por_tabla, tamanio_memoria, tamanio_pagina;
+int marcos_por_proceso, entradas_por_tabla, tamanio_memoria, tamanio_pagina, retardo_swap, retardo_memoria;
 
 t_list* lista_registros_primer_nivel;
 t_list* lista_registros_segundo_nivel;
@@ -36,6 +36,8 @@ int main(void) {
     tamanio_pagina = config_get_int_value(config,"TAM_PAGINA");
     marcos_por_proceso = config_get_int_value(config,"MARCOS_POR_PROCESO");
     algoritmo_reemplazo = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
+    retardo_swap = config_get_int_value(config, "RETARDO_SWAP");
+    retardo_memoria = config_get_int_value(config, "RETARDO_MEMORIA");
     preparar_modulo_swap();
     iniciar_estructuras_administrativas_kernel();
     crear_espacio_usuario();
@@ -65,24 +67,38 @@ void procesar_conexion(void* void_args) {
 	        op_code cod_op = recibirOperacion(cliente_fd);
             switch (cod_op) {
                 case MENSAJE:
+                    log_info(logger, "antes del sleep");
                     recibirMensaje(cliente_fd, logger);
                     break;
                 case ESCRIBIR_MEMORIA:
                     ;
+                    usleep(retardo_memoria*1000);
                     void* buffer_escritura = recibirBuffer(cliente_fd);
+                    size_t id_proceso;
+                    uint32_t numero_pagina;
                     uint32_t marco_escritura;
                     uint32_t desplazamiento_escritura;
                     uint32_t valor_a_escribir;
-                    memcpy(&marco_escritura, buffer_escritura, sizeof(uint32_t));
-                    memcpy(&desplazamiento_escritura, (buffer_escritura+sizeof(uint32_t)), sizeof(uint32_t));
-                    memcpy(&valor_a_escribir, (buffer_escritura+sizeof(uint32_t)+sizeof(uint32_t)), sizeof(uint32_t));
+                    int d=0;
+                    memcpy(&id_proceso, buffer_escritura, sizeof(size_t));
+                    d+=sizeof(size_t);
+                    memcpy(&numero_pagina, buffer_escritura+d, sizeof(uint32_t));
+                    d+=sizeof(uint32_t);
+                    memcpy(&marco_escritura, (buffer_escritura+d), sizeof(uint32_t));
+                    d+=sizeof(uint32_t);
+                    memcpy(&desplazamiento_escritura, (buffer_escritura+d), sizeof(uint32_t));
+                    d+=sizeof(uint32_t);
+                    memcpy(&valor_a_escribir, (buffer_escritura+d), sizeof(uint32_t));
                     //escribo en el espacio de usuario el valor
                     uint32_t desplazamiento_final_escritura = (marco_escritura*tamanio_pagina+desplazamiento_escritura);
-                    memcpy((espacio_usuario_memoria+desplazamiento_final_escritura), &valor_a_escribir, sizeof(uint32_t))      ;
+                    memcpy((espacio_usuario_memoria+desplazamiento_final_escritura), &valor_a_escribir, sizeof(uint32_t));
+                    actualizar_archivo_swap(id_proceso, numero_pagina, desplazamiento_escritura, tamanio_pagina, valor_a_escribir );
+                    usleep(retardo_swap*1000); //retardo de escritura de memoria a disco
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
                     break;
                 case LEER_MEMORIA:
                     ;
+                    usleep(retardo_memoria*1000);
                     void* buffer_lectura = recibirBuffer(cliente_fd);
                     uint32_t marco_lectura;
                     uint32_t desplazamiento;
@@ -95,10 +111,10 @@ void procesar_conexion(void* void_args) {
                 case SWAPEAR_PROCESO:
                 	log_info(logger, "Recibi un PCB a swapear");
                 	t_pcb* pcb = recibirPCB(cliente_fd);
-                	swapear_proceso(pcb);
                 	break;
                 case CREAR_ESTRUCTURAS_ADMIN:
                     ;
+                    usleep(retardo_memoria*1000);
                     t_pcb* pcb_kernel = recibirPCB(cliente_fd);
                     crear_archivo_swap(pcb_kernel->idProceso, pcb_kernel->tamanioProceso);
                     pcb_kernel->tablaPaginas = crear_estructuras_administrativas_proceso(pcb_kernel->tamanioProceso) - 1;
@@ -106,6 +122,7 @@ void procesar_conexion(void* void_args) {
                     break;
                 case OBTENER_ENTRADA_SEGUNDO_NIVEL:
                     ;
+                    usleep(retardo_memoria*1000);
                     void* buffer_tabla_segundo_nivel = recibirBuffer(cliente_fd);
 
                     size_t nro_tabla_primer_nivel;
@@ -118,20 +135,21 @@ void procesar_conexion(void* void_args) {
                     break;
                 case OBTENER_MARCO:
                     ;
+                    usleep(retardo_memoria*1000);
                     void* buffer_marco = recibirBuffer(cliente_fd);
-                    size_t id_proceso;
+                    size_t id_proceso_marco;
                     uint32_t entrada_tabla_segundo_nivel;
-                    uint32_t numero_pagina;
+                    uint32_t numero_pag;
                     uint32_t nro_tabla_segundo_nivel_obtener_marco;
                     int despl = 0;
                     uint32_t marco;
-                    memcpy(&id_proceso, buffer_marco+despl, sizeof(size_t));
+                    memcpy(&id_proceso_marco, buffer_marco+despl, sizeof(size_t));
                     despl+= sizeof(size_t);
                     memcpy(&nro_tabla_segundo_nivel_obtener_marco, buffer_marco+despl, sizeof(uint32_t));
                     despl+= sizeof(uint32_t);
                     memcpy(&entrada_tabla_segundo_nivel, buffer_marco+despl, sizeof(uint32_t));
                     despl+= sizeof(uint32_t);
-                    memcpy(&numero_pagina, buffer_marco+despl, sizeof(uint32_t));
+                    memcpy(&numero_pag, buffer_marco+despl, sizeof(uint32_t));
 
                     t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel_obtener_marco), entrada_tabla_segundo_nivel);
 
@@ -139,7 +157,7 @@ void procesar_conexion(void* void_args) {
                         marco = registro_segundo_nivel->frame;
                     }
                     else {
-                        void *bloque = obtener_bloque_proceso_desde_swap(id_proceso, numero_pagina);
+                        void *bloque = obtener_bloque_proceso_desde_swap(id_proceso_marco, numero_pag);
 
                         // primero validar que el proceso tenga marcos disponibles
                         uint32_t cantidad_marcos_ocupados_proceso = obtener_cantidad_marcos_ocupados(entrada_tabla_primer_nivel);
@@ -259,12 +277,7 @@ void crear_espacio_usuario() {
 
 void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagina) {
 
-    char *ruta = string_new();
-    string_append(&ruta, PATH_SWAP);
-    verificar_carpeta_swap(ruta);
-
-    string_append(&ruta, string_itoa(id_proceso));
-    string_append(&ruta, ".swap");
+    char *ruta = obtener_path_archivo(id_proceso);
      int ubicacion_bloque = numero_pagina*tamanio_pagina;
      int archivo_swap = open(ruta, O_RDONLY, S_IRWXU);
      struct stat sb;
@@ -274,8 +287,11 @@ void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagin
      void* contenido_swap = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, archivo_swap, 0);
      void* bloque = malloc(tamanio_pagina);
      memcpy(bloque, contenido_swap+ubicacion_bloque, tamanio_pagina);
+     munmap(archivo_swap, sb.st_size);
+     close(archivo_swap);
      return bloque; //devuelve la pagina entera que es del tamano de pagina
 }
+
 
 uint32_t obtener_numero_frame_libre() {
 

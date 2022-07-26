@@ -130,22 +130,21 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 			operacion_IO(proceso_respuesta, instruccion->parametros[0]);
 			break;
 		case READ:
-			//Provisorio
+            log_info(logger,"Ejecutando READ");
 			proceso_respuesta = CONTINUA_PROCESO;
 			operacion_READ(instruccion->parametros[0]);
 			printf("\nejecuto read\n");
-			log_info(logger,"Ejecutando READ");
+
 			break;
 		case WRITE:
-			//Provisorio
-			proceso_respuesta = CONTINUA_PROCESO;
+            log_info(logger,"Ejecutando WRITE");
+            proceso_respuesta = CONTINUA_PROCESO;
             operacion_WRITE(instruccion->parametros[0], instruccion->parametros[1]);
-			log_info(logger,"Ejecutando WRITE");
 			break;
 		case COPY:
-		    proceso_respuesta = CONTINUA_PROCESO;
+            log_info(logger,"Ejecutando COPY");
+            proceso_respuesta = CONTINUA_PROCESO;
 			operacion_COPY(instruccion->parametros[0], instruccion->parametros[1]);
-			log_info(logger,"Ejecutando COPY");
 			break;
 		case EXIT:
 			proceso_respuesta = TERMINAR_PROCESO;
@@ -173,8 +172,7 @@ void operacion_EXIT(op_code proceso_respuesta){
 }
 
 void operacion_READ(operando dirLogica){
-
-	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
+    dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
     uint32_t valor = leer_en_memoria(dir_fisica);
 }
 
@@ -247,6 +245,7 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
             tlb_actualizar(numero_pagina, marco);
         }
         dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
+        direccion_fisica->numero_pagina = numero_pagina;
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
         return direccion_fisica;
@@ -392,6 +391,8 @@ uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
 void escribir_en_memoria(dir_fisica * direccion_fisica, uint32_t valor) {
     t_paquete* paquete = crearPaquete();
     paquete->codigo_operacion = ESCRIBIR_MEMORIA;
+    agregarEntero(paquete, pcb->idProceso);
+    agregarEntero4bytes(paquete, direccion_fisica->numero_pagina); // lo necesito para actualizar el proceso en swap
     agregarEntero4bytes(paquete, direccion_fisica->marco);
     agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
     agregarEntero4bytes(paquete, valor);
