@@ -21,6 +21,19 @@ t_bitarray	* frames_disponibles;
 void* bloque_frames_lilbres;
 char* algoritmo_reemplazo;
 
+// Esta lista serviria solo para un proceso, habria que ver como podemos hacer que sirva con GRADO_MULTIPROGRAMACION procesos
+/*
+ * Una posibilidad, ya que el GRADO_MULTIPROGRAMACION se settea al iniciar todo el sistema, es inicializar un array de
+ * GRADO_MULTIPROGRAMACION tamanio, y en cada posicion, asignar una lista de frames_asignados.
+*/
+t_list* frames_asignados;
+
+t_list* frames_proceso_0;
+t_list* frames_proceso_1;
+t_list* frames_proceso_2;
+t_list* frames_proceso_3;
+t_list* lista_frames_procesos;
+
 
 void crear_espacio_usuario();
 
@@ -40,6 +53,21 @@ int main(void) {
     iniciar_estructuras_administrativas_kernel();
     crear_espacio_usuario();
 	//sem_init(&semMemoria, 0, 1);
+
+    // Metemos estas inicializaciones dentro de iniciar_estructuras_administrativas_kernel()?
+    frames_asignados = list_create();
+
+    frames_proceso_0 = list_create();
+    frames_proceso_1 = list_create();
+    frames_proceso_2 = list_create();
+    frames_proceso_3 = list_create();
+    lista_frames_procesos = list_create();
+    list_add(lista_frames_procesos, frames_proceso_0);
+    list_add(lista_frames_procesos, frames_proceso_1);
+    list_add(lista_frames_procesos, frames_proceso_2);
+    list_add(lista_frames_procesos, frames_proceso_3);
+
+
 
 	// Inicio el servidor
 	memoria_fd = iniciarServidor(ipMemoria, puertoMemoria, logger);
@@ -213,7 +241,7 @@ size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso) {
             registro_tabla_segundo_nivel->indice = j;
             registro_tabla_segundo_nivel->frame = 0;
             registro_tabla_segundo_nivel->modificado=false;
-            registro_tabla_segundo_nivel->usado=false;
+            registro_tabla_segundo_nivel->uso=false;
             registro_tabla_segundo_nivel->presencia=false;
 
             list_add(lista_registros_segundo_nivel, registro_tabla_segundo_nivel);
@@ -327,60 +355,73 @@ void algoritmo_clock(uint32_t indice_tabla_primer_nivel, uint32_t indice_primer_
 	t_list* tabla_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
 	t_registro_segundo_nivel* registro_segundo_nivel = list_get(tabla_segundo_nivel, indice_segundo_nivel);
 
-	// Variables auxiliares para iterar
-	t_registro_primer_nivel* registro_primer_nivel_aux;
-	t_list* tabla_segundo_nivel_aux;
+	// Variables auxiliares
 	t_registro_segundo_nivel* registro_segundo_nivel_victima;
-	int victima_ok = 0;
 
-	for (int i = 0; i < 4; i++) {
-		registro_primer_nivel_aux = list_get(tabla_primer_nivel, i);
-		tabla_segundo_nivel_aux = list_get(lista_tablas_segundo_nivel, registro_primer_nivel_aux->nro_tabla_segundo_nivel);
+	// Uso marcos por proceso o list_size(frames_asignados)?
+	// Yo se que siempre voy a tener que reemplazar cuando supere el maximo de marcos por proceso
+	for (int i=0; i < marcos_por_proceso; i++) {
 
-		// Posible mejora para encontrar la pagina victima
-		// t_registro_segundo_nivel* registro_victima = list_find(tabla_segundo_nivel_aux, es_victima_clock());
+		// Siempre tomamos el elemento 0 porque consideramos el list->head como el puntero
+		t_frame_clock* frame = list_get(frames_asignados, 0);
 
-		for (int j = 0; j < 4; j++) {
-			registro_segundo_nivel_victima = list_get(tabla_segundo_nivel_aux, j);
-			if (registro_segundo_nivel_victima->presencia == 1 && registro_segundo_nivel_victima->usado == 0) {
-				cargar_pagina(frame_asignado);
+		if (es_victima_clock(frame)) {
+			/*
+			 * En base al numero de pagina, calcula el indice de la tabla
+			 * de paginas de primer nivel y de segundo nivel para actualizar sus bits (U/M/P)
+			 *
+			 * o que directamente devuelva el puntero al registro victima de la tabla de segundo nivel
+			 */
+			registro_segundo_nivel_victima = obtener_registro_segundo_nivel(indice_tabla_primer_nivel, frame->numero_pagina);
 
-				// Limpieza de registro victima
-				// frames_disponibles ----> registro_segundo_nivel_victima->frame = 0;
-				registro_segundo_nivel_victima->presencia = 0;
-				registro_segundo_nivel_victima->usado = 0;
+			// Limpieza de registro victima
+			// frames_disponibles ----> registro_segundo_nivel_victima->frame = 0;
+			registro_segundo_nivel_victima->presencia = 0;
+			registro_segundo_nivel_victima->uso = 0;
+			if (registro_segundo_nivel_victima->modificado == 1) {
+				// Actualizar pagina en swap
 				registro_segundo_nivel_victima->modificado = 0;
-
-				// Carga de pagina solicitada
-				// frames_disponibles ----> registro_segundo_nivel->frame = 1;
-				registro_segundo_nivel->frame = frame_asignado;
-				registro_segundo_nivel->presencia = 1;
-				registro_segundo_nivel->usado = 1;
-
-				victima_ok = 1;
-				break;
 			}
-		}
-		if (victima_ok) {
+
+			// Carga de pagina solicitada
+			// frames_disponibles ----> registro_segundo_nivel->frame = 1;
+			registro_segundo_nivel->frame = frame->numero_frame;	// Le asigno el frame que fue desocupado y elegido como victima
+			registro_segundo_nivel->uso = 1;
+			registro_segundo_nivel->presencia = 1;
+			// El bit de modificado se tiene que settear al momento de leer el codigo de operacion
+			// Si es WRITE => m = 1
+
+			frame->numero_pagina =
+			frame->uso = 1;
+			list_add(frames_asignados, frame);
+			list_remove(frames_asignados, 0);
+
 			break;
+		} else {
+			frame->uso=0;
+			list_add(frames_asignados, frame);
+			// Confirmar que el remove reposiciona el list->head
+			// Hacemos remove_and_destroy o algo de eso?
+			list_remove(frames_asignados, 0);
 		}
 	}
+
 }
 
 void algoritmo_clock_modificado(uint32_t tabla_primer_nivel, uint32_t numero_tabla_segundo_nivel, uint32_t registro_segundo_nivel) {
 
 }
 
-int es_victima_clock(t_registro_segundo_nivel* registro) {
-	return registro->presencia == 1 && registro->usado == 0;
+int es_victima_clock(t_frame_clock* frame) {
+	return frame->presencia == 1 && frame->uso == 0;
 }
 
 int es_victima_clock_modificado_um(t_registro_segundo_nivel* registro) {
-	return registro->presencia == 1 && registro->usado == 0 && registro->modificado == 0;
+	return registro->presencia == 1 && registro->uso == 0 && registro->modificado == 0;
 }
 
 int es_victima_clock_modificado_u(t_registro_segundo_nivel* registro) {
-	return registro->presencia == 1 && registro->usado == 0 && registro->modificado == 1;
+	return registro->presencia == 1 && registro->uso == 0 && registro->modificado == 1;
 }
 
 void cargar_pagina(uint32_t frame_asignado) {
