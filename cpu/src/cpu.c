@@ -320,29 +320,45 @@ uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
         for (int i=0; i < list_size(tlb); i++) {
             entrada_tlb = list_get(tlb,i);
             if (entrada_tlb->pagina == numero_pagina) {
+                entrada_tlb->veces_referenciada+=1;
                 return entrada_tlb->marco;
             }
         }
     }
     return -1;
 }
+void reemplazar_entrada_tlb(tlb_entrada* entrada) {
 
+    if (string_equals_ignore_case(algoritmo_reemplazo_tlb, "FIFO")){
+        list_remove(tlb, 0);
+        list_add(tlb, entrada);
+    }
+    else { //LRU
+        list_sort(tlb, comparator);
+        list_remove(tlb, 0);
+        list_add(tlb, entrada);
+
+    }
+}
 
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 
 	tlb_entrada* tlb_entrada = malloc(sizeof(tlb_entrada));
 	tlb_entrada ->marco = marco;
 	tlb_entrada ->pagina = numero_pagina;
+	tlb_entrada->veces_referenciada=1;
 
 	if(list_size(tlb) >= entradas_max_tlb){
-		//Reemplazo el primer elemento de la lista
-		list_remove(tlb, 0);
-		list_add(tlb, tlb_entrada);
-
-	}else {
+	        reemplazar_entrada_tlb(tlb_entrada);
+        }
+	else
+	{
 		list_add(tlb, tlb_entrada);
 	}
 }
+
+static bool comparator (void* entrada1, void* entrada2) {
+    return (((tlb_entrada *) entrada1)->veces_referenciada) < (((tlb_entrada *) entrada2)->veces_referenciada); }
 
 void limpiar_tlb(){
 
