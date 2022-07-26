@@ -80,18 +80,6 @@ typedef struct {
 
 typedef struct
 {
-	t_pcb* pcb;
-	int conexion_cpu_dispatch;
-	int conexion_cpu_interrupt;
-	int conexion_memoria;
-	char* algoritmo_planificacion;
-	t_log* logger;
-	uint32_t tiempo_maximo_bloqueado;
-	double alpha;
-} t_attrs_planificacion;
-
-typedef struct
-{
 	uint32_t entrada_tabla_primer_nivel;
 	uint32_t entrada_tabla_segundo_nivel;
 	uint32_t offset;
@@ -99,8 +87,9 @@ typedef struct
 
 typedef struct
 {
-  uint32_t marco;
-  uint32_t desplazamiento;
+    uint32_t numero_pagina;
+    uint32_t marco;
+    uint32_t desplazamiento;
 } dir_fisica;
 
 t_config* iniciarConfig(char*);

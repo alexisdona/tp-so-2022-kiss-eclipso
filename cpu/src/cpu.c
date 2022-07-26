@@ -48,9 +48,9 @@ int main(void) {
     printf("[AI] CPU-INT: %d\n", cpu_interrupt);
 
     escuchar_interrupcion();
-
- 	handshake_memoria(conexionMemoria);
     conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "Memoria");
+ 	handshake_memoria(conexionMemoria);
+
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
     //log_info(logger, "Te conectaste con Memoria");
       //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
@@ -68,7 +68,7 @@ int main(void) {
 				log_info(logger,"RECIBI PCB");
 				pcb = recibirPCB(cliente_dispatch);
 				logear_PCB(logger,pcb,"RECIBIDO");
-				//limpiar_tlb();
+				limpiar_tlb();
 				comenzar_ciclo_instruccion();
 			   break;/*
 			case -1:
@@ -92,7 +92,7 @@ void comenzar_ciclo_instruccion(){
 	op_code proceso_respuesta = CONTINUA_PROCESO;
 	operando operador = 0;
 
-	while(proceso_respuesta == CONTINUA_PROCESO && pcb!=NULL){
+	while(proceso_respuesta == CONTINUA_PROCESO){
 		t_instruccion* instruccion = fase_fetch();
 		int requiero_operador = fase_decode(instruccion);
 
@@ -133,22 +133,20 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 			operacion_IO(proceso_respuesta, instruccion->parametros[0]);
 			break;
 		case READ:
-			//Provisorio
+            log_info(logger,"Ejecutando READ");
 			proceso_respuesta = CONTINUA_PROCESO;
 			operacion_READ(instruccion->parametros[0]);
-			printf("\nejecuto read\n");
-			log_info(logger,"Ejecutando READ");
+
 			break;
 		case WRITE:
-			//Provisorio
-			proceso_respuesta = CONTINUA_PROCESO;
+            log_info(logger,"Ejecutando WRITE");
+            proceso_respuesta = CONTINUA_PROCESO;
             operacion_WRITE(instruccion->parametros[0], instruccion->parametros[1]);
-			log_info(logger,"Ejecutando WRITE");
 			break;
 		case COPY:
-		    proceso_respuesta = CONTINUA_PROCESO;
+            log_info(logger,"Ejecutando COPY");
+            proceso_respuesta = CONTINUA_PROCESO;
 			operacion_COPY(instruccion->parametros[0], instruccion->parametros[1]);
-			log_info(logger,"Ejecutando COPY");
 			break;
 		case EXIT:
 			proceso_respuesta = TERMINAR_PROCESO;
@@ -179,9 +177,9 @@ void operacion_EXIT(op_code proceso_respuesta){
 }
 
 void operacion_READ(operando dirLogica){
+
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
     uint32_t valor = leer_en_memoria(dir_fisica);
-    printf("\nCPU --El valor leido en memoria es>  %d\n", valor);
 }
 
 void operacion_COPY(uint32_t direccion_logica_destino, uint32_t direccion_logica_origen){
@@ -237,7 +235,7 @@ void atender_interrupcion(void* void_args) {
 			    break;/*
 			case -1:
 				log_info(logger, "El Kernel no envio ninguna interrupcion");
-				//cliente_dispatch=-1;
+				cliente_dispatch=-1;
 				break;
 			default:
 				log_warning(logger,"Operacion desconocida.");
@@ -265,6 +263,7 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
             tlb_actualizar(numero_pagina, marco);
         }
         dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
+        direccion_fisica->numero_pagina = numero_pagina;
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
         return direccion_fisica;
@@ -339,29 +338,45 @@ uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
         for (int i=0; i < list_size(tlb); i++) {
             entrada_tlb = list_get(tlb,i);
             if (entrada_tlb->pagina == numero_pagina) {
+                entrada_tlb->veces_referenciada+=1;
                 return entrada_tlb->marco;
             }
         }
     }
     return -1;
 }
+void reemplazar_entrada_tlb(tlb_entrada* entrada) {
 
+    if (string_equals_ignore_case(algoritmo_reemplazo_tlb, "FIFO")){
+        list_remove(tlb, 0);
+        list_add(tlb, entrada);
+    }
+    else { //LRU
+        list_sort(tlb, comparator);
+        list_remove(tlb, 0);
+        list_add(tlb, entrada);
+
+    }
+}
 
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 
 	tlb_entrada* tlb_entrada = malloc(sizeof(tlb_entrada));
 	tlb_entrada ->marco = marco;
 	tlb_entrada ->pagina = numero_pagina;
+	tlb_entrada->veces_referenciada=1;
 
 	if(list_size(tlb) >= entradas_max_tlb){
-		//Reemplazo el primer elemento de la lista
-		list_remove(tlb, 0);
-		list_add(tlb, tlb_entrada);
-
-	}else {
+	        reemplazar_entrada_tlb(tlb_entrada);
+        }
+	else
+	{
 		list_add(tlb, tlb_entrada);
 	}
 }
+
+static bool comparator (void* entrada1, void* entrada2) {
+    return (((tlb_entrada *) entrada1)->veces_referenciada) < (((tlb_entrada *) entrada2)->veces_referenciada); }
 
 
 void handshake_memoria(int conexionMemoria){
@@ -391,7 +406,6 @@ uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
                 ;
                 void* buffer = recibirBuffer(conexionMemoria);
                 memcpy(&valor_leido, buffer, sizeof(uint32_t));
-                printf("\nvalor leido de memoria: %d\n", valor_leido);
                 obtuve_valor = 1;
                 break;
         }
@@ -404,6 +418,8 @@ uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
 void escribir_en_memoria(dir_fisica * direccion_fisica, uint32_t valor) {
     t_paquete* paquete = crearPaquete();
     paquete->codigo_operacion = ESCRIBIR_MEMORIA;
+    agregarEntero(paquete, pcb->idProceso);
+    agregarEntero4bytes(paquete, direccion_fisica->numero_pagina); // lo necesito para actualizar el proceso en swap
     agregarEntero4bytes(paquete, direccion_fisica->marco);
     agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
     agregarEntero4bytes(paquete, valor);

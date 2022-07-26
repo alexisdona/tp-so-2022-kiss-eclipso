@@ -1,32 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include "include/swap.h"
 
 t_pcb* pcb_atendiendo;
 t_config* pcb_swapeado;
 
-void swapear_proceso(t_pcb* pcb){
-	queue_push(cola_swap,pcb);
-	if(puedo_atender_pcb()){
-		comenzar_swaping();
-	}
-}
 
 int puedo_atender_pcb(){
 	return (pcb_atendiendo == NULL);
 }
 
-void comenzar_swaping(){
-	pcb_atendiendo = queue_pop(cola_swap);
-	char* ruta = obtener_ruta_archivo_swap();
-	log_info(logger,string_from_format("RUTA ARCHIVO SWAP: %s\n",ruta));
-	t_config* proceso_swap = existe_archivo_swap(ruta);
-	actualizar_archivo_swap(proceso_swap);
-	config_save(proceso_swap);
-	pcb_atendiendo = NULL;
-	pcb_swapeado = NULL;
-}
 
 t_config* existe_archivo_swap(char* ruta){
 	t_config* proceso_swap;
@@ -47,6 +33,19 @@ char* obtener_ruta_archivo_swap(){
 	return ruta;
 }
 
+char *obtener_path_archivo(size_t id_proceso) {
+
+    char* ruta = string_new();
+    string_append(&ruta, PATH_SWAP);
+    verificar_carpeta_swap((ruta));
+
+    string_append(&ruta, string_itoa(id_proceso));
+    string_append(&ruta, ".swap");
+
+    return ruta;
+}
+
+
 void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
 
     void *str = malloc(tamanio);
@@ -57,19 +56,14 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
         memcpy(str + sizeof(uint32_t) *i , &valor, sizeof(uint32_t));
         valor += 1;
     }
-/*
+
     printf("\nswap --> IMPRIMO VALORES EN el archivo\n");
       for(int i=0; i< cantidad_bloques; i++) {
           uint32_t* apuntado=  str+ sizeof(uint32_t) *i;
          printf("\nvalor apuntado en posición del arhivo%d-->%d",i, *apuntado);
    }
-*/
-       char *ruta = string_new();
-       string_append(&ruta, PATH_SWAP);
-       verificar_carpeta_swap(ruta);
 
-       string_append(&ruta, string_itoa(id_proceso));
-       string_append(&ruta, ".swap");
+       char *ruta = obtener_path_archivo(id_proceso);
 
        FILE *archivo_swap = fopen(ruta, "wb");
        if (archivo_swap != NULL) {
@@ -80,7 +74,6 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
        }
        fclose(archivo_swap);
    }
-
    void verificar_carpeta_swap(char* ruta){
        log_info(logger,PATH_SWAP);
        mode_t modo_carpeta = 0777;
@@ -93,30 +86,24 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
        }
    }
 
+   void actualizar_archivo_swap(size_t id_proceso, uint32_t numero_pagina, uint32_t desplazamiento, uint32_t tamanio_pagina, uint32_t valor){
 
-   void actualizar_archivo_swap(t_config* proceso_swap){
+      int ubicacion_valor_reemplazo = numero_pagina*tamanio_pagina+desplazamiento;
+       char *ruta = obtener_path_archivo(id_proceso);
 
-       dictionary_put(proceso_swap->properties,"PID",string_itoa(pcb_atendiendo->idProceso));
-       dictionary_put(proceso_swap->properties,"TAM_PROCESO",string_itoa(pcb_atendiendo->tamanioProceso));
-       dictionary_put(proceso_swap->properties,"PC",string_itoa(pcb_atendiendo->programCounter));
-       dictionary_put(proceso_swap->properties,"TABLA_PAGINAS",string_itoa(pcb_atendiendo->tablaPaginas));
-       dictionary_put(proceso_swap->properties,"ESTIMACION",string_itoa(pcb_atendiendo->estimacionRafaga));
-
-       t_list* lista_instrucciones = pcb_atendiendo->listaInstrucciones;
-       t_instruccion* instruccion;
-       char* instrucciones = string_new();
-
-       for(uint32_t i=0; i<list_size(lista_instrucciones); i++){
-
-           instruccion = list_get(lista_instrucciones,i);
-           string_append(&instrucciones,string_itoa(instruccion->codigo_operacion));
-           string_append(&instrucciones," ");
-           string_append(&instrucciones,string_itoa(instruccion->parametros[0]));
-           string_append(&instrucciones," ");
-           string_append(&instrucciones,string_itoa(instruccion->parametros[1]));
-           string_append(&instrucciones,";");
-
+       int archivo_swap = open(ruta, O_RDWR);
+       struct stat sb;
+       if (fstat(archivo_swap,&sb) == -1) {
+           perror("No se pudo obtener el size del archivo swap: ");
        }
-       dictionary_put(proceso_swap->properties,"INSTRUCCIONES",instrucciones);
+       void* contenido_swap = mmap(NULL, sb.st_size, PROT_WRITE , MAP_SHARED, archivo_swap, 0);
+       uint32_t * apuntado = (uint32_t *) (contenido_swap+ubicacion_valor_reemplazo);
+       printf("\nACTUALIZAR SWAP - ANTES DE REEPLAZO OFFSET: %d VALOR: %d\n", ubicacion_valor_reemplazo, *apuntado );
+       void* valor_a_copiar = &valor;
 
+       memcpy((contenido_swap+ubicacion_valor_reemplazo), valor_a_copiar, sizeof(uint32_t));
+       apuntado = (uint32_t *) (contenido_swap+ubicacion_valor_reemplazo);
+       printf("\nACTUALIZAR SWAP - DESPUES DE REEPLAZO OFFSET: %d VALOR: %d\n", ubicacion_valor_reemplazo, *apuntado );
+       munmap(contenido_swap, sb.st_size);
+       close(archivo_swap);
    }

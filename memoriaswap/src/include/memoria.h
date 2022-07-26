@@ -51,4 +51,5 @@ void algoritmo_clock_modificado(uint32_t, uint32_t, uint32_t);
 void algoritmo_clock(uint32_t, uint32_t, uint32_t, uint32_t);
 
 
+
 #endif /* SRC_MEMORIA_H_ */
