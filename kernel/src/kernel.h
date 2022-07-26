@@ -16,7 +16,7 @@
 #include "../../shared/headers/sharedUtils.h"
 
 #define CONFIG_FILE "../src/config/kernel.config"
-
+//#define CONFIG_FILE "src/config/kernel.config"
 
 
 typedef struct {
