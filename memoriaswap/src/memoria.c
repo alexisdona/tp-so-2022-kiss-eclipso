@@ -172,7 +172,8 @@ void procesar_conexion(void* void_args) {
                             memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina); //agrego bloque en el espacio de usuario
 
                         } else {
-                            // algoritmo de reemplazo
+                                //marco =  obtener_marco_algoritmo_reemplazo;
+                            memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina);
                         }
                     }
 

@@ -51,6 +51,7 @@ uint32_t obtener_marco_memoria(uint32_t, uint32_t, uint32_t);
 uint32_t leer_en_memoria(dir_fisica *);
 void escribir_en_memoria(dir_fisica *, uint32_t);
 static bool comparator (void*, void*);
+void actualizar_entrada_marco_existente(uint32_t , uint32_t);
 
 
 #endif /* SRC_CPU_H_ */

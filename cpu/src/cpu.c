@@ -174,6 +174,7 @@ void operacion_EXIT(op_code proceso_respuesta){
 void operacion_READ(operando dirLogica){
     dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
     uint32_t valor = leer_en_memoria(dir_fisica);
+    printf("\nREAD -> Lei de memoria el valor : %d\n", valor);
 }
 
 void operacion_COPY(uint32_t direccion_logica_destino, uint32_t direccion_logica_origen){
@@ -240,8 +241,8 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         marco = tlb_obtener_marco(numero_pagina);
         if (marco == -1 ) {
          //TLB_MISS
-            uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel);
-            marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina);
+            uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel); //1er acceso
+            marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina); //2do acceso
             tlb_actualizar(numero_pagina, marco);
         }
         dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
@@ -253,8 +254,8 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
 
     else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
-        //operacion_EXIT() ? Se lo tiene que matar si intenta acceder a una direccion no valida?
-        return EXIT_FAILURE;
+        operacion_EXIT(TERMINAR_PROCESO);
+
     }
 }
 
@@ -347,7 +348,8 @@ void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 	tlb_entrada ->marco = marco;
 	tlb_entrada ->pagina = numero_pagina;
 	tlb_entrada->veces_referenciada=1;
-
+    //si ahora es otra pagina la que referencia al marco porque se reemplazo por el otro
+    actualizar_entrada_marco_existente(numero_pagina, marco);
 	if(list_size(tlb) >= entradas_max_tlb){
 	        reemplazar_entrada_tlb(tlb_entrada);
         }
@@ -361,11 +363,7 @@ static bool comparator (void* entrada1, void* entrada2) {
     return (((tlb_entrada *) entrada1)->veces_referenciada) < (((tlb_entrada *) entrada2)->veces_referenciada); }
 
 void limpiar_tlb(){
-
-	if(pcb->idProceso != pid){
-		list_clean(tlb);
-		pid = pcb->idProceso;
-	}
+    list_clean(tlb);
 }
 
 void handshake_memoria(int conexionMemoria){
@@ -426,7 +424,19 @@ void escribir_en_memoria(dir_fisica * direccion_fisica, uint32_t valor) {
         }
     }
 }
-
+/*
+ * Si el marco que me viene de memoria ya es una entrada en la tlb con otra pagina, le actualizo la página
+ * */
+void actualizar_entrada_marco_existente(uint32_t numero_pagina, uint32_t marco){
+    tlb_entrada * entrada;
+    for(int i=0; i< list_size(tlb);i++) {
+        entrada = list_get(tlb, i);
+        if (entrada->marco == marco && numero_pagina!= entrada->pagina) {
+            entrada->pagina = numero_pagina;
+            entrada->veces_referenciada=1;
+        }
+    }
+}
 
 
 
