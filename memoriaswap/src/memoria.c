@@ -169,12 +169,12 @@ void procesar_conexion(void* void_args) {
                             registro_segundo_nivel->presencia = true;
                             registro_segundo_nivel->frame = nro_frame_libre;
                             marco = registro_segundo_nivel->frame;
-                            memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina); //agrego bloque en el espacio de usuario
 
                         } else {
                                 //marco =  obtener_marco_algoritmo_reemplazo;
-                            memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina);
+
                         }
+                        memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina);
                     }
 
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
