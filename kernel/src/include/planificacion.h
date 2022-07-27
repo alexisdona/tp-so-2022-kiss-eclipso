@@ -41,8 +41,8 @@ void estimar_proxima_rafaga(uint32_t, t_pcb*);
 time_t calcular_tiempo_en_exec(time_t); 
 void calcular_rafagas_restantes_proceso_desalojado(uint32_t tiempo_en_ejecucion, t_pcb* pcb_desalojada);
 void ordenar_procesos_lista_READY();
-void checkear_proceso_y_replanificar(t_pcb*,op_code);
-void replanificar_y_enviar_nuevo_proceso(t_pcb*, t_pcb*,op_code);
+void checkear_proceso_y_replanificar(t_pcb*);
+void replanificar_y_enviar_nuevo_proceso(t_pcb*, t_pcb*);
 void agregar_proceso_READY(t_pcb*,op_code);
 void iniciar_algoritmo_planificacion(t_pcb*);
 t_pcb* obtener_proceso_en_READY();
@@ -61,5 +61,7 @@ void proceso_en_ready_memoria(t_pcb*);
 bool hay_proceso_ejecutando();
 bool altera_grado_multiprogramacion(op_code);
 void seguir_algoritmo_planificacion(t_pcb*,op_code);
+void continuar_planificacion();
+void enviar_interrupcion(int, op_code);
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H
