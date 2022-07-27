@@ -74,7 +74,7 @@ void procesar_conexion(void* void_args) {
                     ;
                     usleep(retardo_memoria*1000);
                     void* buffer_escritura = recibirBuffer(cliente_fd);
-                    uint32_t tabla_paginas_segundo_nivel;
+.                     uint32_t tabla_paginas_segundo_nivel;
                     uint32_t entrada_tabla_paginas_segundo_nivel;
                     size_t id_proceso;
                     uint32_t numero_pagina;
