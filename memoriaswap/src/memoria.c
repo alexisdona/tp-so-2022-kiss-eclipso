@@ -74,6 +74,8 @@ void procesar_conexion(void* void_args) {
                     ;
                     usleep(retardo_memoria*1000);
                     void* buffer_escritura = recibirBuffer(cliente_fd);
+                    uint32_t tabla_paginas_segundo_nivel;
+                    uint32_t entrada_tabla_paginas_segundo_nivel;
                     size_t id_proceso;
                     uint32_t numero_pagina;
                     uint32_t marco_escritura;
@@ -93,6 +95,7 @@ void procesar_conexion(void* void_args) {
                     uint32_t desplazamiento_final_escritura = (marco_escritura*tamanio_pagina+desplazamiento_escritura);
                     memcpy((espacio_usuario_memoria+desplazamiento_final_escritura), &valor_a_escribir, sizeof(uint32_t));
                     actualizar_archivo_swap(id_proceso, numero_pagina, desplazamiento_escritura, tamanio_pagina, valor_a_escribir );
+                    //actualizar bit de modificado en tabla de paginas de segundo nivel del proceso
                     usleep(retardo_swap*1000); //retardo de escritura de memoria a disco
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
                     break;

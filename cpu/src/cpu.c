@@ -236,12 +236,12 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
         uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
         uint32_t desplazamiento = direccion_logica - (numero_pagina * tamanio_pagina);
-
+        uint32_t tabla_segundo_nivel;
         uint32_t marco;
         marco = tlb_obtener_marco(numero_pagina);
         if (marco == -1 ) {
          //TLB_MISS
-            uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel); //1er acceso
+            tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel); //1er acceso
             marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina); //2do acceso
             tlb_actualizar(numero_pagina, marco);
         }
@@ -249,6 +249,7 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         direccion_fisica->numero_pagina = numero_pagina;
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
+        direccion_fisica->tabla_segundo_nivel=tabla_segundo_nivel
         return direccion_fisica;
     }
 

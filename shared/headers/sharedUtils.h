@@ -87,6 +87,8 @@ typedef struct
     uint32_t numero_pagina;
     uint32_t marco;
     uint32_t desplazamiento;
+    uint32_t tabla_segundo_nivel;
+    uint32_t entrada_tabla_segundo_nivel;
 } dir_fisica;
 
 t_config* iniciarConfig(char*);
