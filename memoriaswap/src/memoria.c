@@ -172,7 +172,8 @@ void procesar_conexion(void* void_args) {
 
                         } else {
                                 //marco =  obtener_marco_algoritmo_reemplazo;
-
+                            registro_segundo_nivel->presencia = true;
+                            registro_segundo_nivel->frame = marco;
                         }
                         memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina);
                     }
