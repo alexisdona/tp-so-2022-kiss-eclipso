@@ -74,13 +74,12 @@ void procesar_conexion(void* void_args) {
                     ;
                     usleep(retardo_memoria*1000);
                     void* buffer_escritura = recibirBuffer(cliente_fd);
-.                     uint32_t tabla_paginas_segundo_nivel;
-                    uint32_t entrada_tabla_paginas_segundo_nivel;
                     size_t id_proceso;
                     uint32_t numero_pagina;
                     uint32_t marco_escritura;
                     uint32_t desplazamiento_escritura;
                     uint32_t valor_a_escribir;
+                    size_t nro_tabla_primer_nivel_escritura;
                     int d=0;
                     memcpy(&id_proceso, buffer_escritura, sizeof(size_t));
                     d+=sizeof(size_t);
@@ -91,11 +90,13 @@ void procesar_conexion(void* void_args) {
                     memcpy(&desplazamiento_escritura, (buffer_escritura+d), sizeof(uint32_t));
                     d+=sizeof(uint32_t);
                     memcpy(&valor_a_escribir, (buffer_escritura+d), sizeof(uint32_t));
+                    d+=sizeof(uint32_t);
+                    memcpy(&nro_tabla_primer_nivel_escritura, (buffer_escritura+d), sizeof(size_t));
                     //escribo en el espacio de usuario el valor
                     uint32_t desplazamiento_final_escritura = (marco_escritura*tamanio_pagina+desplazamiento_escritura);
                     memcpy((espacio_usuario_memoria+desplazamiento_final_escritura), &valor_a_escribir, sizeof(uint32_t));
                     actualizar_archivo_swap(id_proceso, numero_pagina, desplazamiento_escritura, tamanio_pagina, valor_a_escribir );
-                    //actualizar bit de modificado en tabla de paginas de segundo nivel del proceso
+                    actualizar_bit_modificado_tabla_paginas(nro_tabla_primer_nivel_escritura, numero_pagina);
                     usleep(retardo_swap*1000); //retardo de escritura de memoria a disco
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
                     break;
@@ -111,10 +112,6 @@ void procesar_conexion(void* void_args) {
                     uint32_t* valor = (uint32_t*) (espacio_usuario_memoria + desplazamiento_final_lectura);
                     enviar_entero(cliente_fd, *valor, LEER_MEMORIA);
                     break;
-                case SWAPEAR_PROCESO:
-                	log_info(logger, "Recibi un PCB a swapear");
-                	t_pcb* pcb = recibirPCB(cliente_fd);
-                	break;
                 case CREAR_ESTRUCTURAS_ADMIN:
                     ;
                     usleep(retardo_memoria*1000);
@@ -182,6 +179,13 @@ void procesar_conexion(void* void_args) {
                     }
 
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
+                    break;
+                case SWAPEAR_PROCESO:
+                    ;
+                    t_pcb* pcb_swapped = recibirPCB(cliente_fd);
+                    size_t id_proceso_suspension = pcb_swapped->idProceso;
+                    uint32_t tabla_primer_nivel_suspension = pcb_swapped->tablaPaginas;
+                    liberar_memoria_proceso(tabla_primer_nivel_suspension, id_proceso_suspension);
                     break;
                 case -1:
                     log_info(logger, "El cliente se desconectó");
@@ -292,7 +296,7 @@ void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagin
      void* contenido_swap = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, archivo_swap, 0);
      void* bloque = malloc(tamanio_pagina);
      memcpy(bloque, contenido_swap+ubicacion_bloque, tamanio_pagina);
-     munmap(archivo_swap, sb.st_size);
+     //munmap(archivo_swap, sb.st_size);
      close(archivo_swap);
      return bloque; //devuelve la pagina entera que es del tamano de pagina
 }
@@ -326,6 +330,86 @@ uint32_t obtener_cantidad_marcos_ocupados(size_t nro_tabla_primer_nivel) {
     }
     return cantidad_marcos_ocupados;
 }
+
+void actualizar_bit_modificado_tabla_paginas(size_t nro_tabla_primer_nivel_escritura, uint32_t numero_pagina){
+    t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel_escritura);
+    int nro_pagina_aux = 0;
+    for(int i=0; i<tabla_primer_nivel->elements_count; i++){
+
+        t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+
+        for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
+            t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
+            if(nro_pagina_aux == numero_pagina) {
+                registro_segundo_nivel->modificado=true;
+            }
+            nro_pagina_aux+=1;
+        }
+    }
+
+}
+
+
+void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t id_proceso) {
+
+    t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, tabla_pagina_primer_nivel_proceso);
+    int numero_pagina=0;
+    char* ruta = obtener_path_archivo(id_proceso);
+    int archivo_swap = open(ruta, O_RDWR);
+    struct stat sb;
+    if (fstat(archivo_swap,&sb) == -1) {
+        perror("No se pudo obtener el size del archivo swap: ");
+    }
+    void* contenido_swap = mmap(NULL, sb.st_size, PROT_WRITE , MAP_SHARED, archivo_swap, 0);
+    printf(BLU"\nAntes de suspender el proceso\n",RESET);
+    imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
+    for(int i=0; i<tabla_primer_nivel->elements_count; i++){
+        t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+
+        for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
+            t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
+            if (registro_segundo_nivel->presencia == 1) {
+                void* bloque = (espacio_usuario_memoria+(registro_segundo_nivel->frame)*tamanio_pagina);
+                memcpy((contenido_swap+(numero_pagina*tamanio_pagina)),bloque,tamanio_pagina);
+                registro_segundo_nivel->presencia=false;
+                registro_segundo_nivel->usado=false;
+                registro_segundo_nivel->modificado=false;
+                bitarray_clean_bit(frames_disponibles, registro_segundo_nivel->frame);
+            }
+            numero_pagina+=1;
+        }
+    }
+    munmap(contenido_swap, sb.st_size);
+    close(archivo_swap);
+    printf(BLU"\nDespues de suspender el proceso\n",RESET);
+    imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
+}
+
+void imprimir_valores_paginacion_proceso(uint32_t tabla_pagina_primer_nivel_proceso) {
+
+    t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, tabla_pagina_primer_nivel_proceso);
+    int numero_pagina=0;
+
+    for(int i=0; i<tabla_primer_nivel->elements_count; i++){
+        t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+
+        for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
+            t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
+
+                printf(RED "\nnumero_pagina: %d", numero_pagina, RESET);
+               printf(GRN "\nregistro_segundo_nivel->presencia: %d",  registro_segundo_nivel->presencia);
+               printf(GRN "\nregistro_segundo_nivel->modificado: %d",  registro_segundo_nivel->modificado);
+               printf(GRN "\nregistro_segundo_nivel->usado: %d",  registro_segundo_nivel->usado, RESET);
+
+            numero_pagina+=1;
+        }
+    }
+}
+
+
 
 
 //********************************* ALGORITMOS DE SUSTITUCION DE PAGINAS ***********************************

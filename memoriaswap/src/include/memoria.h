@@ -12,6 +12,18 @@
 #include<commons/collections/list.h>
 #include<commons/bitarray.h>
 
+
+/* Para imprimir con colores re loco */
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+#define RESET "\x1B[0m"
+
+
 #define LOG_NAME "MEMORIA_LOG"
 #define LOG_FILE "memoria.log"
 #define CONFIG_FILE "../memoriaswap/src/config/memoria.config"
@@ -49,7 +61,9 @@ uint32_t obtener_cantidad_marcos_ocupados(size_t);
 void cargar_pagina(uint32_t );
 void algoritmo_clock_modificado(uint32_t, uint32_t, uint32_t);
 void algoritmo_clock(uint32_t, uint32_t, uint32_t, uint32_t);
-
+void liberar_memoria_proceso(uint32_t, size_t);
+void imprimir_valores_paginacion_proceso(uint32_t);
+void actualizar_bit_modificado_tabla_paginas(size_t, uint32_t);
 
 
 #endif /* SRC_MEMORIA_H_ */

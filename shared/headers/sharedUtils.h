@@ -33,7 +33,8 @@ typedef enum {
 	ACTUALIZAR_INDICE_TABLA_PAGINAS,
 	HANDSHAKE_MEMORIA,
 	OBTENER_ENTRADA_SEGUNDO_NIVEL,
-	OBTENER_MARCO
+	OBTENER_MARCO,
+    SUSPENDER_PROCESO
 } op_code;
 
 typedef enum
@@ -87,8 +88,8 @@ typedef struct
     uint32_t numero_pagina;
     uint32_t marco;
     uint32_t desplazamiento;
-    uint32_t tabla_segundo_nivel;
-    uint32_t entrada_tabla_segundo_nivel;
+    size_t indice_tabla_primer_nivel;
+
 } dir_fisica;
 
 t_config* iniciarConfig(char*);
