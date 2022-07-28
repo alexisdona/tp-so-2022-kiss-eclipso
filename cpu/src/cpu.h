@@ -16,6 +16,10 @@
 #define LOG_FILE "cpu.log"
 #define CONFIG_FILE "../cpu/src/config/cpu.config"
 
+typedef struct {
+    int cpu_interrupt;
+} attrs_interrupt;
+
 typedef struct{
 	uint32_t pagina;
 	uint32_t marco;
@@ -33,13 +37,8 @@ void operacion_EXIT(op_code proceso_respuesta);
 void operacion_READ(operando);
 void operacion_WRITE(uint32_t, operando);
 void operacion_COPY(uint32_t, uint32_t);
-void preparar_pcb_respuesta(t_paquete* paquete);
-void estimar_proxima_rafaga(time_t tiempo);
-void atender_interrupciones();
+void atender_interrupcion(void*);
 void loggearPCB(t_pcb* pcb);
-uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato);
-uint32_t pedir_a_memoria_marco(uint32_t dato,uint32_t dato2);
-dir_fisica* traducir_direccion_logica(uint32_t dir_logica);
 uint32_t tlb_obtener_marco(uint32_t entrada);
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco);
 uint32_t tlb_existe(uint32_t numero_pagina);
@@ -52,6 +51,6 @@ uint32_t leer_en_memoria(dir_fisica *);
 void escribir_en_memoria(dir_fisica *, uint32_t);
 static bool comparator (void*, void*);
 void actualizar_entrada_marco_existente(uint32_t , uint32_t);
-
+int escuchar_interrupcion();
 
 #endif /* SRC_CPU_H_ */

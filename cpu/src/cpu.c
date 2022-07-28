@@ -1,24 +1,22 @@
 #include "cpu.h"
 #include <math.h>
+#include <pthread.h>
 
 t_log* logger;
 int cpu_dispatch;
-int cpuInterrupt;
+int cpu_interrupt;
 t_config * config;
 int conexionMemoria;
 int cliente_dispatch;
 t_pcb* pcb;
 int retardo_noop;
-t_list* interrupciones;
-int alpha = 0.5; //Provisorio, debiera ser enviado por el kernel al conectarse una unica vez.
+pthread_t hilo_interrupcion;
 int tamanio_pagina, entradas_por_tabla;
 t_list* tlb;
 pthread_mutex_t mutex_algoritmos;
 char* algoritmo_reemplazo_tlb;
 uint32_t entradas_max_tlb;
-uint32_t pid =-1;
 
-void imprimirListaInstrucciones(t_pcb *pcb);
 
 int main(void) {
 
@@ -38,14 +36,15 @@ int main(void) {
 	entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
 
 	cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
-	log_info(logger, "CPU listo para recibir un kernel");
-	cliente_dispatch = esperarCliente(cpu_dispatch,logger);
 
-    cpuInterrupt = iniciarServidor(ip, puerto_interrupt, logger);
+	log_info(logger, "CPU listo para recibir un kernel");
+    cliente_dispatch = esperarCliente(cpu_dispatch, logger);
+    cpu_interrupt = iniciarServidor(ip, puerto_interrupt, logger);
  	conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "CPU");
  	handshake_memoria(conexionMemoria);
-	//log_info(logger, "Te conectaste con Memoria");
-    //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
+
+  //  escuchar_interrupcion();
+
 
 	while(cliente_dispatch!=-1) {
 
@@ -190,36 +189,47 @@ void operacion_WRITE(uint32_t direccion_logica, uint32_t valor){
     escribir_en_memoria(dir_fisica, valor);
 }
 
-void estimar_proxima_rafaga(time_t tiempo){
-	int tiempo_cpu = tiempo / 1000;
-	pcb->estimacionRafaga = alpha*tiempo_cpu + (1-alpha)*(pcb->estimacionRafaga);
-}
 
 //-----------Ciclo de interrupcion-----------
 
-void atender_interrupciones() {
-	log_info(logger,"Entro en atender_interrupciones");
-	if(cpuInterrupt != -1) {
-		op_code cod_op = recibirOperacion(cpuInterrupt);
-		t_pcb* pcbNuevo;
+int escuchar_interrupcion() {
 
-		switch (cod_op) {
-			case DESALOJAR_PROCESO:
-				pcbNuevo = recibirPCB(cpuInterrupt);
-				log_info(logger,"Recibi nuevo PCB");
-				enviarPCB(cpuInterrupt, pcb, PCB);
-				log_info(logger, "Envio PCB que estaba ejecutando");
-				pcb = pcbNuevo;
-			   break;
-			case -1:
-				log_info(logger, "El Kernel no envio ninguna interrupcion");
-				cliente_dispatch=-1;
-				break;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;
-		}
-	}
+    int cliente_interrupt = esperarCliente(cpu_interrupt, logger);
+    if (cliente_interrupt != -1) {
+        attrs_interrupt* attrs_interrupt = malloc(sizeof (attrs_interrupt));
+        attrs_interrupt->cpu_interrupt = cliente_interrupt;
+        pthread_create(&hilo_interrupcion, NULL, (void*) atender_interrupcion, (void*) attrs_interrupt);
+        pthread_detach(hilo_interrupcion);
+
+        return 1;
+    }
+    log_error(logger, "ERROR CRITICO INICIANDO EL SERVIDOR. NO SE PUDO CREAR EL HILO PARA ATENDER INTERRUPCION. ABORTANDO...");
+    return 0;
+}
+
+void atender_interrupcion(void* attrs_interrupcion) {
+
+    printf("CPU-INTERRUPT: %d\n",cpu_interrupt);
+
+    attrs_interrupt * atributos = (attrs_interrupt *) attrs_interrupcion;
+    int cliente_interrupt = atributos->cpu_interrupt;
+
+    while (cliente_interrupt != -1) {
+        op_code cod_op = recibirOperacion(cliente_interrupt);
+
+        switch (cod_op) {
+            case MENSAJE:
+                recibirMensaje(cliente_interrupt, logger);
+                break;
+            case DESALOJAR_PROCESO:
+                log_info(logger, "El CPU esta atendiendo una interrupcion...");
+                log_info(logger,"DESALOJANDO PROCESO...");
+                log_info(logger,"DISPATCH: %d",cliente_dispatch);
+                enviarPCB(cliente_dispatch, pcb, cod_op);
+                log_info(logger, "Se envia la PCB que se estaba ejecutando...");
+                break;
+        }
+    }
 }
 
 void loggearPCB(t_pcb* pcb){
@@ -249,7 +259,7 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         direccion_fisica->numero_pagina = numero_pagina;
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
-        direccion_fisica->tabla_segundo_nivel=tabla_segundo_nivel
+        direccion_fisica->tabla_segundo_nivel=tabla_segundo_nivel;
         return direccion_fisica;
     }
 
