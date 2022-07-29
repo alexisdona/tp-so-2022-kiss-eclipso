@@ -9,7 +9,7 @@ int cliente_dispatch;
 t_pcb* pcb;
 int retardo_noop;
 int cpu_dispatch;
-pthread_t hilo_interrupcion;
+pthread_t hilo_interrupcion, hilo_dispatch;
 t_list* interrupciones;
 int tamanio_pagina, entradas_por_tabla;
 t_list* tlb;
@@ -17,6 +17,7 @@ pthread_mutex_t mutex_algoritmos;
 char* algoritmo_reemplazo_tlb;
 uint32_t entradas_max_tlb;
 uint32_t pid =-1;
+
 
 int main(void) {
 
@@ -41,13 +42,11 @@ int main(void) {
     printf("CPU-DISPATCH: %d\n",cpu_dispatch);
 
     log_info(logger, "CPU listo para recibir un kernel");
-    cliente_dispatch = esperarCliente(cpu_dispatch,logger);
     printf("CLIENTE DISPATCH: %d\n", cliente_dispatch);
 
     cpu_interrupt = iniciarServidor(ip, puerto_interrupt, logger);
     printf("[AI] CPU-INT: %d\n", cpu_interrupt);
 
-    escuchar_interrupcion();
     conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "Memoria");
  	handshake_memoria(conexionMemoria);
 
@@ -55,35 +54,45 @@ int main(void) {
     //log_info(logger, "Te conectaste con Memoria");
       //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
 
-	while(cliente_dispatch!=-1) {
 
-		op_code cod_op = recibirOperacion(cliente_dispatch);
 
-		switch (cod_op) {
-			case MENSAJE:
-				recibirMensaje(cliente_dispatch, logger);
-				break;
-			case PCB:
-			    printf("\n");
-				log_info(logger,"RECIBI PCB");
-				pcb = recibirPCB(cliente_dispatch);
-				logear_PCB(logger,pcb,"RECIBIDO");
-				limpiar_tlb();
-				comenzar_ciclo_instruccion();
-			   break;/*
-			case -1:
-				;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;*/
-		}
-	}
-
-	while(1) {
+    while(1) {
+        escuchar_dispatch();
 		escuchar_interrupcion();
 	}
 
 	return EXIT_SUCCESS;
+}
+
+void atender_dispatch(void* void_args) {
+    attrs_interrupt* attrs = (attrs_interrupt*) void_args;
+    int cliente_dispatch = attrs->cpu_interrupt; // cree una estructura por si necesitamos luego saber algo mas de interrupciones
+    free(attrs);
+
+    printf("CPU-DISPATCH: %d\n",cliente_dispatch);
+
+    if (cliente_dispatch != -1) {
+
+
+        while(cliente_dispatch != -1) {
+
+        op_code cod_op = recibirOperacion(cliente_dispatch);
+
+        switch (cod_op) {
+            case MENSAJE:
+                recibirMensaje(cliente_dispatch, logger);
+                break;
+            case PCB:
+                printf("\n");
+                log_info(logger,"RECIBI PCB");
+                pcb = recibirPCB(cliente_dispatch);
+                logear_PCB(logger,pcb,"RECIBIDO");
+                list_clean(tlb);
+                comenzar_ciclo_instruccion();
+               break;
+        }
+    }
+}
 }
 
 //--------Ciclo de instruccion---------
@@ -194,6 +203,18 @@ void operacion_WRITE(uint32_t direccion_logica, uint32_t valor){
     dir_fisica* dir_fisica = obtener_direccion_fisica(direccion_logica);
     escribir_en_memoria(dir_fisica, valor);
 }
+void escuchar_dispatch() {
+    int cliente_dispatch = esperarCliente(cpu_dispatch, logger);
+    if (cliente_dispatch != -1) {
+
+        attrs_interrupt* attrs = malloc(sizeof(attrs_interrupt));
+        attrs->cpu_interrupt = cliente_dispatch;
+
+        pthread_create(&hilo_dispatch, NULL, (void*) atender_dispatch, (void*) attrs);
+        pthread_detach(hilo_dispatch);
+
+    }
+}
 
 //-----------Ciclo de interrupcion-----------
 
@@ -232,14 +253,7 @@ void atender_interrupcion(void* void_args) {
 				logear_PCB(logger,pcb,"ENVIADO");
 				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
 				pcb = NULL;
-			    break;/*
-			case -1:
-				log_info(logger, "El Kernel no envio ninguna interrupcion");
-				cliente_dispatch=-1;
-				break;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;*/
+			    break;
 		}
 	}
 }

@@ -117,7 +117,7 @@ void interrupcion_por_proceso_en_ready(){
 
 void planificacion_SJF(t_pcb* pcb){
 	log_info(logger,"ALGORITMO: SJF");
-    interrupcion_por_proceso_en_ready();
+  //  interrupcion_por_proceso_en_ready();
     ordenar_procesos_lista_READY();
 }
 

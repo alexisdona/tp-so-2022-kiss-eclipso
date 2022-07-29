@@ -287,7 +287,7 @@ void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagin
      void* contenido_swap = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, archivo_swap, 0);
      void* bloque = malloc(tamanio_pagina);
      memcpy(bloque, contenido_swap+ubicacion_bloque, tamanio_pagina);
-     munmap(archivo_swap, sb.st_size);
+     munmap(contenido_swap, sb.st_size);
      close(archivo_swap);
      return bloque; //devuelve la pagina entera que es del tamano de pagina
 }

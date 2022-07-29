@@ -13,7 +13,7 @@
 
 #define LOG_NAME "CPU_LOG"
 #define LOG_FILE "cpu.log"
-#define CONFIG_FILE "../src/config/cpu.config"
+#define CONFIG_FILE "../cpu/src/config/cpu.config"
 
 
 typedef struct {
@@ -51,6 +51,7 @@ uint32_t obtener_marco_memoria(uint32_t, uint32_t, uint32_t);
 uint32_t leer_en_memoria(dir_fisica *);
 void escribir_en_memoria(dir_fisica *, uint32_t);
 static bool comparator (void*, void*);
-
+void escuchar_dispatch();
+void atender_dispatch(void*);
 
 #endif /* SRC_CPU_H_ */

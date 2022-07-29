@@ -53,7 +53,8 @@ int main() {
     printf("\n");
     log_info(logger, "### ESPERANDO CONSOLAS ###");
 
-    enviarMensaje("CPU, soy el Kernel", conexion_cpu_dispatch);
+    enviarMensaje("CPU DISPATCH, soy el Kernel", conexion_cpu_dispatch);
+    enviarMensaje("CPU INTERRUPT, soy el Kernel", conexion_cpu_interrupt);
     enviarMensaje("MEMORIA, soy el kernel", conexion_memoria);
     /* CONEXIONES A MODULOS */
 
