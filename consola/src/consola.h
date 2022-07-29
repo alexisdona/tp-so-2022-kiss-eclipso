@@ -16,7 +16,7 @@
 
 #define LOG_NAME "CONSOLA_LOG"
 #define LOG_FILE "consola.log"
-#define CONFIG_FILE "../src/config/consola.config"
+#define CONFIG_FILE "../consola/src/config/consola.config"
 #define CARACTER_SALIDA ""
 
 

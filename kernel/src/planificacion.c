@@ -109,9 +109,9 @@ void agregar_proceso_READY(t_pcb* pcb) {
 }
 
 void interrupcion_por_proceso_en_ready(){
-    if(list_size(READY)>0 ) {
+    if(list_size(READY)>1 ) {
     	log_info(logger, "ENVIANDO INTERRUPCION");
-    	enviar_interrupcion(conexion_cpu_interrupt, DESALOJAR_PROCESO);
+    	enviar_interrupcion(conexion_cpu_interrupt, INTERRUPCION);
     }
 }
 

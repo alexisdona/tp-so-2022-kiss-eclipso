@@ -13,7 +13,7 @@
 
 #define LOG_NAME "CPU_LOG"
 #define LOG_FILE "cpu.log"
-#define CONFIG_FILE "../src/config/cpu.config"
+#define CONFIG_FILE "../cpu/src/config/cpu.config"
 
 
 typedef struct {
@@ -38,7 +38,7 @@ void operacion_READ(operando);
 void operacion_WRITE(uint32_t, operando);
 void operacion_COPY(uint32_t, uint32_t);
 void preparar_pcb_respuesta(t_paquete* paquete);
-void atender_interrupcion(void* void_args);
+void atender_interrupcion();
 void loggearPCB(t_pcb* pcb);
 int escuchar_interrupcion();
 uint32_t tlb_obtener_marco(uint32_t entrada);
@@ -51,6 +51,10 @@ uint32_t obtener_marco_memoria(uint32_t, uint32_t, uint32_t);
 uint32_t leer_en_memoria(dir_fisica *);
 void escribir_en_memoria(dir_fisica *, uint32_t);
 static bool comparator (void*, void*);
-
+void procesar_conexion_dispatch(void* void_args);
+void procesar_conexion_interrupt(void* void_args);
+void hilo_dispatch();
+void hilo_interrupt();
+void escuchar_cliente();
 
 #endif /* SRC_CPU_H_ */

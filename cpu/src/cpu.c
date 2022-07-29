@@ -9,81 +9,53 @@ int cliente_dispatch;
 t_pcb* pcb;
 int retardo_noop;
 int cpu_dispatch;
-pthread_t hilo_interrupcion;
-t_list* interrupciones;
 int tamanio_pagina, entradas_por_tabla;
 t_list* tlb;
-pthread_mutex_t mutex_algoritmos;
 char* algoritmo_reemplazo_tlb;
 uint32_t entradas_max_tlb;
-uint32_t pid =-1;
+char* ip, *ip_memoria, *puerto_dispatch, *puerto_interrupt;
+int puerto_memoria;
+int tiempo_bloqueo;
+int hay_interrupcion; //variable global que se llena cuando  hay interrupción del kernel
+
+void levantar_configs();
+
 
 int main(void) {
 
 	logger = iniciarLogger(LOG_FILE,"CPU");
 	config = iniciarConfig(CONFIG_FILE);
 	tlb = list_create();
-	char* ip = config_get_string_value(config,"IP_CPU");
-	char* ip_memoria = config_get_string_value(config,"IP_MEMORIA");
-
-	int puerto_memoria = config_get_int_value(config,"PUERTO_MEMORIA");
-	char* puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
-	char* puerto_interrupt = config_get_string_value(config,"PUERTO_ESCUCHA_INTERRUPT");
-	retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
-	int tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
-
-    printf("IP_CPU: %s\tDISPATCH: %s\tINTERRUPT: %s\n", ip, puerto_dispatch, puerto_interrupt);
-
-	algoritmo_reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
-	entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
+    levantar_configs();
 
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
-    printf("CPU-DISPATCH: %d\n",cpu_dispatch);
 
     log_info(logger, "CPU listo para recibir un kernel");
-    cliente_dispatch = esperarCliente(cpu_dispatch,logger);
-    printf("CLIENTE DISPATCH: %d\n", cliente_dispatch);
 
     cpu_interrupt = iniciarServidor(ip, puerto_interrupt, logger);
-    printf("[AI] CPU-INT: %d\n", cpu_interrupt);
 
-    escuchar_interrupcion();
     conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "Memoria");
- 	handshake_memoria(conexionMemoria);
-
+    handshake_memoria(conexionMemoria);
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
-    //log_info(logger, "Te conectaste con Memoria");
-      //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
 
-	while(cliente_dispatch!=-1) {
+    while (1) {
+        escuchar_cliente();
+    }
 
-		op_code cod_op = recibirOperacion(cliente_dispatch);
 
-		switch (cod_op) {
-			case MENSAJE:
-				recibirMensaje(cliente_dispatch, logger);
-				break;
-			case PCB:
-			    printf("\n");
-				log_info(logger,"RECIBI PCB");
-				pcb = recibirPCB(cliente_dispatch);
-				logear_PCB(logger,pcb,"RECIBIDO");
-				limpiar_tlb();
-				comenzar_ciclo_instruccion();
-			   break;/*
-			case -1:
-				;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;*/
-		}
-	}
+}
 
-	while(1) {
-		escuchar_interrupcion();
-	}
+void levantar_configs() {
+    ip = config_get_string_value(config, "IP_CPU");
+    ip_memoria = config_get_string_value(config,"IP_MEMORIA");
 
-	return EXIT_SUCCESS;
+    puerto_memoria = config_get_int_value(config,"PUERTO_MEMORIA");
+    puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
+    puerto_interrupt = config_get_string_value(config,"PUERTO_ESCUCHA_INTERRUPT");
+    retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
+    tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
+    algoritmo_reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
+    entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
 }
 
 //--------Ciclo de instruccion---------
@@ -102,7 +74,13 @@ void comenzar_ciclo_instruccion(){
 
 		proceso_respuesta = fase_execute(instruccion, operador);
 
+        if(hay_interrupcion>0) {
+            atender_interrupcion();
+        }
+
 	}
+
+
 
 }
 
@@ -197,51 +175,13 @@ void operacion_WRITE(uint32_t direccion_logica, uint32_t valor){
 
 //-----------Ciclo de interrupcion-----------
 
-int escuchar_interrupcion() {
-	int cliente_interrupt = esperarCliente(cpu_interrupt, logger);
-    if (cliente_interrupt != -1) {
-
-       attrs_interrupt* attrs = malloc(sizeof(attrs_interrupt));
-       attrs->cpu_interrupt = cliente_interrupt;
-
-        pthread_create(&hilo_interrupcion, NULL, (void*) atender_interrupcion, (void*) attrs);
-        pthread_detach(hilo_interrupcion);
-
-        return 1;
-    }
-	log_error(logger, "ERROR CRITICO INICIANDO EL SERVIDOR. NO SE PUDO CREAR EL HILO PARA ATENDER INTERRUPCION. ABORTANDO...");
-    return 0;
-}
-
-void atender_interrupcion(void* void_args) {
-	attrs_interrupt* attrs = (attrs_interrupt*) void_args;
-	int cpu_interrupt = attrs->cpu_interrupt; // cree una estructura por si necesitamos luego saber algo mas de interrupciones
-	free(attrs);
-
-	printf("CPU-INTERRUPT: %d\n",cpu_interrupt);
-
-	if (cpu_interrupt != -1) {
-		op_code cod_op = recibirOperacion(cpu_interrupt);
-
-		switch (cod_op) {
-			case DESALOJAR_PROCESO:
-				log_info(logger, "El CPU esta atendiendo una interrupcion...");
-				log_info(logger,"DESALOJANDO PROCESO...");
-				log_info(logger,"DISPATCH: %d",cliente_dispatch);
-				enviarPCB(cliente_dispatch, pcb, cod_op);
-				logear_PCB(logger,pcb,"ENVIADO");
-				log_info(logger, "Se envia la PCB que se estaba ejecutando...");
-				pcb = NULL;
-			    break;/*
-			case -1:
-				log_info(logger, "El Kernel no envio ninguna interrupcion");
-				cliente_dispatch=-1;
-				break;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;*/
-		}
-	}
+void atender_interrupcion() {
+    log_info(logger, "El CPU esta atendiendo una interrupcion...");
+	log_info(logger,"DESALOJANDO PROCESO...");
+	log_info(logger,"DISPATCH: %d",cliente_dispatch);
+	enviarPCB(cliente_dispatch, pcb, DESALOJAR_PROCESO);
+	logear_PCB(logger, pcb,"ENVIADO");
+	log_info(logger, "Se envia la PCB que se estaba ejecutando...");
 }
 
 //---------------------------------------------------------MMU--------------------------------------------------------
@@ -439,8 +379,73 @@ void escribir_en_memoria(dir_fisica * direccion_fisica, uint32_t valor) {
 }
 
 
+void escuchar_cliente() {
+    hilo_dispatch();
+    hilo_interrupt();
+    }
+
+void hilo_dispatch() {
+    pthread_t hilo_dispatch;
+    t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
+    attrs->log = logger;
+    pthread_create(&hilo_dispatch, NULL, (void*) procesar_conexion_dispatch, (void*) attrs);
+    pthread_detach(hilo_dispatch);
+}
+
+void hilo_interrupt() {
+    pthread_t hilo_interrupt;
+    t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
+    attrs->log = logger;
+    pthread_create(&hilo_interrupt, NULL, (void*) procesar_conexion_interrupt, (void*) attrs);
+    pthread_detach(hilo_interrupt);
+}
 
 
 
+void procesar_conexion_interrupt(void* void_args) {
+
+    t_procesar_conexion_attrs *attrs = (t_procesar_conexion_attrs *) void_args;
+    t_log *logger = attrs->log;
+    int cliente_interrupt = esperarCliente(cpu_interrupt, logger);
+    free(attrs);
+
+    while (cliente_interrupt != -1) {
+        op_code cod_op = recibirOperacion(cliente_interrupt);
+        switch (cod_op) {
+
+            case INTERRUPCION:
+                log_info(logger, "Hubo una interrupción");
+                hay_interrupcion += 1;
+                break;
+        }
+    }
+}
 
 
+void procesar_conexion_dispatch(void* void_args) {
+
+    t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
+    t_log* logger = attrs->log;
+    int cliente_dispatch = esperarCliente(cpu_dispatch, logger);
+    free(attrs);
+
+    while(cliente_dispatch != -1) {
+        op_code cod_op = recibirOperacion(cliente_dispatch);
+        switch (cod_op) {
+
+            case MENSAJE:
+                recibirMensaje(cliente_dispatch, logger);
+                break;
+            case PCB:
+                printf("\n");
+                log_info(logger,"RECIBI PCB");
+                pcb = recibirPCB(cliente_dispatch);
+                logear_PCB(logger,pcb,"RECIBIDO");
+                list_clean(tlb);
+                comenzar_ciclo_instruccion();
+                break;
+
+        }
+
+    }
+}

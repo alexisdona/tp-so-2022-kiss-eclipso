@@ -22,7 +22,13 @@ extern int errno;
 
 typedef uint32_t operando;
 
+typedef struct {
+    t_log* log;
+    int fd;
+    char* nombre;
+} t_procesar_conexion_attrs;
 typedef enum {
+    INTERRUPCION,
     MENSAJE,
     LISTA_INSTRUCCIONES,
     PCB,

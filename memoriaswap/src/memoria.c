@@ -24,20 +24,14 @@ char* algoritmo_reemplazo;
 
 void crear_espacio_usuario();
 
+void levantar_configs();
+
 int main(void) {
 	//sem_t semMemoria;
 
 	config = iniciarConfig(CONFIG_FILE);
 	logger = iniciarLogger("memoria.log", "Memoria");
-	ipMemoria= config_get_string_value(config,"IP_MEMORIA");
-    puertoMemoria= config_get_string_value(config,"PUERTO_ESCUCHA");
-    entradas_por_tabla = config_get_int_value(config,"ENTRADAS_POR_TABLA");
-    tamanio_memoria = config_get_int_value(config,"TAM_MEMORIA");
-    tamanio_pagina = config_get_int_value(config,"TAM_PAGINA");
-    marcos_por_proceso = config_get_int_value(config,"MARCOS_POR_PROCESO");
-    algoritmo_reemplazo = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
-    retardo_swap = config_get_int_value(config, "RETARDO_SWAP");
-    retardo_memoria = config_get_int_value(config, "RETARDO_MEMORIA");
+    levantar_configs();
     preparar_modulo_swap();
     iniciar_estructuras_administrativas_kernel();
     crear_espacio_usuario();
@@ -52,7 +46,18 @@ int main(void) {
         escuchar_cliente("KERNEL");
     }
 
-	return EXIT_SUCCESS;
+}
+
+void levantar_configs() {
+    ipMemoria= config_get_string_value(config, "IP_MEMORIA");
+    puertoMemoria= config_get_string_value(config,"PUERTO_ESCUCHA");
+    entradas_por_tabla = config_get_int_value(config,"ENTRADAS_POR_TABLA");
+    tamanio_memoria = config_get_int_value(config,"TAM_MEMORIA");
+    tamanio_pagina = config_get_int_value(config,"TAM_PAGINA");
+    marcos_por_proceso = config_get_int_value(config,"MARCOS_POR_PROCESO");
+    algoritmo_reemplazo = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
+    retardo_swap = config_get_int_value(config, "RETARDO_SWAP");
+    retardo_memoria = config_get_int_value(config, "RETARDO_MEMORIA");
 }
 
 void procesar_conexion(void* void_args) {
@@ -287,7 +292,7 @@ void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagin
      void* contenido_swap = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, archivo_swap, 0);
      void* bloque = malloc(tamanio_pagina);
      memcpy(bloque, contenido_swap+ubicacion_bloque, tamanio_pagina);
-     munmap(archivo_swap, sb.st_size);
+     munmap(contenido_swap, sb.st_size);
      close(archivo_swap);
      return bloque; //devuelve la pagina entera que es del tamano de pagina
 }
