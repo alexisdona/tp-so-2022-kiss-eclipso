@@ -108,17 +108,23 @@ void agregar_proceso_READY(t_pcb* pcb) {
     log_info(logger,string_from_format("PROCESOS EN READY: [%d]",list_size(READY)));
 }
 
-void interrupcion_por_proceso_en_ready(){
-    if(list_size(READY)>1 ) {
-    	log_info(logger, "ENVIANDO INTERRUPCION");
-    	enviar_interrupcion(conexion_cpu_interrupt, INTERRUPCION);
+
+bool interrupcion_por_proceso_en_ready(){
+    if(hay_proceso_ejecutando()) {
+        printf("\n");
+        log_info(logger, "### ENVIANDO INTERRUPCION ###");
+        enviar_interrupcion(conexion_cpu_interrupt, INTERRUPCION);
+        return true;
     }
+    log_info(logger, "NO SE DEBE ENVIAR NINGUNA INTERRUPCION");
+    return false;
 }
 
+
 void planificacion_SJF(t_pcb* pcb){
-	log_info(logger,"ALGORITMO: SJF");
-    interrupcion_por_proceso_en_ready();
-    ordenar_procesos_lista_READY();
+    log_info(logger,"ALGORITMO: SJF");
+    bool desalojar_proceso_por_interrupcion = interrupcion_por_proceso_en_ready();
+    if(!desalojar_proceso_por_interrupcion) ordenar_procesos_lista_READY();
 }
 
 t_pcb* obtener_proceso_en_READY() {
@@ -269,7 +275,7 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
 }
 
 bool hay_proceso_ejecutando(){
-	list_size(READY)+queue_size(BLOCKED);
+	return list_size(READY)>0;
 }
 
 /* ---------> MEMORIA <--------- */

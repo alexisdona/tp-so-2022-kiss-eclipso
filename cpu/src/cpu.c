@@ -5,7 +5,7 @@ t_log* logger;
 int cpu_interrupt;
 t_config * config;
 int conexionMemoria;
-int cliente_dispatch;
+int cliente_dispatch, cliente_interrupt;
 t_pcb* pcb;
 int retardo_noop;
 int cpu_dispatch;
@@ -40,9 +40,6 @@ int main(void) {
     crear_hilos_cpu();
     pthread_join(hilo_dispatch, NULL);
     pthread_join(hilo_interrupt, NULL);
-
-
-
 }
 
 void levantar_configs() {
@@ -75,7 +72,12 @@ void comenzar_ciclo_instruccion(){
 		proceso_respuesta = fase_execute(instruccion, operador);
 
         if(hay_interrupcion>0) {
+            printf(RED"\ncheck_interrupt"RESET);
             atender_interrupcion();
+            proceso_respuesta = DESALOJAR_PROCESO;
+        }
+        else {
+            printf(GREEN"\nno hubo interrupción, sigue en fetch\n"RESET);
         }
 
 	}
@@ -180,7 +182,6 @@ void atender_interrupcion() {
 	log_info(logger,"DESALOJANDO PROCESO...");
 	log_info(logger,"DISPATCH: %d",cliente_dispatch);
 	enviarPCB(cliente_dispatch, pcb, DESALOJAR_PROCESO);
-	logear_PCB(logger, pcb,"ENVIADO");
 	log_info(logger, "Se envia la PCB que se estaba ejecutando...");
 }
 
@@ -389,36 +390,32 @@ void crear_hilo_dispatch() {
     t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
     attrs->log = logger;
     pthread_create(&hilo_dispatch, NULL, (void*) procesar_conexion_dispatch, (void*) attrs);
-  //  pthread_detach(hilo_dispatch);
+    //pthread_detach(hilo_dispatch);
 }
 
 void crear_hilo_interrupt() {
     t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
     attrs->log = logger;
     pthread_create(&hilo_interrupt, NULL, (void*) procesar_conexion_interrupt, (void*) attrs);
-   // pthread_detach(hilo_interrupt);
+    //pthread_detach(hilo_interrupt);
 }
 
 
 
 void procesar_conexion_interrupt(void* void_args) {
-    printf("\nHilo interrupt");
-
+    printf("\nHilo interrupt\n");
     t_procesar_conexion_attrs *attrs = (t_procesar_conexion_attrs *) void_args;
     t_log *logger = attrs->log;
     while(1) {
-        int cliente_interrupt = esperarCliente(cpu_interrupt, logger);
+        cliente_interrupt = esperarCliente(cpu_interrupt, logger);
         free(attrs);
-
         while (cliente_interrupt != -1) {
-            printf("Estoy escuchando por interrupt");
             op_code cod_op = recibirOperacion(cliente_interrupt);
             switch (cod_op) {
                 case MENSAJE:
-                    recibirMensaje(cliente_dispatch, logger);
+                    recibirMensaje(cliente_interrupt, logger);
                     break;
                 case INTERRUPCION:
-
                     log_info(logger, "Hubo una interrupción");
                     hay_interrupcion += 1;
                     break;
@@ -433,15 +430,12 @@ void procesar_conexion_dispatch(void* void_args) {
     t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
     t_log* logger = attrs->log;
     while(1) {
-        int cliente_dispatch = esperarCliente(cpu_dispatch, logger);
+        cliente_dispatch = esperarCliente(cpu_dispatch, logger);
         free(attrs);
 
         while (cliente_dispatch != -1) {
-            printf("\nEstoy escuchando por dispatch");
-
             op_code cod_op = recibirOperacion(cliente_dispatch);
             switch (cod_op) {
-
                 case MENSAJE:
                     recibirMensaje(cliente_dispatch, logger);
                     break;

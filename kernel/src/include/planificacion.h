@@ -54,10 +54,10 @@ unsigned int tiempo_en_suspended_blocked(t_pcb*);
 void enviar_proceso_SUSPENDED_READY_a_READY();
 void agregar_proceso_SUSPENDED_READY(t_pcb*);
 void planificacion_SJF(t_pcb* pcb);
-void interrupcion_por_proceso_en_ready();
 void crear_estructuras_memoria(t_pcb*);
 void proceso_en_ready_memoria(t_pcb*);
 void logear_pcb(t_pcb* pcb);
 bool hay_proceso_ejecutando();
+bool interrupcion_por_proceso_en_ready();
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H
