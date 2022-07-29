@@ -18,12 +18,6 @@
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
 typedef struct {
-    t_log* log;
-    int fd;
-    char* nombre;
-} t_procesar_conexion_attrs;
-
-typedef struct {
    uint32_t indice;
    uint32_t nro_tabla_segundo_nivel; //indice en el segundo array de tablas de segundo nivel
 } t_registro_primer_nivel;

@@ -3,87 +3,64 @@
 
 t_log* logger;
 int cpu_interrupt;
-t_config* config;
+t_config * config;
 int conexionMemoria;
-int cliente_dispatch;
+int cliente_dispatch, cliente_interrupt;
 t_pcb* pcb;
 int retardo_noop;
 int cpu_dispatch;
-pthread_t hilo_interrupcion;
-t_list* interrupciones;
 int tamanio_pagina, entradas_por_tabla;
 t_list* tlb;
-pthread_mutex_t mutex_algoritmos;
 char* algoritmo_reemplazo_tlb;
 uint32_t entradas_max_tlb;
-uint32_t pid =-1;
+char* ip, *ip_memoria, *puerto_dispatch, *puerto_interrupt;
+int puerto_memoria;
+int tiempo_bloqueo;
+int hay_interrupcion;
+pthread_t hilo_dispatch, hilo_interrupt;
 
 int main(void) {
 
 	logger = iniciarLogger(LOG_FILE,"CPU");
 	config = iniciarConfig(CONFIG_FILE);
 	tlb = list_create();
-	char* ip = config_get_string_value(config,"IP_CPU");
-	char* ip_memoria = config_get_string_value(config,"IP_MEMORIA");
 
-	int puerto_memoria = config_get_int_value(config,"PUERTO_MEMORIA");
-	char* puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
-	char* puerto_interrupt = config_get_string_value(config,"PUERTO_ESCUCHA_INTERRUPT");
-	retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
-	int tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
-
-    printf("IP_CPU: %s\tDISPATCH: %s\tINTERRUPT: %s\n", ip, puerto_dispatch, puerto_interrupt);
+	levantar_configs();
 
 	algoritmo_reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
 	entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
 	
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
-    printf("CPU-DISPATCH: %d\n",cpu_dispatch);
-
-    log_info(logger, "CPU listo para recibir un kernel");
-    cliente_dispatch = esperarCliente(cpu_dispatch,logger);
-    printf("CLIENTE DISPATCH: %d\n", cliente_dispatch);
+    log_info(logger,string_from_format("CPU-DISPATCH: \t[%d]\tPUERTO: [%s]\tIP: [%s]",cpu_dispatch,puerto_dispatch,ip));
 
     cpu_interrupt = iniciarServidor(ip, puerto_interrupt, logger);
-    printf("[AI] CPU-INT: %d\n", cpu_interrupt);
+    log_info(logger,string_from_format("CPU-INT: \t[%d]\tPUERTO: [%s]\tIP: [%s]", cpu_interrupt,puerto_interrupt,ip));
 
-    escuchar_interrupcion();
+    log_info(logger, "CPU listo para recibir un kernel");
 
- 	handshake_memoria(conexionMemoria);
     conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "Memoria");
+    log_info(logger,string_from_format("MEMORIA: \t[%d]\tPUERTO: [%d]\tIP: [%s]", conexionMemoria,puerto_memoria,ip_memoria));
+
+    handshake_memoria(conexionMemoria);
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
-    //log_info(logger, "Te conectaste con Memoria");
-      //int memoria_fd = esperar_memoria(cpuDispatch); Esto es para cuando me conecte con la memoria
 
-	while(cliente_dispatch!=-1) {
+    crear_hilos_cpu();
+    pthread_join(hilo_dispatch,NULL);
+    pthread_join(hilo_interrupt,NULL);
 
-		op_code cod_op = recibirOperacion(cliente_dispatch);
+}
 
-		switch (cod_op) {
-			case MENSAJE:
-				recibirMensaje(cliente_dispatch, logger);
-				break;
-			case PCB:
-			    printf("\n");
-				log_info(logger,"RECIBI PCB");
-				pcb = recibirPCB(cliente_dispatch);
-				logear_PCB(logger,pcb,"RECIBIDO");
-				//limpiar_tlb();
-				comenzar_ciclo_instruccion();
-			   break;/*
-			case -1:
-				;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;*/
-		}
-	}
+void levantar_configs() {
+    ip = config_get_string_value(config, "IP_CPU");
+    ip_memoria = config_get_string_value(config,"IP_MEMORIA");
 
-	while(1) {
-		escuchar_interrupcion();
-	}
-
-	return EXIT_SUCCESS;
+    puerto_memoria = config_get_int_value(config,"PUERTO_MEMORIA");
+    puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
+    puerto_interrupt = config_get_string_value(config,"PUERTO_ESCUCHA_INTERRUPT");
+    retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
+    tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
+    algoritmo_reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
+    entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
 }
 
 //--------Ciclo de instruccion---------
@@ -92,16 +69,15 @@ void comenzar_ciclo_instruccion(){
 	op_code proceso_respuesta = CONTINUA_PROCESO;
 	operando operador = 0;
 
-	while(proceso_respuesta == CONTINUA_PROCESO && pcb!=NULL){
+	while(proceso_respuesta == CONTINUA_PROCESO){
 		t_instruccion* instruccion = fase_fetch();
 		int requiero_operador = fase_decode(instruccion);
 
 		if(requiero_operador) {
 			operador = fase_fetch_operand(instruccion->parametros[1]);
 		}
-
 		proceso_respuesta = fase_execute(instruccion, operador);
-
+		proceso_respuesta = chequear_interrupcion(proceso_respuesta);
 	}
 
 }
@@ -117,7 +93,6 @@ int fase_decode(t_instruccion* instruccion){
 }
 
 operando fase_fetch_operand(operando direccion_operador_a_buscar) {
-	//Deberia acceder a la memoria para traerme el operador
 	return direccion_operador_a_buscar;
 }
 
@@ -133,25 +108,21 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 			operacion_IO(proceso_respuesta, instruccion->parametros[0]);
 			break;
 		case READ:
-			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
 			operacion_READ(instruccion->parametros[0]);
-			log_info(logger,"Ejecutando READ");
 			break;
 		case WRITE:
-			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
-			log_info(logger,"Ejecutando WRITE");
+			operacion_WRITE(instruccion->parametros[0], instruccion->parametros[1]);
 			break;
 		case COPY:
-			//Provisorio
 			proceso_respuesta = CONTINUA_PROCESO;
-			log_info(logger,"Ejecutando COPY");
+			operacion_COPY(instruccion->parametros[0], instruccion->parametros[1]);
 			break;
 		case EXIT:
 			proceso_respuesta = TERMINAR_PROCESO;
 			operacion_EXIT(proceso_respuesta);
-			list_clean(tlb); //se limpia la tlb para usar en el próximo proceso
+			list_clean(tlb);
 			break;
 	}
 	return proceso_respuesta;
@@ -166,96 +137,59 @@ void operacion_NO_OP(){
 void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
 	log_info(logger,"Ejecutando I/O: %d",tiempo_bloqueo);
     enviarPCB(cliente_dispatch, pcb,  proceso_respuesta);
-    logear_PCB(logger,pcb,"ENVIADO");
+    logear_PCB(logger,pcb,"ENVIADO PARA BLOQUEAR");
 }
 
 void operacion_EXIT(op_code proceso_respuesta){
 	log_info(logger,"Ejecutando EXIT");
     enviarPCB(cliente_dispatch, pcb, proceso_respuesta);
-    logear_PCB(logger,pcb,"ENVIADO");
+    logear_PCB(logger,pcb,"ENVIADO PARA FINALIZAR");
     pcb=NULL;
 }
 
 void operacion_READ(operando dirLogica){
-	printf("Intento obtener direccion fisica\n");
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
-	printf("\ndir_fisica->marco: %d\n", dir_fisica->marco);
-    printf("\ndir_fisica->desplazamiento: %d\n", dir_fisica->desplazamiento);
-    //uint32_t valor = leer_en_memoria(dir_fisica);
-    //printf("\nCPU --El valor leido en memoria es>  %d\n", valor);
+	uint32_t valor = leer_en_memoria(dir_fisica);
 }
 
-void operacion_WRITE(){
-
+void operacion_COPY(uint32_t direccion_logica_destino, uint32_t direccion_logica_origen){
+    dir_fisica* dir_fisica_destino = obtener_direccion_fisica(direccion_logica_destino);
+    dir_fisica* dir_fisica_origen =  obtener_direccion_fisica(direccion_logica_origen);
+    uint32_t valor_en_origen = leer_en_memoria(dir_fisica_origen);
+    escribir_en_memoria(dir_fisica_destino, valor_en_origen);
 }
 
-void preparar_pcb_respuesta(t_paquete* paquete){
-	agregarEntero(paquete, pcb->idProceso);
-	agregarEntero(paquete, pcb->tamanioProceso);
-	agregarEntero(paquete, pcb->programCounter);
-	agregarEntero(paquete, pcb->tablaPaginas); //por ahora la tabla de paginas es un entero
-	agregarEntero(paquete, pcb->estimacionRafaga);
-	agregarListaInstrucciones(paquete, pcb->listaInstrucciones);
+void operacion_WRITE(uint32_t direccion_logica, uint32_t valor){
+    dir_fisica* dir_fisica = obtener_direccion_fisica(direccion_logica);
+    escribir_en_memoria(dir_fisica, valor);
 }
-
 //-----------Ciclo de interrupcion-----------
-
-int escuchar_interrupcion() {
-	int cliente_interrupt = esperarCliente(cpu_interrupt, logger);
-    if (cliente_interrupt != -1) {
-
-       attrs_interrupt* attrs = malloc(sizeof(attrs_interrupt));
-       attrs->cpu_interrupt = cliente_interrupt;
-
-        pthread_create(&hilo_interrupcion, NULL, (void*) atender_interrupcion, (void*) attrs);
-        pthread_detach(hilo_interrupcion);
-
-        return 1;
-    }
-	log_error(logger, "ERROR CRITICO INICIANDO EL SERVIDOR. NO SE PUDO CREAR EL HILO PARA ATENDER INTERRUPCION. ABORTANDO...");
-    return 0;
+void atender_interrupcion() {
+    log_info(logger, "ATENDIENDO INTERRUPCION...");
+	log_info(logger,"DESALOJANDO PROCESO...");
+	enviarPCB(cliente_dispatch, pcb, DESALOJAR_PROCESO);
+	logear_PCB(logger,pcb,"ENVIANDO PCB EN EJECUCION");
 }
 
-void atender_interrupcion(void* void_args) {
-	attrs_interrupt* attrs = (attrs_interrupt*) void_args;
-	int cpu_interrupt = attrs->cpu_interrupt; // cree una estructura por si necesitamos luego saber algo mas de interrupciones
-	free(attrs);
-
-	printf("CPU-INTERRUPT: %d\n",cpu_interrupt);
-
-	if (cpu_interrupt != -1) {
-		op_code cod_op = recibirOperacion(cpu_interrupt);
-
-		switch (cod_op) {
-			case DESALOJAR_PROCESO:
-				log_info(logger, "### ATENDIENDO INTERRUPCION ###");
-				log_info(logger,"DESALOJANDO PROCESO...");
-				enviarPCB(cliente_dispatch, pcb, cod_op);
-				logear_PCB(logger,pcb,"ENVIADO");
-				log_info(logger, "SE ENVIO EL PCB EN EJECUCION");
-				pcb = NULL;
-			    break;/*
-			case -1:
-				log_info(logger, "El Kernel no envio ninguna interrupcion");
-				//cliente_dispatch=-1;
-				break;
-			default:
-				log_warning(logger,"Operacion desconocida.");
-				break;*/
-		}
+op_code chequear_interrupcion(op_code proceso_respuesta){
+	if(hay_interrupcion > 0){
+		log_info(logger,"SE PRODUJO UNA INTERRUPCION");
+		atender_interrupcion();
+		return DESALOJAR_PROCESO;
+	}else{
+		printf("INTERRUPCION: %d\n",hay_interrupcion);
+		return proceso_respuesta;
 	}
 }
-
 //---------------------------------------------------------MMU--------------------------------------------------------
-
 dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
-	printf("Obteniendo direccion fisica\n");
 
     if (direccion_logica < pcb->tamanioProceso) {
-    	uint32_t numero_pagina = obtener_entero_division_decimal(direccion_logica,tamanio_pagina);
-        uint32_t entrada_tabla_1er_nivel = obtener_entero_division_decimal(numero_pagina,entradas_por_tabla);
-        uint32_t entrada_tabla_2do_nivel = obtener_entero_resto_decimal(numero_pagina,entradas_por_tabla);
+        uint32_t numero_pagina = floor(direccion_logica / tamanio_pagina);
+        uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
+        uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
         uint32_t desplazamiento = direccion_logica - (numero_pagina * tamanio_pagina);
+
         uint32_t marco;
         marco = tlb_obtener_marco(numero_pagina);
         if (marco == -1 ) {
@@ -264,43 +198,41 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
             marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina);
             tlb_actualizar(numero_pagina, marco);
         }
-        printf("\nMARCO = %d\n", marco);
         dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
+        direccion_fisica->numero_pagina = numero_pagina;
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
         return direccion_fisica;
     }
-    else{
-    	printf("No se pudo obtener dir. fisica\n");
+
+    else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
+        //Finalizar proceso
         return EXIT_FAILURE;
     }
 }
 
 uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabla_1er_nivel) {
-// primer acceso a memoria para obtener la entrada de la tabla de segundo nivel
-    t_paquete * paquete = crearPaquete();
-    paquete->codigo_operacion = OBTENER_ENTRADA_SEGUNDO_NIVEL;
-    agregarEntero(paquete, tabla_paginas);
-    agregarEntero4bytes(paquete, entrada_tabla_1er_nivel);
-    enviarPaquete(paquete, conexionMemoria);
-    uint32_t entrada_segundo_nivel;
-    //obtener entrada de tabla de segundo nivel
-    int obtuve_valor_tabla = 0;
-    while (conexionMemoria != -1 && obtuve_valor_tabla == 0) {
-            op_code cod_op = recibirOperacion(conexionMemoria);
-            switch(cod_op) {
-                case OBTENER_ENTRADA_SEGUNDO_NIVEL:
-                    ;
-                    void* buffer = recibirBuffer(conexionMemoria);
-                    memcpy(&entrada_segundo_nivel, buffer, sizeof(uint32_t));
-                    printf("\nentrada_tabla_segundo_nivel: %d\n", entrada_segundo_nivel);
-                    obtuve_valor_tabla = 1;
-                    break;
-            }
-        }
-        return entrada_segundo_nivel;
-    }
+	// primer acceso a memoria para obtener la entrada de la tabla de segundo nivel
+	t_paquete * paquete = crearPaquete();
+	paquete->codigo_operacion = OBTENER_ENTRADA_SEGUNDO_NIVEL;
+	agregarEntero(paquete, tabla_paginas);
+	agregarEntero4bytes(paquete, entrada_tabla_1er_nivel);
+	enviarPaquete(paquete, conexionMemoria);
+	uint32_t entrada_segundo_nivel;
+	//obtener entrada de tabla de segundo nivel
+	int obtuve_valor_tabla = 0;
+	while (conexionMemoria != -1 && obtuve_valor_tabla == 0) {
+		op_code cod_op = recibirOperacion(conexionMemoria);
+		if(cod_op == OBTENER_ENTRADA_SEGUNDO_NIVEL) {
+			void* buffer = recibirBuffer(conexionMemoria);
+			memcpy(&entrada_segundo_nivel, buffer, sizeof(uint32_t));
+			printf("\nentrada_tabla_segundo_nivel: %d\n", entrada_segundo_nivel);
+			obtuve_valor_tabla = 1;
+		}
+	}
+	return entrada_segundo_nivel;
+}
 
 uint32_t obtener_marco_memoria(uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel, uint32_t numero_pagina) {
     t_paquete * paquete = crearPaquete();
@@ -316,29 +248,23 @@ uint32_t obtener_marco_memoria(uint32_t nro_tabla_segundo_nivel, uint32_t entrad
     int obtuve_marco = 0;
     while (conexionMemoria != -1 && obtuve_marco == 0) {
         op_code cod_op = recibirOperacion(conexionMemoria);
-        switch(cod_op) {
-            case OBTENER_MARCO:
-                ;
-                void* buffer = recibirBuffer(conexionMemoria);
-                memcpy(&marco, buffer, sizeof(uint32_t));
-                printf("\nmarco de memoria: %d\n", marco);
-                obtuve_marco = 1;
-                break;
+         if(cod_op == OBTENER_MARCO){                ;
+			void* buffer = recibirBuffer(conexionMemoria);
+			memcpy(&marco, buffer, sizeof(uint32_t));
+			printf("\nmarco de memoria: %d\n", marco);
+			obtuve_marco = 1;
         }
     }
     return marco;
-
 }
-
-
 ////--------------------------------------------------------TLB------------------------------------------------------------------
-
 uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
     tlb_entrada * entrada_tlb;
     if (list_size(tlb) > 0) {
         for (int i=0; i < list_size(tlb); i++) {
             entrada_tlb = list_get(tlb,i);
             if (entrada_tlb->pagina == numero_pagina) {
+                entrada_tlb->veces_referenciada+=1;
                 return entrada_tlb->marco;
             }
         }
@@ -346,29 +272,16 @@ uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
     return -1;
 }
 
-
-void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
-
-	tlb_entrada* tlb_entrada = malloc(sizeof(tlb_entrada));
-	tlb_entrada ->marco = marco;
-	tlb_entrada ->pagina = numero_pagina;
-
-	if(list_size(tlb) >= entradas_max_tlb){
-		//Reemplazo el primer elemento de la lista
-		list_remove(tlb, 0);
-		list_add(tlb, tlb_entrada);
-
-	}else {
-		list_add(tlb, tlb_entrada);
-	}
-}
-
-void limpiar_tlb(){
-
-	if(pcb->idProceso != pid){
-		list_clean(tlb);
-		pid = pcb->idProceso;
-	}
+void reemplazar_entrada_tlb(tlb_entrada* entrada) {
+    if (string_equals_ignore_case(algoritmo_reemplazo_tlb, "FIFO")==0){
+        list_remove(tlb, 0);
+        list_add(tlb, entrada);
+    }
+    else {
+        list_sort(tlb, comparator);
+        list_remove(tlb, 0);
+        list_add(tlb, entrada);
+    }
 }
 
 void handshake_memoria(int conexionMemoria){
@@ -381,6 +294,24 @@ void handshake_memoria(int conexionMemoria){
   }
 }
 
+void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
+	tlb_entrada* tlb_entrada = malloc(sizeof(tlb_entrada));
+	tlb_entrada ->marco = marco;
+	tlb_entrada ->pagina = numero_pagina;
+	tlb_entrada->veces_referenciada=1;
+
+	if(list_size(tlb) >= entradas_max_tlb){
+	        reemplazar_entrada_tlb(tlb_entrada);
+        }
+	else
+	{
+		list_add(tlb, tlb_entrada);
+	}
+}
+
+static bool comparator (void* entrada1, void* entrada2) {
+    return (((tlb_entrada *) entrada1)->veces_referenciada) < (((tlb_entrada *) entrada2)->veces_referenciada); }
+
 uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
     t_paquete* paquete = crearPaquete();
     paquete->codigo_operacion = LEER_MEMORIA;
@@ -388,34 +319,125 @@ uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
     agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
     enviarPaquete(paquete, conexionMemoria);
     eliminarPaquete(paquete);
-    uint32_t valor_leido;
 
+    uint32_t valor_leido;
     int obtuve_valor = 0;
     while (conexionMemoria != -1 && obtuve_valor == 0) {
         op_code cod_op = recibirOperacion(conexionMemoria);
-        switch(cod_op) {
-            case LEER_MEMORIA:
-                ;
-                void* buffer = recibirBuffer(conexionMemoria);
-                memcpy(&valor_leido, buffer, sizeof(uint32_t));
-                printf("\nvalor leido de memoria: %d\n", valor_leido);
-                obtuve_valor = 1;
-                break;
+        if(cod_op == LEER_MEMORIA){
+			void* buffer = recibirBuffer(conexionMemoria);
+			memcpy(&valor_leido, buffer, sizeof(uint32_t));
+			obtuve_valor = 1;
         }
     }
     return valor_leido;
 
 }
 
-uint32_t obtener_entero_division_decimal(uint32_t numerador, uint32_t denominador){
-	return (denominador==0) ? 0 : (uint32_t) floor(numerador/denominador);
+void escribir_en_memoria(dir_fisica * direccion_fisica, uint32_t valor) {
+    t_paquete* paquete = crearPaquete();
+    paquete->codigo_operacion = ESCRIBIR_MEMORIA;
+    agregarEntero(paquete, pcb->idProceso);
+    agregarEntero4bytes(paquete, direccion_fisica->numero_pagina); // lo necesito para actualizar el proceso en swap
+    agregarEntero4bytes(paquete, direccion_fisica->marco);
+    agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
+    agregarEntero4bytes(paquete, valor);
+    enviarPaquete(paquete, conexionMemoria);
+    eliminarPaquete(paquete);
+
+    int recibi_mensaje = 0;
+    while (conexionMemoria != -1 && recibi_mensaje == 0) {
+        op_code cod_op = recibirOperacion(conexionMemoria);
+        if(cod_op == MENSAJE){
+			recibirMensaje(conexionMemoria, logger);
+			recibi_mensaje = 1;
+        }
+    }
 }
 
-uint32_t obtener_entero_resto_decimal(uint32_t numerador, uint32_t denominador){
-	return (denominador==0) ? 0 : (uint32_t) (numerador % denominador);
+void crear_hilos_cpu() {
+    crear_hilo_dispatch();
+    crear_hilo_interrupt();
+}
+
+void crear_hilo_dispatch() {
+    t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
+    attrs->log = logger;
+    pthread_create(&hilo_dispatch, NULL, (void*) procesar_conexion_dispatch, (void*) attrs);
+    //pthread_detach(hilo_dispatch);
+}
+
+void crear_hilo_interrupt() {
+    t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
+    attrs->log = logger;
+    pthread_create(&hilo_interrupt, NULL, (void*) procesar_conexion_interrupt, (void*) attrs);
+    //pthread_detach(hilo_interrupt);
+}
+
+void procesar_conexion_interrupt(void* void_args) {
+    printf("Hilo interrupt\n");
+    t_procesar_conexion_attrs *attrs = (t_procesar_conexion_attrs *) void_args;
+    t_log *logger = attrs->log;
+    while(1) {
+        cliente_interrupt = esperarCliente(cpu_interrupt, logger);
+        log_info(logger,string_from_format("CLIENTE_INTERRUPT: [%d]", cliente_interrupt));
+        free(attrs);
+        while (cliente_interrupt != -1) {
+            op_code cod_op = recibirOperacion(cliente_interrupt);
+            log_info(logger,string_from_format("OPERACION INTERRUPT: [%d]",cod_op));
+            switch (cod_op) {
+                case MENSAJE:
+                    recibirMensaje(cliente_interrupt, logger);
+                    break;
+                case INTERRUPCION:
+                    log_info(logger, "INTERRUPCION RECIBIDA");
+                    hay_interrupcion = 1;
+                    break;
+                default: ;
+            }
+            if(cod_op == -1) {
+            	log_error(logger,"CODIGO OPERACION INTERRUPT -1");
+            	break;
+            }
+        }
+    }
 }
 
 
+void procesar_conexion_dispatch(void* void_args) {
+    printf("Hilo dispatch\n");
+    t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
+    t_log* logger = attrs->log;
+    while(1) {
+        cliente_dispatch = esperarCliente(cpu_dispatch, logger);
+        log_info(logger,string_from_format("CLIENTE_DISPATCH: [%d]", cliente_dispatch));
+        free(attrs);
+
+        while (cliente_dispatch != -1) {
+            op_code cod_op = recibirOperacion(cliente_dispatch);
+            log_info(logger,string_from_format("OPERACION DISPATCH: [%d]",cod_op));
+            switch (cod_op) {
+                case MENSAJE:
+                    recibirMensaje(cliente_dispatch, logger);
+                    break;
+                case PCB:
+                    printf("\n");
+                    log_info(logger, "RECIBI PCB");
+                    pcb = recibirPCB(cliente_dispatch);
+                    logear_PCB(logger, pcb, "RECIBIDO PARA EJECUTAR");
+                    list_clean(tlb);
+                    hay_interrupcion = 0;
+                    comenzar_ciclo_instruccion();
+                    break;
+                default: ;
+            }
+            if(cod_op == -1) {
+            	log_error(logger,"CODIGO OPERACION DISPATCH -1");
+            	break;
+            }
+        }
+    }
+}
 
 
 

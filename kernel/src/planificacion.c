@@ -11,7 +11,7 @@ void iniciarPlanificacion(t_pcb* pcb){
     iniciarPlanificacionCortoPlazo();
 }
 
-void iniciarPlanificacionCortoPlazo() {
+void iniciarPlanificacionCortoPlazo(){
 	printf("\n");
 	log_info(logger,"## INICIANDO CORTO PLAZO ##");
     sem_wait(&semGradoMultiprogramacion);
@@ -21,16 +21,13 @@ void iniciarPlanificacionCortoPlazo() {
     pthread_mutex_unlock(&mutexColaNew);
 
     pthread_mutex_lock(&mutexColaReady);
-
     iniciar_algoritmo_planificacion(pcbEnColaNew);
-  
     pthread_mutex_unlock(&mutexColaReady);
 
     time_t tiempo_inicial = time(NULL);
 
     while(conexion_cpu_dispatch != -1){
     	op_code cod_op = recibirOperacion(conexion_cpu_dispatch);
-        log_info(logger,string_from_format("OPERACION RECIBIDA DISPATCH [%d]",cod_op));
     	if(cod_op != -1) {
             switch(cod_op){
 				case TERMINAR_PROCESO:
@@ -40,7 +37,6 @@ void iniciarPlanificacionCortoPlazo() {
 					avisarProcesoTerminado(pcbFinalizado->consola_fd);
 					incrementar_grado_multiprogramacion();
 					sem_post(&semGradoMultiprogramacion);
-					pcbFinalizado=NULL;
 					continuar_planificacion();
 					break;
                 case BLOQUEAR_PROCESO:
@@ -128,7 +124,7 @@ bool interrupcion_por_proceso_en_ready(){
     if(hay_proceso_ejecutando()) {
     	printf("\n");
     	log_info(logger, "### ENVIANDO INTERRUPCION ###");
-    	enviar_interrupcion(conexion_cpu_interrupt, DESALOJAR_PROCESO);
+    	enviar_interrupcion(conexion_cpu_interrupt, INTERRUPCION);
     	return true;
     }
     log_info(logger, "NO SE DEBE ENVIAR NINGUNA INTERRUPCION");

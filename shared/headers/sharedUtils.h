@@ -37,7 +37,8 @@ typedef enum {
 	ACTUALIZAR_INDICE_TABLA_PAGINAS,
 	HANDSHAKE_MEMORIA,
 	OBTENER_ENTRADA_SEGUNDO_NIVEL,
-	OBTENER_MARCO
+	OBTENER_MARCO,
+	INTERRUPCION,
 } op_code;
 
 typedef enum
@@ -74,8 +75,8 @@ typedef struct {
     size_t tablaPaginas;
     size_t estimacionRafaga;
     t_list* listaInstrucciones;
-    size_t kernel_fd;
     size_t consola_fd;
+    size_t kernel_fd;
 } t_pcb;
 
 typedef struct
@@ -99,9 +100,17 @@ typedef struct
 
 typedef struct
 {
-  uint32_t marco;
-  uint32_t desplazamiento;
+    uint32_t numero_pagina;
+    uint32_t marco;
+    uint32_t desplazamiento;
 } dir_fisica;
+
+typedef struct {
+    t_log* log;
+    int fd;
+    char* nombre;
+}
+t_procesar_conexion_attrs;
 
 t_config* iniciarConfig(char*);
 t_log* iniciarLogger(char*, char*);

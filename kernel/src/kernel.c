@@ -68,8 +68,9 @@ int main() {
     while (1) {
         escuchar_cliente("KERNEL");
     }
-    //cerrar_programa(logger);
+
     log_info(logger,"FINALIZANDO KERNEL");
+    cerrar_programa(logger);
     return 0;
 }
 

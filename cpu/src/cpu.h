@@ -23,6 +23,7 @@ typedef struct {
 typedef struct{
 	uint32_t pagina;
 	uint32_t marco;
+	uint32_t veces_referenciada;
 } tlb_entrada;
 
 void comenzar_ciclo_instruccion();
@@ -34,23 +35,28 @@ void operacion_NO_OP();
 void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo);
 void operacion_EXIT(op_code proceso_respuesta);
 void operacion_READ(operando);
+void operacion_WRITE(uint32_t, operando);
+void operacion_COPY(uint32_t, uint32_t);
 void preparar_pcb_respuesta(t_paquete* paquete);
-void atender_interrupcion(void* void_args);
+void atender_interrupcion();
 void loggearPCB(t_pcb* pcb);
 int escuchar_interrupcion();
-uint32_t pedir_a_memoria_num_tabla_segundo_nivel(uint32_t dato);
-uint32_t pedir_a_memoria_marco(uint32_t dato,uint32_t dato2);
-dir_fisica* traducir_direccion_logica(uint32_t dir_logica);
 uint32_t tlb_obtener_marco(uint32_t entrada);
 void tlb_actualizar(uint32_t numero_pagina, uint32_t marco);
-uint32_t tlb_existe(uint32_t numero_pagina);
 void limpiar_tlb();
 void handshake_memoria(int);
 dir_fisica* obtener_direccion_fisica(uint32_t);
 uint32_t obtener_tabla_segundo_nivel(size_t, uint32_t);
 uint32_t obtener_marco_memoria(uint32_t, uint32_t, uint32_t);
 uint32_t leer_en_memoria(dir_fisica *);
-void imprimirListaInstrucciones(t_pcb *pcb);
-uint32_t obtener_entero_division_decimal(uint32_t numerador, uint32_t denominador);
-uint32_t obtener_entero_resto_decimal(uint32_t numerador, uint32_t denominador);
+void escribir_en_memoria(dir_fisica *, uint32_t);
+static bool comparator (void*, void*);
+void procesar_conexion_dispatch(void* void_args);
+void procesar_conexion_interrupt(void* void_args);
+void crear_hilo_dispatch();
+void crear_hilo_interrupt();
+void crear_hilos_cpu();
+op_code chequear_interrupcion(op_code proceso_respuesta);
+void levantar_configs();
+
 #endif /* SRC_CPU_H_ */
