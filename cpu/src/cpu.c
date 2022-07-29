@@ -17,7 +17,7 @@ char* ip, *ip_memoria, *puerto_dispatch, *puerto_interrupt;
 int puerto_memoria;
 int tiempo_bloqueo;
 int hay_interrupcion; //variable global que se llena cuando  hay interrupción del kernel
-
+pthread_t hilo_dispatch, hilo_interrupt;
 void levantar_configs();
 
 
@@ -37,10 +37,10 @@ int main(void) {
     conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "Memoria");
     handshake_memoria(conexionMemoria);
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
+    crear_hilos_cpu();
+    pthread_join(hilo_dispatch, NULL);
+    pthread_join(hilo_interrupt, NULL);
 
-    while (1) {
-        escuchar_cliente();
-    }
 
 
 }
@@ -379,73 +379,83 @@ void escribir_en_memoria(dir_fisica * direccion_fisica, uint32_t valor) {
 }
 
 
-void escuchar_cliente() {
-    hilo_dispatch();
-    hilo_interrupt();
-    }
+void crear_hilos_cpu() {
+    crear_hilo_dispatch();
+    crear_hilo_interrupt();
+}
 
-void hilo_dispatch() {
-    pthread_t hilo_dispatch;
+void crear_hilo_dispatch() {
+
     t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
     attrs->log = logger;
     pthread_create(&hilo_dispatch, NULL, (void*) procesar_conexion_dispatch, (void*) attrs);
-    pthread_detach(hilo_dispatch);
+  //  pthread_detach(hilo_dispatch);
 }
 
-void hilo_interrupt() {
-    pthread_t hilo_interrupt;
+void crear_hilo_interrupt() {
     t_procesar_conexion_attrs* attrs = malloc(sizeof(t_procesar_conexion_attrs));
     attrs->log = logger;
     pthread_create(&hilo_interrupt, NULL, (void*) procesar_conexion_interrupt, (void*) attrs);
-    pthread_detach(hilo_interrupt);
+   // pthread_detach(hilo_interrupt);
 }
 
 
 
 void procesar_conexion_interrupt(void* void_args) {
+    printf("\nHilo interrupt");
 
     t_procesar_conexion_attrs *attrs = (t_procesar_conexion_attrs *) void_args;
     t_log *logger = attrs->log;
-    int cliente_interrupt = esperarCliente(cpu_interrupt, logger);
-    free(attrs);
+    while(1) {
+        int cliente_interrupt = esperarCliente(cpu_interrupt, logger);
+        free(attrs);
 
-    while (cliente_interrupt != -1) {
-        op_code cod_op = recibirOperacion(cliente_interrupt);
-        switch (cod_op) {
+        while (cliente_interrupt != -1) {
+            printf("Estoy escuchando por interrupt");
+            op_code cod_op = recibirOperacion(cliente_interrupt);
+            switch (cod_op) {
+                case MENSAJE:
+                    recibirMensaje(cliente_dispatch, logger);
+                    break;
+                case INTERRUPCION:
 
-            case INTERRUPCION:
-                log_info(logger, "Hubo una interrupción");
-                hay_interrupcion += 1;
-                break;
+                    log_info(logger, "Hubo una interrupción");
+                    hay_interrupcion += 1;
+                    break;
+            }
         }
     }
 }
 
 
 void procesar_conexion_dispatch(void* void_args) {
-
+    printf("\nHilo dispatch");
     t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
     t_log* logger = attrs->log;
-    int cliente_dispatch = esperarCliente(cpu_dispatch, logger);
-    free(attrs);
+    while(1) {
+        int cliente_dispatch = esperarCliente(cpu_dispatch, logger);
+        free(attrs);
 
-    while(cliente_dispatch != -1) {
-        op_code cod_op = recibirOperacion(cliente_dispatch);
-        switch (cod_op) {
+        while (cliente_dispatch != -1) {
+            printf("\nEstoy escuchando por dispatch");
 
-            case MENSAJE:
-                recibirMensaje(cliente_dispatch, logger);
-                break;
-            case PCB:
-                printf("\n");
-                log_info(logger,"RECIBI PCB");
-                pcb = recibirPCB(cliente_dispatch);
-                logear_PCB(logger,pcb,"RECIBIDO");
-                list_clean(tlb);
-                comenzar_ciclo_instruccion();
-                break;
+            op_code cod_op = recibirOperacion(cliente_dispatch);
+            switch (cod_op) {
+
+                case MENSAJE:
+                    recibirMensaje(cliente_dispatch, logger);
+                    break;
+                case PCB:
+                    printf("\n");
+                    log_info(logger, "RECIBI PCB");
+                    pcb = recibirPCB(cliente_dispatch);
+                    logear_PCB(logger, pcb, "RECIBIDO");
+                    list_clean(tlb);
+                    comenzar_ciclo_instruccion();
+                    break;
+
+            }
 
         }
-
     }
 }

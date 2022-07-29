@@ -53,8 +53,8 @@ void escribir_en_memoria(dir_fisica *, uint32_t);
 static bool comparator (void*, void*);
 void procesar_conexion_dispatch(void* void_args);
 void procesar_conexion_interrupt(void* void_args);
-void hilo_dispatch();
-void hilo_interrupt();
-void escuchar_cliente();
+void crear_hilo_dispatch();
+void crear_hilo_interrupt();
+void crear_hilos_cpu();
 
 #endif /* SRC_CPU_H_ */
