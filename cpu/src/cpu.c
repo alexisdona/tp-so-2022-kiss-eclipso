@@ -183,6 +183,7 @@ void atender_interrupcion() {
 	log_info(logger,"DISPATCH: %d",cliente_dispatch);
 	enviarPCB(cliente_dispatch, pcb, DESALOJAR_PROCESO);
 	log_info(logger, "Se envia la PCB que se estaba ejecutando...");
+	hay_interrupcion = 0;
 }
 
 //---------------------------------------------------------MMU--------------------------------------------------------

@@ -17,7 +17,7 @@ void iniciarPlanificacionCortoPlazo() {
     sem_wait(&semGradoMultiprogramacion);
     pthread_mutex_lock(&mutexColaNew);
     t_pcb *pcbEnColaNew = queue_pop(NEW);
-    log_info(logger,string_from_format("PCB DESENCOLADO [%d]- TAMAÑO COLA NEW [%d]",pcbEnColaNew->idProceso,queue_size(NEW)));
+    log_info(logger,string_from_format("PCB DESENCOLADO [%z]",pcbEnColaNew->idProceso));
     pthread_mutex_unlock(&mutexColaNew);
 
     pthread_mutex_lock(&mutexColaReady);
@@ -64,7 +64,6 @@ void iniciarPlanificacionCortoPlazo() {
 }
 
 void eliminar_proceso_de_READY() {
-	//printf("TAM-LISTA: %d\n",list_size(READY));
     free(list_remove(READY, 0));
 }
 
@@ -98,7 +97,6 @@ void planificacion_FIFO(t_pcb* pcb) {
 	agregar_proceso_READY(pcb);
     decrementar_grado_multiprogramacion();
     enviarPCB(conexion_cpu_dispatch, pcb, PCB);
-    logear_PCB(logger,pcb,"ENVIADO");
     eliminar_proceso_de_READY(pcb);
 }
 
@@ -275,7 +273,7 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
 }
 
 bool hay_proceso_ejecutando(){
-	return list_size(READY)>0;
+	return list_size(READY)>1;
 }
 
 /* ---------> MEMORIA <--------- */
