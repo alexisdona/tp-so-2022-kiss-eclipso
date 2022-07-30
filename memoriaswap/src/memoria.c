@@ -2,10 +2,9 @@
 #include "include/memoria.h"
 #include <fcntl.h>
 #include <sys/mman.h>
-t_log* logger;
-t_config * config;
 
 // Variables globales
+t_log* logger;
 t_config* config;
 int memoria_fd;
 int cliente_fd;
@@ -17,7 +16,7 @@ t_list* lista_registros_segundo_nivel;
 t_list* lista_tablas_primer_nivel;
 t_list* lista_tablas_segundo_nivel;
 void* espacio_usuario_memoria;
-t_bitarray	* frames_disponibles;
+t_bitarray* frames_disponibles;
 void* bloque_frames_lilbres;
 char* algoritmo_reemplazo;
 
@@ -27,6 +26,7 @@ char* algoritmo_reemplazo;
  * GRADO_MULTIPROGRAMACION tamanio, y en cada posicion, asignar una lista de frames_asignados.
 */
 t_list* frames_asignados;
+
 
 t_list* frames_proceso_0;
 t_list* frames_proceso_1;
@@ -38,8 +38,6 @@ t_list* lista_frames_procesos;
 void crear_espacio_usuario();
 
 int main(void) {
-	//sem_t semMemoria;
-
 	config = iniciarConfig(CONFIG_FILE);
 	logger = iniciarLogger("memoria.log", "Memoria");
 	ipMemoria= config_get_string_value(config,"IP_MEMORIA");
@@ -52,10 +50,11 @@ int main(void) {
     preparar_modulo_swap();
     iniciar_estructuras_administrativas_kernel();
     crear_espacio_usuario();
-	//sem_init(&semMemoria, 0, 1);
 
     // Metemos estas inicializaciones dentro de iniciar_estructuras_administrativas_kernel()?
     frames_asignados = list_create();
+
+
 
     frames_proceso_0 = list_create();
     frames_proceso_1 = list_create();
@@ -427,3 +426,41 @@ int es_victima_clock_modificado_u(t_registro_segundo_nivel* registro) {
 void cargar_pagina(uint32_t frame_asignado) {
 
 }
+
+/**************************************** FUNCIONES AUXILIARES LISTA CIRCULAR **********************************************/
+
+t_list_circular* list_create_circular() {
+	t_list_circular* lista;
+    lista->inicio = NULL;
+    lista->fin = NULL;
+    lista->tamanio = 0;
+    return lista;
+}
+
+void insertar_lista_circular_vacia(t_list_circular* lista, t_frame_clock* frame) {
+	t_elem_lista_circular* elemento_nuevo;
+	elemento_nuevo->info = frame;
+	elemento_nuevo->sgte = frame;
+	lista->inicio = elemento_nuevo;
+	lista->fin = elemento_nuevo;
+	lista->tamanio++;
+	return;
+}
+
+void insertar_lista_circular(t_list_circular* lista, t_frame_clock* frame) {
+	t_elem_lista_circular* elemento_nuevo;
+	elemento_nuevo->info = frame;
+	elemento_nuevo->sgte = lista->inicio;
+	lista->fin->sgte = elemento_nuevo;
+	lista->fin = elemento_nuevo;
+	lista->tamanio++;
+	return;
+}
+
+
+
+
+
+
+
+

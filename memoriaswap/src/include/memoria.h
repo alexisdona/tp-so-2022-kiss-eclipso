@@ -32,9 +32,30 @@ typedef struct {
     uint32_t indice;
     uint32_t frame;
     uint modificado;
-    uint usado;
+    uint uso;
     uint presencia;
 } t_registro_segundo_nivel;
+
+typedef struct {
+	uint32_t numero_frame;
+	uint32_t numero_pagina;
+	uint uso;
+	uint modificado;
+	uint presencia;
+} t_frame_clock;
+
+typedef struct {
+	t_frame_clock* info;
+	t_elem_lista_circular* sgte;
+} t_elem_lista_circular;
+
+typedef struct {
+	t_elem_lista_circular* inicio;
+	t_elem_lista_circular* fin;
+	int tamanio;
+	t_elem_lista_circular* puntero_algoritmo;
+	int pid;
+} t_list_circular;
 
 
 
