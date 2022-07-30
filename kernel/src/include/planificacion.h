@@ -21,6 +21,7 @@ pthread_mutex_t mutexColaBloqueados;
 pthread_mutex_t mutexColaSuspendedBloqued;
 pthread_mutex_t mutex_cola_suspended_ready;
 pthread_mutex_t  mutexGradoMultiprogramacion;
+pthread_mutex_t mutex_proceso_en_exec;
 int valorSemaforoContador;
 uint32_t tiempo_max_bloqueo;
 uint32_t tiempo_en_ejecucion;
@@ -28,7 +29,7 @@ t_log* logger;
 int kernel_fd, conexion_cpu_dispatch, conexion_cpu_interrupt, conexion_memoria;
 char* ALGORITMO_PLANIFICACION;
 double ALFA;
-
+bool proceso_en_exec;
 void iniciarPlanificacionCortoPlazo();
 void iniciarPlanificacion(t_pcb* pcb);
 int inicializarMutex();

@@ -18,12 +18,15 @@ int puerto_memoria;
 int tiempo_bloqueo;
 int hay_interrupcion; //variable global que se llena cuando  hay interrupción del kernel
 pthread_t hilo_dispatch, hilo_interrupt;
+pthread_mutex_t mutex_hay_interrupcion;
+pthread_mutex_t mutex_ciclo_instruccion;
+
 void levantar_configs();
 
 
 int main(void) {
-
-	logger = iniciarLogger(LOG_FILE,"CPU");
+    inicializar_mutex();
+    logger = iniciarLogger(LOG_FILE,"CPU");
 	config = iniciarConfig(CONFIG_FILE);
 	tlb = list_create();
     levantar_configs();
@@ -56,22 +59,25 @@ void levantar_configs() {
 }
 
 //--------Ciclo de instruccion---------
-void comenzar_ciclo_instruccion(){
+void ciclo_instruccion(){
 
 	op_code proceso_respuesta = CONTINUA_PROCESO;
 	operando operador = 0;
 
 	while(proceso_respuesta == CONTINUA_PROCESO){
-		t_instruccion* instruccion = fase_fetch();
-		int requiero_operador = fase_decode(instruccion);
+        pthread_mutex_lock(&mutex_ciclo_instruccion);
+            t_instruccion* instruccion = fase_fetch();
+            int requiero_operador = fase_decode(instruccion);
 
-		if(requiero_operador) {
-			operador = fase_fetch_operand(instruccion->parametros[1]);
-		}
+            if(requiero_operador) {
+                operador = fase_fetch_operand(instruccion->parametros[1]);
+            }
 
-		proceso_respuesta = fase_execute(instruccion, operador);
+            proceso_respuesta = fase_execute(instruccion, operador);
+        pthread_mutex_unlock(&mutex_ciclo_instruccion);
 
-        if(hay_interrupcion>0) {
+        pthread_mutex_lock(&mutex_hay_interrupcion);
+        if (hay_interrupcion > 0) {
             printf(RED"\ncheck_interrupt"RESET);
             atender_interrupcion();
             proceso_respuesta = DESALOJAR_PROCESO;
@@ -79,7 +85,7 @@ void comenzar_ciclo_instruccion(){
         else {
             printf(GREEN"\nno hubo interrupción, sigue en fetch\n"RESET);
         }
-
+        pthread_mutex_unlock(&mutex_hay_interrupcion);
 	}
 
 
@@ -183,7 +189,9 @@ void atender_interrupcion() {
 	log_info(logger,"DISPATCH: %d",cliente_dispatch);
 	enviarPCB(cliente_dispatch, pcb, DESALOJAR_PROCESO);
 	log_info(logger, "Se envia la PCB que se estaba ejecutando...");
+    pthread_mutex_lock(&mutex_hay_interrupcion);
 	hay_interrupcion = 0;
+    pthread_mutex_unlock(&mutex_hay_interrupcion);
 }
 
 //---------------------------------------------------------MMU--------------------------------------------------------
@@ -446,11 +454,25 @@ void procesar_conexion_dispatch(void* void_args) {
                     pcb = recibirPCB(cliente_dispatch);
                     logear_PCB(logger, pcb, "RECIBIDO");
                     list_clean(tlb);
-                    comenzar_ciclo_instruccion();
+                    ciclo_instruccion();
                     break;
 
             }
 
         }
     }
+}
+
+void inicializar_mutex() {
+    int error=0;
+    if(pthread_mutex_init(&mutex_hay_interrupcion, NULL) != 0) {
+        perror("Mutex de hay_interrupción falló: ");
+        error+=1;
+    }
+    if(pthread_mutex_init(&mutex_ciclo_instruccion, NULL) != 0) {
+        perror("Mutex ciclo de instruccion: ");
+        error+=1;
+    }
+
+    return error;
 }

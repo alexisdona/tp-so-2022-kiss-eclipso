@@ -52,6 +52,11 @@ void iniciarPlanificacionCortoPlazo() {
                 case DESALOJAR_PROCESO:
                 	log_info(logger,"DESALOJANDO PROCESO");
                     t_pcb* pcb_desalojada = recibirPCB(conexion_cpu_dispatch);
+
+                    pthread_mutex_lock(&mutex_proceso_en_exec);
+                    proceso_en_exec = false;
+                    pthread_mutex_unlock(&mutex_proceso_en_exec);
+
                     logear_PCB(logger,pcb_desalojada,"RECIBIDO");
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     calcular_rafagas_restantes_proceso_desalojado(tiempo_en_ejecucion,pcb_desalojada);
@@ -108,7 +113,7 @@ void agregar_proceso_READY(t_pcb* pcb) {
 
 
 bool interrupcion_por_proceso_en_ready(){
-    if(hay_proceso_ejecutando()) {
+    if(proceso_en_exec) {
         printf("\n");
         log_info(logger, "### ENVIANDO INTERRUPCION ###");
         enviar_interrupcion(conexion_cpu_interrupt, INTERRUPCION);
@@ -126,24 +131,30 @@ void planificacion_SJF(t_pcb* pcb){
 }
 
 t_pcb* obtener_proceso_en_READY() {
-    return list_get(READY, 0);
+    t_pcb * primer_pcb_ready = list_get(READY, 0);
+    return primer_pcb_ready;
 }
 
 int inicializarMutex() {
     int error=0;
     if(pthread_mutex_init(&mutexColaNew, NULL) != 0) {
-        perror("Mutex cola de new fallo: ");
+        perror("Mutex cola de new falló: ");
         error+=1;
     }
     if(pthread_mutex_init(&mutexColaReady, NULL) != 0) {
-        perror("Mutex cola de ready fallo: ");
+        perror("Mutex cola de ready falló: ");
         error+=1;
     }
 
     if(pthread_mutex_init(&mutexColaBloqueados, NULL) != 0) {
-        perror("Mutex cola de bloqueados fallo: ");
+        perror("Mutex cola de bloqueados falló: ");
         error+=1;
     }
+    if(pthread_mutex_init(&mutex_proceso_en_exec, NULL) != 0) {
+        perror("Mutex cola proceso en exec falló: ");
+        error+=1;
+    }
+    ;
     return error;
 }
 
@@ -241,9 +252,15 @@ void calcular_rafagas_restantes_proceso_desalojado(uint32_t tiempo_en_ejecucion,
 void ordenar_procesos_lista_READY() {
 	if(list_size(READY)>1){
 		list_sort(READY, sort_by_rafaga);
-	}
+}
 	t_pcb* pcb_ready = obtener_proceso_en_READY();
+
 	enviarPCB(conexion_cpu_dispatch,pcb_ready,PCB);
+
+    pthread_mutex_lock(&mutex_proceso_en_exec);
+	proceso_en_exec = true;
+    pthread_mutex_unlock(&mutex_proceso_en_exec);
+
 	logear_PCB(logger,pcb_ready,"ENVIADO");
 	eliminar_proceso_de_READY();
 	decrementar_grado_multiprogramacion();
@@ -260,6 +277,10 @@ void checkear_proceso_y_replanificar(t_pcb* pcbEnExec) {
     }else{
     	log_info(logger,"ENVIO PCB DE REGRESO");
     	enviarPCB(conexion_cpu_dispatch,pcbEnExec, PCB);
+        pthread_mutex_lock(&mutex_proceso_en_exec);
+        proceso_en_exec = true;
+        pthread_mutex_unlock(&mutex_proceso_en_exec);
+
     	logear_PCB(logger,pcb,"ENVIADO");
     }
 }
@@ -270,10 +291,6 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
     logear_PCB(logger,pcbNueva,"ENVIADO");
     eliminar_proceso_de_READY(pcbNueva);
     planificacion_SJF(pcbEnExec);
-}
-
-bool hay_proceso_ejecutando(){
-	return list_size(READY)>1;
 }
 
 /* ---------> MEMORIA <--------- */

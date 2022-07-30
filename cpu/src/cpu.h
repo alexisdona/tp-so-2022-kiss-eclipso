@@ -26,7 +26,7 @@ typedef struct{
 	uint32_t veces_referenciada;
 } tlb_entrada;
 
-void comenzar_ciclo_instruccion();
+void ciclo_instruccion();
 t_instruccion* fase_fetch();
 int fase_decode(t_instruccion*);
 operando fase_fetch_operand(operando);
@@ -56,5 +56,5 @@ void procesar_conexion_interrupt(void* void_args);
 void crear_hilo_dispatch();
 void crear_hilo_interrupt();
 void crear_hilos_cpu();
-
+void inicializar_mutex();
 #endif /* SRC_CPU_H_ */
