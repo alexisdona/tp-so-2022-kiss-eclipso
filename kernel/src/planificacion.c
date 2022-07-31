@@ -27,21 +27,23 @@ void iniciarPlanificacionCortoPlazo(){
     time_t tiempo_inicial = time(NULL);
 
     while(conexion_cpu_dispatch != -1){
+    	sem_wait(&sem_comunicacion);
     	op_code cod_op = recibirOperacion(conexion_cpu_dispatch);
     	if(cod_op != -1) {
             switch(cod_op){
 				case TERMINAR_PROCESO:
 					log_info(logger, "TERMINANDO PROCESO");
 					t_pcb* pcbFinalizado = recibirPCB(conexion_cpu_dispatch);
+					sem_post(&sem_comunicacion);
 					logear_PCB(logger,pcbFinalizado,"RECIBIDO PARA TERMINAR");
 					avisarProcesoTerminado(pcbFinalizado->consola_fd);
 					incrementar_grado_multiprogramacion();
-					sem_post(&semGradoMultiprogramacion);
 					continuar_planificacion();
 					break;
                 case BLOQUEAR_PROCESO:
                 	log_info(logger,"BLOQUEANDO PROCESO");
                     t_pcb* pcb = recibirPCB(conexion_cpu_dispatch);
+                    sem_post(&sem_comunicacion);
                     logear_PCB(logger,pcb,"RECIBIDO PARA BLOQUEAR");
                     if(list_size(READY)>0){
                     	t_pcb* pcb_ready = obtener_proceso_en_READY();
@@ -58,6 +60,7 @@ void iniciarPlanificacionCortoPlazo(){
                 case DESALOJAR_PROCESO:
                 	log_info(logger,"DESALOJANDO PROCESO");
                     t_pcb* pcb_desalojada = recibirPCB(conexion_cpu_dispatch);
+                    sem_post(&sem_comunicacion);
                     logear_PCB(logger,pcb_desalojada,"RECIBIDO DESALOJADO");
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     calcular_rafagas_restantes_proceso_desalojado(tiempo_en_ejecucion,pcb_desalojada);
@@ -65,7 +68,7 @@ void iniciarPlanificacionCortoPlazo(){
                     break;
     			default:
     				printf("cod_op: [%d]\tconexion_cpu_dispatch: [%d]\n",cod_op,conexion_cpu_dispatch);
-    				log_warning(logger,string_from_format("OPERACION DESCONOCIDA: COD-OP [%d]",cod_op));
+    				log_warning(logger,string_from_format("OPERACION DESCONOCIDA DISPATCH: COD-OP [%d]",cod_op));
     				break;
             }
         }
@@ -94,6 +97,7 @@ void incrementar_grado_multiprogramacion() {
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
     GRADO_MULTIPROGRAMACION++;
     log_info(logger,string_from_format("GRADO MULTIPROGRAMACION [%d]",GRADO_MULTIPROGRAMACION));
+    sem_post(&semGradoMultiprogramacion);
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
 }
 
@@ -307,7 +311,7 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
 }
 
 bool hay_proceso_ejecutando(){
-	return (GRADO_MULTIPROGRAMACION < MAX_GRADO_MULTIPROGRAMACION-1);
+	return (list_size(READY)+queue_size(BLOCKED)+GRADO_MULTIPROGRAMACION < MAX_GRADO_MULTIPROGRAMACION);
 }
 
 void enviar_interrupcion(int socket, op_code cod_op) {

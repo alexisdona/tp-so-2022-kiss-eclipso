@@ -25,6 +25,7 @@ int main() {
     MAX_GRADO_MULTIPROGRAMACION = GRADO_MULTIPROGRAMACION;
     TIEMPO_MAXIMO_BLOQUEADO = config_get_int_value(config, "TIEMPO_MAXIMO_BLOQUEADO");
     sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
+    sem_init(&sem_comunicacion,0,1);
 
     char* IP_KERNEL = config_get_string_value(config,"IP_KERNEL");
     char* PUERTO_KERNEL= config_get_string_value(config,"PUERTO_ESCUCHA");
