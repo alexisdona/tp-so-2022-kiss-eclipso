@@ -9,13 +9,14 @@
 t_list* READY;
 t_queue* NEW;
 t_queue* BLOCKED;
-t_list* SUSPENDED_READY;
+t_queue* SUSPENDED_READY;
 t_list* SUSPENDED_BLOCKED;
 
 unsigned int GRADO_MULTIPROGRAMACION;
 unsigned int MAX_GRADO_MULTIPROGRAMACION;
 unsigned int TIEMPO_MAXIMO_BLOQUEADO;
 sem_t semGradoMultiprogramacion;
+sem_t sem_comunicacion;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaReady;
 pthread_mutex_t mutexColaBloqueados;
@@ -63,5 +64,6 @@ bool altera_grado_multiprogramacion(op_code);
 void seguir_algoritmo_planificacion(t_pcb*,op_code);
 void continuar_planificacion();
 void enviar_interrupcion(int, op_code);
+t_pcb* obtener_PCB_segun_prioridad();
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

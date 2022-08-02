@@ -15,13 +15,10 @@ void iniciarPlanificacionCortoPlazo(){
 	printf("\n");
 	log_info(logger,"## INICIANDO CORTO PLAZO ##");
     sem_wait(&semGradoMultiprogramacion);
-    pthread_mutex_lock(&mutexColaNew);
-    t_pcb *pcbEnColaNew = queue_pop(NEW);
-    log_info(logger,string_from_format("PCB DESENCOLADO [%d]- TAMAÑO COLA NEW [%d]",pcbEnColaNew->idProceso,queue_size(NEW)));
-    pthread_mutex_unlock(&mutexColaNew);
+    t_pcb* pcb_a_ready = obtener_PCB_segun_prioridad();
 
     pthread_mutex_lock(&mutexColaReady);
-    iniciar_algoritmo_planificacion(pcbEnColaNew);
+    iniciar_algoritmo_planificacion(pcb_a_ready);
     pthread_mutex_unlock(&mutexColaReady);
 
     time_t tiempo_inicial = time(NULL);
@@ -74,6 +71,23 @@ void iniciarPlanificacionCortoPlazo(){
         }
     }
     log_info(logger,"### FINALIZANDO CORTO PLAZO ###");
+}
+
+t_pcb* obtener_PCB_segun_prioridad(){
+	t_pcb* pcb_a_ready;
+	if(queue_size(SUSPENDED_READY) > 0){
+	    pthread_mutex_lock(&mutex_cola_suspended_ready);
+	    pcb_a_ready = queue_pop(SUSPENDED_READY);
+	    log_info(logger,string_from_format("PCB DESENCOLADO [%d]- TAMAÑO COLA S.Ready [%d]",pcb_a_ready->idProceso,queue_size(SUSPENDED_READY)));
+	    pthread_mutex_unlock(&mutex_cola_suspended_ready);
+	}
+	else if(queue_size(NEW) > 0){
+	    pthread_mutex_lock(&mutexColaNew);
+	    pcb_a_ready = queue_pop(NEW);
+	    log_info(logger,string_from_format("PCB DESENCOLADO [%d]- TAMAÑO COLA NEW [%d]",pcb_a_ready->idProceso,queue_size(NEW)));
+	    pthread_mutex_unlock(&mutexColaNew);
+	}
+	return pcb_a_ready;
 }
 
 void eliminar_proceso_de_READY() {
@@ -219,12 +233,10 @@ void suspender_proceso(t_pcb* pcb) {
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
     
     incrementar_grado_multiprogramacion();
-    //printf("suspenderProceso() --> GRADO_MULTIPROGRAMACION--: %d\n", GRADO_MULTIPROGRAMACION);
     sem_post(&semGradoMultiprogramacion);
 
     unsigned int tiempo_en_suspendido = tiempo_en_suspended_blocked(pcb_a_suspended_blocked);
     sleep(tiempo_en_suspendido);
-    // enviar mensaje a memoria con la información necesaria y se esperará la confirmación del mismo.
 
     pthread_mutex_lock(&mutexColaSuspendedBloqued); 
     t_pcb* pcb_a_suspended_ready = list_get(SUSPENDED_BLOCKED, 0);
@@ -237,21 +249,19 @@ void suspender_proceso(t_pcb* pcb) {
 void agregar_proceso_SUSPENDED_READY(t_pcb* pcb) {
 
     pthread_mutex_lock(&mutex_cola_suspended_ready);
-    list_add(SUSPENDED_READY, pcb);
+    queue_push(SUSPENDED_READY, pcb);
     pthread_mutex_unlock(&mutex_cola_suspended_ready);
 
-    enviar_proceso_SUSPENDED_READY_a_READY();
+    //enviar_proceso_SUSPENDED_READY_a_READY();
 }
 
 void enviar_proceso_SUSPENDED_READY_a_READY() {
     pthread_mutex_lock(&mutexColaReady);
-    t_pcb* pcb_a_ready = list_get(SUSPENDED_READY, 0);
-    list_remove(SUSPENDED_READY, 0);
+    t_pcb* pcb_a_ready = queue_pop(SUSPENDED_READY);
     agregar_proceso_READY(pcb_a_ready,PCB);
     pthread_mutex_unlock(&mutexColaReady);
 }
 
-// diferencia entre el tiempo maximo y el tiempo de bloqueo para que un proceso en suspended-blocked pase a suspended-ready
 unsigned int tiempo_en_suspended_blocked(t_pcb* pcb) {
     t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
     operando tiempo_bloqueado = instruccion->parametros[0];
@@ -281,7 +291,6 @@ void ordenar_procesos_lista_READY() {
 	enviarPCB(conexion_cpu_dispatch,pcb_ready,PCB);
 	logear_PCB(logger,pcb_ready,"ENVIADO A EJECUTAR");
 	eliminar_proceso_de_READY();
-	//decrementar_grado_multiprogramacion();
 }
 
 static bool sort_by_rafaga(void* pcb1, void* pcb2) {
@@ -291,15 +300,6 @@ static bool sort_by_rafaga(void* pcb1, void* pcb2) {
 void checkear_proceso_y_replanificar(t_pcb* pcbEnExec) {
 	agregar_proceso_READY(pcbEnExec,CONTINUA_PROCESO);
 	ordenar_procesos_lista_READY();
-	/*
-    t_pcb* pcb = obtener_proceso_en_READY();
-    if (pcb->estimacionRafaga < pcbEnExec->estimacionRafaga) { 
-       replanificar_y_enviar_nuevo_proceso(pcb, pcbEnExec);
-    }else{
-    	log_info(logger,"ENVIO PCB DE REGRESO");
-    	enviarPCB(conexion_cpu_dispatch,pcbEnExec, PCB);
-    	logear_PCB(logger,pcb,"ENVIADO");
-    }*/
 }
 
 void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
