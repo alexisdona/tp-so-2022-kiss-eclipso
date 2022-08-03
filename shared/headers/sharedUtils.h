@@ -137,7 +137,6 @@ void agregarTamanioProceso(t_paquete*, int);
 void agregarEntero(t_paquete *, size_t);
 void agregarEntero4bytes(t_paquete *, uint32_t);
 void enviarPCB(int, t_pcb*, op_code);
-void enviar_interrupcion(int, op_code);
 t_pcb* recibirPCB(int);
 t_list* deserializarListaInstrucciones(void* , size_t , t_list*) ;
 void handshake_cpu_memoria(int, size_t, size_t, op_code);

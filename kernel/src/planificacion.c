@@ -330,7 +330,7 @@ void crear_estructuras_memoria(t_pcb* pcb) {
     t_paquete* paquete = crearPaquete();
     enviarPCB(conexion_memoria, pcb, CREAR_ESTRUCTURAS_ADMIN );
     logear_PCB(logger,pcb,"ENVIADO A MEMORIA");
-    while(conexion_memoria != -1 && pcb_actualizado != 0){
+    while(conexion_memoria != -1 && pcb_actualizado == 0) {
         op_code cod_op = recibirOperacion(conexion_memoria);
         switch(cod_op) {
             case ACTUALIZAR_INDICE_TABLA_PAGINAS:

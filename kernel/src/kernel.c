@@ -63,8 +63,8 @@ int main() {
     NEW = queue_create();
     READY = list_create();
     BLOCKED = queue_create();
-    SUSPENDED_BLOCKED = list_create();
-    SUSPENDED_READY = list_create();
+    SUSPENDED_BLOCKED = queue_create();
+    SUSPENDED_READY = queue_create();
 
     while (1) {
         escuchar_cliente("KERNEL");
