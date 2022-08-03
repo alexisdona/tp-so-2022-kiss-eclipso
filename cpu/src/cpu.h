@@ -7,6 +7,7 @@
 #include<commons/log.h>
 #include<commons/string.h>
 #include<commons/config.h>
+#include<time.h>
 #include<commons/collections/list.h>
 #include "../../shared/headers/sharedUtils.h"
 #include "include/utils.h"
@@ -58,5 +59,7 @@ void crear_hilo_interrupt();
 void crear_hilos_cpu();
 op_code chequear_interrupcion(op_code proceso_respuesta);
 void levantar_configs();
+void actualizar_entrada_marco_existente(uint32_t , uint32_t);
+
 
 #endif /* SRC_CPU_H_ */

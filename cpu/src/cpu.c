@@ -29,7 +29,7 @@ int main(void) {
 
 	algoritmo_reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
 	entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
-	
+
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
     log_info(logger,string_from_format("CPU-DISPATCH: \t[%d]\tPUERTO: [%s]\tIP: [%s]",cpu_dispatch,puerto_dispatch,ip));
 
@@ -195,20 +195,22 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         marco = tlb_obtener_marco(numero_pagina);
         if (marco == -1 ) {
          //TLB_MISS
-            uint32_t tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel);
-            marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina);
+            uint32_t tabla_segundo_nivel;
+            tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel); //1er acceso
+            marco = obtener_marco_memoria(tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina); //2do acceso
             tlb_actualizar(numero_pagina, marco);
         }
         dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
         direccion_fisica->numero_pagina = numero_pagina;
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
+        direccion_fisica->indice_tabla_primer_nivel = pcb->tablaPaginas;
         return direccion_fisica;
     }
 
     else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
-        //Finalizar proceso
+        //operacion_EXIT() ? Se lo tiene que matar si intenta acceder a una direccion no valida?
         return EXIT_FAILURE;
     }
 }
@@ -300,7 +302,8 @@ void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 	tlb_entrada ->marco = marco;
 	tlb_entrada ->pagina = numero_pagina;
 	tlb_entrada->veces_referenciada=1;
-
+    //si ahora es otra pagina la que referencia al marco porque se reemplazo por el otro
+    actualizar_entrada_marco_existente(numero_pagina, marco);
 	if(list_size(tlb) >= entradas_max_tlb){
 	        reemplazar_entrada_tlb(tlb_entrada);
         }
@@ -312,6 +315,10 @@ void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
 
 static bool comparator (void* entrada1, void* entrada2) {
     return (((tlb_entrada *) entrada1)->veces_referenciada) < (((tlb_entrada *) entrada2)->veces_referenciada); }
+
+void limpiar_tlb(){
+    list_clean(tlb);
+}
 
 uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
     t_paquete* paquete = crearPaquete();
@@ -439,6 +446,20 @@ void procesar_conexion_dispatch(void* void_args) {
         }
     }
 }
+/*
+ * Si el marco que me viene de memoria ya es una entrada en la tlb con otra pagina, le actualizo la página
+ * */
+void actualizar_entrada_marco_existente(uint32_t numero_pagina, uint32_t marco){
+    tlb_entrada * entrada;
+    for(int i=0; i< list_size(tlb);i++) {
+        entrada = list_get(tlb, i);
+        if (entrada->marco == marco && numero_pagina!= entrada->pagina) {
+            entrada->pagina = numero_pagina;
+            entrada->veces_referenciada=1;
+        }
+    }
+}
+
 
 
 

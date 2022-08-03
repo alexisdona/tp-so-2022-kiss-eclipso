@@ -1,7 +1,6 @@
 #ifndef TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 #define TP_2022_1C_ECLIPSO_SHAREDUTILS_H
 
-#include <stdbool.h>
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
@@ -38,6 +37,7 @@ typedef enum {
 	HANDSHAKE_MEMORIA,
 	OBTENER_ENTRADA_SEGUNDO_NIVEL,
 	OBTENER_MARCO,
+    SUSPENDER_PROCESO,
 	INTERRUPCION,
 } op_code;
 
@@ -91,6 +91,8 @@ typedef struct
     uint32_t numero_pagina;
     uint32_t marco;
     uint32_t desplazamiento;
+    size_t indice_tabla_primer_nivel;
+
 } dir_fisica;
 
 typedef struct {
