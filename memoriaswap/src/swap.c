@@ -80,10 +80,11 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
        int estado = mkdir(PATH_SWAP, modo_carpeta);
        if (estado == 0){
            log_info(logger,"SE CREO LA CARPETA SWAP EXITOSAMENTE");
-       }else{
+       }/*
+       else{
            log_info(logger,"La carpeta ya existe");
-           perror("La carpeta ya existe, se guardará el archivo dentro: ");
-       }
+           //perror("La carpeta ya existe, se guardará el archivo dentro: ");
+       }*/
    }
 
    void actualizar_archivo_swap(size_t id_proceso, uint32_t numero_pagina, uint32_t desplazamiento, uint32_t tamanio_pagina, uint32_t valor){

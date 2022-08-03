@@ -9,12 +9,14 @@
 t_list* READY;
 t_queue* NEW;
 t_queue* BLOCKED;
-t_list* SUSPENDED_READY;
+t_queue* SUSPENDED_READY;
 t_list* SUSPENDED_BLOCKED;
 
 unsigned int GRADO_MULTIPROGRAMACION;
+unsigned int MAX_GRADO_MULTIPROGRAMACION;
 unsigned int TIEMPO_MAXIMO_BLOQUEADO;
 sem_t semGradoMultiprogramacion;
+sem_t sem_comunicacion;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaReady;
 pthread_mutex_t mutexColaBloqueados;
@@ -34,6 +36,7 @@ void iniciarPlanificacion(t_pcb* pcb);
 int inicializarMutex();
 void avisarProcesoTerminado(int);
 void bloquearProceso(t_pcb*);
+void desbloquear_proceso(t_pcb*);
 void suspender_proceso(t_pcb* pcb);
 void estimar_proxima_rafaga(uint32_t, t_pcb*);
 time_t calcular_tiempo_en_exec(time_t); 
@@ -41,9 +44,8 @@ void calcular_rafagas_restantes_proceso_desalojado(uint32_t tiempo_en_ejecucion,
 void ordenar_procesos_lista_READY();
 void checkear_proceso_y_replanificar(t_pcb*);
 void replanificar_y_enviar_nuevo_proceso(t_pcb*, t_pcb*);
-void planificacion_SJF(t_pcb*);
-void agregar_proceso_READY(t_pcb*);
-void iniciar_algoritmo_planificacion(char*, t_pcb*);
+void agregar_proceso_READY(t_pcb*,op_code);
+void iniciar_algoritmo_planificacion(t_pcb*);
 t_pcb* obtener_proceso_en_READY();
 static bool sort_by_rafaga(void*, void*);
 void planificacion_FIFO(t_pcb*);
@@ -54,10 +56,14 @@ unsigned int tiempo_en_suspended_blocked(t_pcb*);
 void enviar_proceso_SUSPENDED_READY_a_READY();
 void agregar_proceso_SUSPENDED_READY(t_pcb*);
 void planificacion_SJF(t_pcb* pcb);
-void interrupcion_por_proceso_en_ready();
+bool interrupcion_por_proceso_en_ready();
 void crear_estructuras_memoria(t_pcb*);
 void proceso_en_ready_memoria(t_pcb*);
-void logear_pcb(t_pcb* pcb);
 bool hay_proceso_ejecutando();
+bool altera_grado_multiprogramacion(op_code);
+void seguir_algoritmo_planificacion(t_pcb*,op_code);
+void continuar_planificacion();
+void enviar_interrupcion(int, op_code);
+t_pcb* obtener_PCB_segun_prioridad();
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H

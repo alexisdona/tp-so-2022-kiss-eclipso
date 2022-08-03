@@ -274,12 +274,6 @@ void agregarEntero4bytes(t_paquete * paquete, uint32_t entero) {
     paquete->buffer->size += sizeof(entero);
 }
 
-void enviar_interrupcion(int socket, op_code cod_op) {
-    t_paquete* paquete = crearPaquete();
-    paquete->codigo_operacion = cod_op;
-    enviarPaquete(paquete, socket);
-    eliminarPaquete(paquete);
-}
 
 void enviarPCB(int socketDestino, t_pcb* pcb, op_code codigoOperacion) {
     t_paquete* paquete = crearPaquete();

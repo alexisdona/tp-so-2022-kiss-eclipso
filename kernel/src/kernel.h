@@ -17,15 +17,6 @@
 
 #define CONFIG_FILE "../kernel/src/config/kernel.config"
 
-
-
-typedef struct {
-    t_log* log;
-    int fd;
-    char* nombre_kernel;
-} t_procesar_conexion_attrs;
-
-
 int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd);
 int recibir_opcion();
 int accion_kernel(int, int);
