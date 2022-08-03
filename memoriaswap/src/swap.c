@@ -9,28 +9,11 @@ t_pcb* pcb_atendiendo;
 t_config* pcb_swapeado;
 
 
-int puedo_atender_pcb(){
-	return (pcb_atendiendo == NULL);
-}
-
-
-t_config* existe_archivo_swap(char* ruta){
-	t_config* proceso_swap;
-	if ( (proceso_swap = config_create(ruta)) == NULL) {
-	//	crear_archivo_swap(ruta);
-		proceso_swap = malloc(sizeof(t_config));
-		proceso_swap->path = string_duplicate(ruta);
-		proceso_swap->properties = dictionary_create();
-	}
-	return proceso_swap;
-}
-
-char* obtener_ruta_archivo_swap(){
-	char* ruta = string_new();
-	string_append(&ruta, PATH_SWAP);
-	string_append(&ruta, string_itoa(pcb_atendiendo->idProceso));
-	string_append(&ruta, ".swap");
-	return ruta;
+void inicializarMutex() {
+    int error=0;
+    if(pthread_mutex_init(&mutex_swap, NULL) != 0) {
+        perror("Mutex swap falló: ");
+    }
 }
 
 char *obtener_path_archivo(size_t id_proceso) {
@@ -60,14 +43,16 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
     printf("\nswap --> IMPRIMO VALORES EN el archivo\n");
       for(int i=0; i< cantidad_bloques; i++) {
           uint32_t* apuntado=  str+ sizeof(uint32_t) *i;
-         printf("\nvalor apuntado en posición del arhivo%d-->%d",i, *apuntado);
+         printf("\nvalor apuntado en posición del arhivo%d-->%d\n",i, *apuntado);
    }
 
        char *ruta = obtener_path_archivo(id_proceso);
 
        FILE *archivo_swap = fopen(ruta, "wb");
        if (archivo_swap != NULL) {
+           pthread_mutex_lock(&mutex_swap);
            fwrite(str, 1, tamanio, archivo_swap);
+           pthread_mutex_unlock(&mutex_swap);
        }
        else {
            perror("Error abriendo el archivo: ");
@@ -106,5 +91,22 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
        apuntado = (uint32_t *) (contenido_swap+ubicacion_valor_reemplazo);
        printf("\nACTUALIZAR SWAP - DESPUES DE REEPLAZO OFFSET: %d VALOR: %d\n", ubicacion_valor_reemplazo, *apuntado );
        munmap(contenido_swap, sb.st_size);
+     //  msync(contenido_swap, sb.st_size, MS_SYNC);
        close(archivo_swap);
    }
+
+void eliminar_archivo_swap(size_t id_proceso){
+
+    char* ruta = obtener_path_archivo(id_proceso);
+    pthread_mutex_lock(&mutex_swap);
+    if(remove(ruta)!=0){
+        perror(string_from_format("Hubo un error borrando el archivo swap del proceso %d", id_proceso));
+    }
+    pthread_mutex_unlock(&mutex_swap);
+}
+
+iniciar_mutex() {
+    if(pthread_mutex_init(&mutex_swap, NULL) != 0) {
+        perror("Mutex cola de new fallo: ");
+    }
+}

@@ -350,6 +350,7 @@ void escribir_en_memoria(dir_fisica * direccion_fisica, uint32_t valor) {
     agregarEntero4bytes(paquete, direccion_fisica->marco);
     agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
     agregarEntero4bytes(paquete, valor);
+    agregarEntero(paquete, direccion_fisica->indice_tabla_primer_nivel);
     enviarPaquete(paquete, conexionMemoria);
     eliminarPaquete(paquete);
 

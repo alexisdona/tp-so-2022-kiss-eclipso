@@ -33,6 +33,7 @@ void iniciarPlanificacionCortoPlazo(){
 					t_pcb* pcbFinalizado = recibirPCB(conexion_cpu_dispatch);
 					sem_post(&sem_comunicacion);
 					logear_PCB(logger,pcbFinalizado,"RECIBIDO PARA TERMINAR");
+                    enviarPCB(conexion_memoria, pcbFinalizado, TERMINAR_PROCESO);
 					avisarProcesoTerminado(pcbFinalizado->consola_fd);
 					incrementar_grado_multiprogramacion();
 					continuar_planificacion();

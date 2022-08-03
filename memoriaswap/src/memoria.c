@@ -24,22 +24,15 @@ char* algoritmo_reemplazo;
 
 void crear_espacio_usuario();
 
+void iniciar_config();
+
 int main(void) {
 	//sem_t semMemoria;
 
-	config = iniciarConfig(CONFIG_FILE);
-	logger = iniciarLogger("memoria.log", "Memoria");
-	ipMemoria= config_get_string_value(config,"IP_MEMORIA");
-    puertoMemoria= config_get_string_value(config,"PUERTO_ESCUCHA");
-    entradas_por_tabla = config_get_int_value(config,"ENTRADAS_POR_TABLA");
-    tamanio_memoria = config_get_int_value(config,"TAM_MEMORIA");
-    tamanio_pagina = config_get_int_value(config,"TAM_PAGINA");
-    marcos_por_proceso = config_get_int_value(config,"MARCOS_POR_PROCESO");
-    algoritmo_reemplazo = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
-    retardo_swap = config_get_int_value(config, "RETARDO_SWAP");
-    retardo_memoria = config_get_int_value(config, "RETARDO_MEMORIA");
+    iniciar_config();
     preparar_modulo_swap();
     iniciar_estructuras_administrativas_kernel();
+
     crear_espacio_usuario();
 	//sem_init(&semMemoria, 0, 1);
 
@@ -53,6 +46,20 @@ int main(void) {
     }
 
 	return EXIT_SUCCESS;
+}
+
+void iniciar_config() {
+    config = iniciarConfig(CONFIG_FILE);
+    logger = iniciarLogger("memoria.log", "Memoria");
+    ipMemoria= config_get_string_value(config,"IP_MEMORIA");
+    puertoMemoria= config_get_string_value(config,"PUERTO_ESCUCHA");
+    entradas_por_tabla = config_get_int_value(config,"ENTRADAS_POR_TABLA");
+    tamanio_memoria = config_get_int_value(config,"TAM_MEMORIA");
+    tamanio_pagina = config_get_int_value(config,"TAM_PAGINA");
+    marcos_por_proceso = config_get_int_value(config,"MARCOS_POR_PROCESO");
+    algoritmo_reemplazo = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
+    retardo_swap = config_get_int_value(config, "RETARDO_SWAP");
+    retardo_memoria = config_get_int_value(config, "RETARDO_MEMORIA");
 }
 
 void procesar_conexion(void* void_args) {
@@ -187,6 +194,14 @@ void procesar_conexion(void* void_args) {
                     uint32_t tabla_primer_nivel_suspension = pcb_swapped->tablaPaginas;
                     liberar_memoria_proceso(tabla_primer_nivel_suspension, id_proceso_suspension);
                     break;
+                case TERMINAR_PROCESO:
+                    ;
+                    t_pcb* pcb_terminado = recibirPCB(cliente_fd);
+                    liberar_memoria_proceso(pcb_terminado->tablaPaginas, pcb_terminado->idProceso);
+                    eliminar_archivo_swap(pcb_terminado->idProceso);
+                    usleep(retardo_swap*1000);
+                    break;
+
                 case -1:
                     log_info(logger, "El cliente se desconectó");
                     cliente_fd = -1;
@@ -359,10 +374,10 @@ void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t 
     int archivo_swap = open(ruta, O_RDWR);
     struct stat sb;
     if (fstat(archivo_swap,&sb) == -1) {
-        perror("No se pudo obtener el size del archivo swap: ");
+        perror(string_from_format("No se pudo obtener el size del archivo swap: %d", id_proceso));
     }
     void* contenido_swap = mmap(NULL, sb.st_size, PROT_WRITE , MAP_SHARED, archivo_swap, 0);
-    printf(BLU"\nAntes de suspender el proceso\n",RESET);
+    printf(BLU"\nAntes de actualizar tabla de paginas del proceso\n",RESET);
     imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
     for(int i=0; i<tabla_primer_nivel->elements_count; i++){
         t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
@@ -383,7 +398,7 @@ void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t 
     }
     munmap(contenido_swap, sb.st_size);
     close(archivo_swap);
-    printf(BLU"\nDespues de suspender el proceso\n",RESET);
+    printf(BLU"\nDespués de actualizar tabla de páginas del proceso\n",RESET);
     imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
 }
 
