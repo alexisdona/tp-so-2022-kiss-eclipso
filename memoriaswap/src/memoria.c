@@ -80,6 +80,7 @@ void procesar_conexion(void* void_args) {
                     break;
                 case ESCRIBIR_MEMORIA:
                     ;
+                    pthread_mutex_lock(&mutex_escritura);
                     usleep(retardo_memoria*1000);
                     void* buffer_escritura = recibirBuffer(cliente_fd);
                     size_t id_proceso;
@@ -107,6 +108,7 @@ void procesar_conexion(void* void_args) {
                     actualizar_bit_modificado_tabla_paginas(nro_tabla_primer_nivel_escritura, numero_pagina);
                     usleep(retardo_swap*1000); //retardo de escritura de memoria a disco
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
+                    pthread_mutex_unlock(&mutex_escritura);
                     break;
                 case LEER_MEMORIA:
                     ;
@@ -179,10 +181,14 @@ void procesar_conexion(void* void_args) {
 
                         } else {
                                 //marco =  obtener_marco_algoritmo_reemplazo;
+                        	pthread_mutex_lock(&mutex_algoritmos);
                             registro_segundo_nivel->presencia = true;
                             registro_segundo_nivel->frame = marco;
+                            pthread_mutex_unlock(&mutexEscritura);
                         }
+                        pthread_mutex_lock(&mutex_algoritmos);
                         memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina);
+                        pthread_mutex_unlock(&mutexEscritura);
                     }
 
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
@@ -284,12 +290,14 @@ void iniciar_estructuras_administrativas_kernel() {
 }
 
 void crear_espacio_usuario() {
+
     espacio_usuario_memoria = malloc(tamanio_memoria);
     uint32_t valor=0;
     for(int i=0; i< tamanio_memoria/sizeof(uint32_t); i++) {
         valor = i;
         memcpy(espacio_usuario_memoria + sizeof(uint32_t) *i , &valor, sizeof(uint32_t));
     }
+
   /*  printf("\nMEMORIA --> IMPRIMO VALORES EN ESPACIO DE USUARIO\n");
     for(int i=0; i< tamanio_memoria/sizeof(uint32_t); i++) {
         uint32_t* apuntado=  espacio_usuario_memoria + i*sizeof(uint32_t);

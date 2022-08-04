@@ -42,7 +42,7 @@ typedef struct {
     uint presencia;
 } t_registro_segundo_nivel;
 
-
+pthread_mutex_t &mutexEscritura;
 
 void preparar_modulo_swap();
 size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso);
