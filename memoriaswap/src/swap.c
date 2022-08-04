@@ -5,12 +5,7 @@
 
 #include "include/swap.h"
 
-t_pcb* pcb_atendiendo;
-t_config* pcb_swapeado;
-
-
-void inicializarMutex() {
-    int error=0;
+void inicializarMutexSwap() {
     if(pthread_mutex_init(&mutex_swap, NULL) != 0) {
         perror("Mutex swap falló: ");
     }
@@ -91,8 +86,20 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
        apuntado = (uint32_t *) (contenido_swap+ubicacion_valor_reemplazo);
        printf("\nACTUALIZAR SWAP - DESPUES DE REEPLAZO OFFSET: %d VALOR: %d\n", ubicacion_valor_reemplazo, *apuntado );
        munmap(contenido_swap, sb.st_size);
-     //  msync(contenido_swap, sb.st_size, MS_SYNC);
+       msync(contenido_swap, sb.st_size, MS_SYNC);
        close(archivo_swap);
+    /*  Solo para corroborar que el archivo se actualizo
+     *
+     * FILE *archivo_swap2 = fopen(ruta, "rb");
+       if (archivo_swap != NULL) {
+           void* lectura = malloc(sb.st_size);
+           fread(lectura, sizeof(uint32_t), sb.st_size, archivo_swap2);
+           for(int i=0; i< sb.st_size/sizeof (uint32_t); i++) {
+               uint32_t* apuntado=  lectura+ sizeof(uint32_t) *i;
+               printf("\nvalor apuntado en posición del arhivo actualizado%d-->%d\n",i, *apuntado);
+           }
+       }
+*/
    }
 
 void eliminar_archivo_swap(size_t id_proceso){
@@ -103,10 +110,4 @@ void eliminar_archivo_swap(size_t id_proceso){
         perror(string_from_format("Hubo un error borrando el archivo swap del proceso %d", id_proceso));
     }
     pthread_mutex_unlock(&mutex_swap);
-}
-
-iniciar_mutex() {
-    if(pthread_mutex_init(&mutex_swap, NULL) != 0) {
-        perror("Mutex cola de new fallo: ");
-    }
 }

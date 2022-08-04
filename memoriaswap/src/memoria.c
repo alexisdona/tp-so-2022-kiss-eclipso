@@ -27,8 +27,8 @@ void crear_espacio_usuario();
 void iniciar_config();
 
 int main(void) {
-	//sem_t semMemoria;
 
+    inicializarMutexSwap();
     iniciar_config();
     preparar_modulo_swap();
     iniciar_estructuras_administrativas_kernel();
@@ -49,6 +49,7 @@ int main(void) {
 }
 
 void iniciar_config() {
+
     config = iniciarConfig(CONFIG_FILE);
     logger = iniciarLogger("memoria.log", "Memoria");
     ipMemoria= config_get_string_value(config,"IP_MEMORIA");
@@ -131,7 +132,6 @@ void procesar_conexion(void* void_args) {
                     ;
                     usleep(retardo_memoria*1000);
                     void* buffer_tabla_segundo_nivel = recibirBuffer(cliente_fd);
-
                     size_t nro_tabla_primer_nivel;
                     uint32_t entrada_tabla_primer_nivel;
                     memcpy(&nro_tabla_primer_nivel, buffer_tabla_segundo_nivel, sizeof(size_t));
@@ -229,7 +229,6 @@ int escuchar_cliente(char *nombre_cliente) {
 }
 
 void preparar_modulo_swap(){
-	cola_swap = queue_create();
 	PATH_SWAP = config_get_string_value(config,"PATH_SWAP");
 	string_append(&PATH_SWAP,"/");
 	RETARDO_SWAP = config_get_int_value(config,"RETARDO_SWAP");
@@ -311,7 +310,7 @@ void* obtener_bloque_proceso_desde_swap(size_t id_proceso, uint32_t numero_pagin
      void* contenido_swap = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, archivo_swap, 0);
      void* bloque = malloc(tamanio_pagina);
      memcpy(bloque, contenido_swap+ubicacion_bloque, tamanio_pagina);
-     munmap(archivo_swap, sb.st_size);
+     munmap(contenido_swap, sb.st_size);
      close(archivo_swap);
      return bloque; //devuelve la pagina entera que es del tamano de pagina
 }
@@ -397,6 +396,7 @@ void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t 
         }
     }
     munmap(contenido_swap, sb.st_size);
+    msync(contenido_swap, sb.st_size, MS_SYNC);
     close(archivo_swap);
     printf(BLU"\nDespués de actualizar tabla de páginas del proceso\n",RESET);
     imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
