@@ -5,7 +5,8 @@
 
 #include "include/swap.h"
 
-void inicializarMutexSwap() {
+
+void inicializar_mutex_swap() {
     if(pthread_mutex_init(&mutex_swap, NULL) != 0) {
         perror("Mutex swap falló: ");
     }
@@ -35,12 +36,13 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
         valor += 1;
     }
 
+    /*
     printf("\nswap --> IMPRIMO VALORES EN el archivo\n");
       for(int i=0; i< cantidad_bloques; i++) {
           uint32_t* apuntado=  str+ sizeof(uint32_t) *i;
          printf("\nvalor apuntado en posición del arhivo%d-->%d\n",i, *apuntado);
    }
-
+*/
        char *ruta = obtener_path_archivo(id_proceso);
 
        FILE *archivo_swap = fopen(ruta, "wb");
@@ -55,7 +57,6 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
        fclose(archivo_swap);
    }
    void verificar_carpeta_swap(char* ruta){
-       log_info(logger,PATH_SWAP);
        mode_t modo_carpeta = 0777;
        int estado = mkdir(PATH_SWAP, modo_carpeta);
        if (estado == 0){
@@ -88,19 +89,33 @@ void crear_archivo_swap(size_t id_proceso, size_t tamanio) {
        munmap(contenido_swap, sb.st_size);
        msync(contenido_swap, sb.st_size, MS_SYNC);
        close(archivo_swap);
-    /*  Solo para corroborar que el archivo se actualizo
-     *
-     * FILE *archivo_swap2 = fopen(ruta, "rb");
-       if (archivo_swap != NULL) {
-           void* lectura = malloc(sb.st_size);
-           fread(lectura, sizeof(uint32_t), sb.st_size, archivo_swap2);
-           for(int i=0; i< sb.st_size/sizeof (uint32_t); i++) {
-               uint32_t* apuntado=  lectura+ sizeof(uint32_t) *i;
-               printf("\nvalor apuntado en posición del arhivo actualizado%d-->%d\n",i, *apuntado);
-           }
-       }
-*/
+
+    /*  Solo para corroborar que el archivo se actualizo */
+
+       mostrar_contenido_archivo_swap(id_proceso);
+
    }
+
+void mostrar_contenido_archivo_swap(size_t id_proceso) {
+    char* ruta = obtener_path_archivo(id_proceso);
+
+    int archivo_swap = open(ruta, O_RDWR);
+
+    struct stat sb;
+    if (fstat(archivo_swap,&sb) == -1) {
+        perror("No se pudo obtener el size del archivo swap: ");
+    }
+
+    if (archivo_swap != NULL) {
+        void* lectura = malloc(sb.st_size);
+        read(archivo_swap, lectura, sb.st_size );
+        printf(YEL"\n\nEL CONTENIDO DEL ARCHIVO POST SWAPEO\n\n"RESET);
+        for(int i=0; i< sb.st_size / sizeof (uint32_t); i++) {
+            uint32_t* apuntado=  lectura+ sizeof(uint32_t) *i;
+            printf("\nvalor apuntado en posición del arhivo actualizado%d-->%d\n",i, *apuntado);
+        }
+    }
+}
 
 void eliminar_archivo_swap(size_t id_proceso){
 

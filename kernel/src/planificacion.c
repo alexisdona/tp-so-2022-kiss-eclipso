@@ -171,7 +171,7 @@ void continuar_planificacion(){
 		if(GRADO_MULTIPROGRAMACION>0){
 			t_pcb* pcb_a_ready = obtener_PCB_segun_prioridad();
 			if(pcb_a_ready!=NULL) {
-				list_add(READY,pcb_a_ready);
+                agregar_proceso_READY(pcb_a_ready,SUSPENDER_PROCESO);
 				continuar_planificacion();
 			}
 		}

@@ -42,7 +42,7 @@ typedef struct {
     uint presencia;
 } t_registro_segundo_nivel;
 
-pthread_mutex_t &mutexEscritura;
+pthread_mutex_t mutex_escritura;
 
 void preparar_modulo_swap();
 size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso);
@@ -58,6 +58,7 @@ void algoritmo_clock(uint32_t, uint32_t, uint32_t, uint32_t);
 void liberar_memoria_proceso(uint32_t, size_t);
 void imprimir_valores_paginacion_proceso(uint32_t);
 void actualizar_bit_modificado_tabla_paginas(size_t, uint32_t);
-
+void actualizar_bit_usado_tabla_paginas(size_t , uint32_t );
+void inicializar_mutex_memoria();
 
 #endif /* SRC_MEMORIA_H_ */

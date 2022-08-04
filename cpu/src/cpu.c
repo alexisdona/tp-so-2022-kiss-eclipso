@@ -325,6 +325,9 @@ uint32_t leer_en_memoria(dir_fisica * direccion_fisica) {
     paquete->codigo_operacion = LEER_MEMORIA;
     agregarEntero4bytes(paquete, direccion_fisica->marco);
     agregarEntero4bytes(paquete, direccion_fisica->desplazamiento);
+    agregarEntero(paquete, direccion_fisica->indice_tabla_primer_nivel);
+    agregarEntero4bytes(paquete, direccion_fisica->numero_pagina);
+
     enviarPaquete(paquete, conexionMemoria);
     eliminarPaquete(paquete);
 

@@ -26,9 +26,12 @@ void crear_espacio_usuario();
 
 void iniciar_config();
 
+void inicializar_mutex_memoria();
+
 int main(void) {
 
-    inicializarMutexSwap();
+    inicializar_mutex_swap();
+    inicializar_mutex_memoria();
     iniciar_config();
     preparar_modulo_swap();
     iniciar_estructuras_administrativas_kernel();
@@ -46,6 +49,12 @@ int main(void) {
     }
 
 	return EXIT_SUCCESS;
+}
+
+void inicializar_mutex_memoria() {
+    if(pthread_mutex_init(&mutex_escritura, NULL) != 0) {
+        perror("Mutex swap falló: ");
+    }
 }
 
 void iniciar_config() {
@@ -80,7 +89,7 @@ void procesar_conexion(void* void_args) {
                     break;
                 case ESCRIBIR_MEMORIA:
                     ;
-                    pthread_mutex_lock(&mutex_escritura);
+
                     usleep(retardo_memoria*1000);
                     void* buffer_escritura = recibirBuffer(cliente_fd);
                     size_t id_proceso;
@@ -105,10 +114,11 @@ void procesar_conexion(void* void_args) {
                     uint32_t desplazamiento_final_escritura = (marco_escritura*tamanio_pagina+desplazamiento_escritura);
                     memcpy((espacio_usuario_memoria+desplazamiento_final_escritura), &valor_a_escribir, sizeof(uint32_t));
                     actualizar_archivo_swap(id_proceso, numero_pagina, desplazamiento_escritura, tamanio_pagina, valor_a_escribir );
+                    pthread_mutex_lock(&mutex_escritura);
                     actualizar_bit_modificado_tabla_paginas(nro_tabla_primer_nivel_escritura, numero_pagina);
+                    pthread_mutex_unlock(&mutex_escritura);
                     usleep(retardo_swap*1000); //retardo de escritura de memoria a disco
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
-                    pthread_mutex_unlock(&mutex_escritura);
                     break;
                 case LEER_MEMORIA:
                     ;
@@ -116,10 +126,15 @@ void procesar_conexion(void* void_args) {
                     void* buffer_lectura = recibirBuffer(cliente_fd);
                     uint32_t marco_lectura;
                     uint32_t desplazamiento;
+                    size_t nro_tabla_primer_nivel_lectura;
+                    uint32_t numero_pagina_lectura;
                     memcpy(&marco_lectura, buffer_lectura, sizeof(uint32_t));
                     memcpy(&desplazamiento, (buffer_lectura+sizeof(uint32_t)), sizeof(uint32_t));
+                    memcpy(&nro_tabla_primer_nivel_lectura, (buffer_lectura+sizeof(uint32_t)+sizeof(uint32_t)), sizeof(size_t));
+                    memcpy(&numero_pagina_lectura, (buffer_lectura+sizeof(uint32_t)+sizeof(uint32_t)+sizeof(size_t)), sizeof(uint32_t));
                     uint32_t desplazamiento_final_lectura = (marco_lectura*tamanio_pagina+desplazamiento);
                     uint32_t* valor = (uint32_t*) (espacio_usuario_memoria + desplazamiento_final_lectura);
+                    actualizar_bit_usado_tabla_paginas(nro_tabla_primer_nivel_lectura, numero_pagina_lectura);
                     enviar_entero(cliente_fd, *valor, LEER_MEMORIA);
                     break;
                 case CREAR_ESTRUCTURAS_ADMIN:
@@ -170,31 +185,30 @@ void procesar_conexion(void* void_args) {
 
                         // primero validar que el proceso tenga marcos disponibles
                         uint32_t cantidad_marcos_ocupados_proceso = obtener_cantidad_marcos_ocupados(entrada_tabla_primer_nivel);
-                        printf("\nCantidad de marcos ocupados: %d\n", cantidad_marcos_ocupados_proceso);
                         if (cantidad_marcos_ocupados_proceso < marcos_por_proceso) {
-
                             uint32_t nro_frame_libre = obtener_numero_frame_libre();
-
                             registro_segundo_nivel->presencia = true;
+                            registro_segundo_nivel->usado = true;
                             registro_segundo_nivel->frame = nro_frame_libre;
                             marco = registro_segundo_nivel->frame;
 
                         } else {
                                 //marco =  obtener_marco_algoritmo_reemplazo;
-                        	pthread_mutex_lock(&mutex_algoritmos);
+                        	pthread_mutex_lock(&mutex_escritura);
                             registro_segundo_nivel->presencia = true;
                             registro_segundo_nivel->frame = marco;
-                            pthread_mutex_unlock(&mutexEscritura);
+                            pthread_mutex_unlock(&mutex_escritura);
                         }
-                        pthread_mutex_lock(&mutex_algoritmos);
+                        pthread_mutex_lock(&mutex_escritura);
                         memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina);
-                        pthread_mutex_unlock(&mutexEscritura);
+                        pthread_mutex_unlock(&mutex_escritura);
                     }
 
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
                     break;
                 case SWAPEAR_PROCESO:
                     ;
+                    printf(BLU"\n\n\n VOY A SWAPPEAR PROCESO"RESET);
                     t_pcb* pcb_swapped = recibirPCB(cliente_fd);
                     size_t id_proceso_suspension = pcb_swapped->idProceso;
                     uint32_t tabla_primer_nivel_suspension = pcb_swapped->tablaPaginas;
@@ -364,6 +378,7 @@ void actualizar_bit_modificado_tabla_paginas(size_t nro_tabla_primer_nivel_escri
         for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
             t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
             if(nro_pagina_aux == numero_pagina) {
+                registro_segundo_nivel->usado=true;
                 registro_segundo_nivel->modificado=true;
             }
             nro_pagina_aux+=1;
@@ -372,6 +387,24 @@ void actualizar_bit_modificado_tabla_paginas(size_t nro_tabla_primer_nivel_escri
 
 }
 
+void actualizar_bit_usado_tabla_paginas(size_t nro_tabla_primer_nivel, uint32_t numero_pagina) {
+    t_list *tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
+    int nro_pagina_aux = 0;
+    for (int i = 0; i < tabla_primer_nivel->elements_count; i++) {
+
+        t_registro_primer_nivel *registro_primer_nivel = list_get(tabla_primer_nivel, i);
+        t_list *lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel,
+                                                         registro_primer_nivel->nro_tabla_segundo_nivel);
+
+        for (int j = 0; j < lista_registros_segundo_nivel->elements_count; j++) {
+            t_registro_segundo_nivel *registro_segundo_nivel = list_get(lista_registros_segundo_nivel, j);
+            if (nro_pagina_aux == numero_pagina) {
+                registro_segundo_nivel->usado = true;
+            }
+            nro_pagina_aux += 1;
+        }
+    }
+}
 
 void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t id_proceso) {
 
@@ -408,6 +441,7 @@ void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t 
     close(archivo_swap);
     printf(BLU"\nDespués de actualizar tabla de páginas del proceso\n",RESET);
     imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
+
 }
 
 void imprimir_valores_paginacion_proceso(uint32_t tabla_pagina_primer_nivel_proceso) {
