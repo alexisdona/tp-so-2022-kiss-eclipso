@@ -328,7 +328,6 @@ void crear_estructuras_memoria(t_pcb* pcb) {
 	printf("\n");
 	log_info(logger,"### CREANDO ESTRUCTURAS DE MEMORIA###");
     int pcb_actualizado = 0;
-    t_paquete* paquete = crearPaquete();
     enviarPCB(conexion_memoria, pcb, CREAR_ESTRUCTURAS_ADMIN );
     logear_PCB(logger,pcb,"ENVIADO A MEMORIA");
     while(conexion_memoria != -1 && pcb_actualizado == 0) {
