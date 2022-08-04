@@ -52,8 +52,6 @@ void iniciarPlanificacionCortoPlazo(){
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     estimar_proxima_rafaga(tiempo_en_ejecucion, pcb);
                     bloquearProceso(pcb);
-                    t_pcb* pcb_desbloqueado = queue_pop(BLOCKED);
-                    desbloquear_proceso(pcb_desbloqueado);
                     break;
                 case DESALOJAR_PROCESO:
                 	log_info(logger,"DESALOJANDO PROCESO");
@@ -87,6 +85,8 @@ t_pcb* obtener_PCB_segun_prioridad(){
 	    pcb_a_ready = queue_pop(NEW);
 	    log_info(logger,string_from_format("PCB DESENCOLADO [%d]- TAMAÑO COLA NEW [%d]",pcb_a_ready->idProceso,queue_size(NEW)));
 	    pthread_mutex_unlock(&mutexColaNew);
+	}else{
+		pcb_a_ready = NULL;
 	}
 	return pcb_a_ready;
 }
@@ -167,6 +167,14 @@ void continuar_planificacion(){
 		log_info(logger,"CONTINUANDO PLANIFICACION, AUN HAY PROCESOS POR EJECUTAR");
 	    (strcmp("SJF", ALGORITMO_PLANIFICACION)==0) ?
 	    planificacion_SJF(obtener_proceso_en_READY()) : planificacion_FIFO(obtener_proceso_en_READY());
+	}else{
+		if(GRADO_MULTIPROGRAMACION>0){
+			t_pcb* pcb_a_ready = obtener_PCB_segun_prioridad();
+			if(pcb_a_ready!=NULL) {
+				list_add(READY,pcb_a_ready);
+				continuar_planificacion();
+			}
+		}
 	}
 }
 
@@ -199,21 +207,28 @@ void avisarProcesoTerminado(int socketDestino) {
 }
 
 void bloquearProceso(t_pcb* pcb){
-    pthread_mutex_lock(&mutexColaBloqueados);
-    queue_push(BLOCKED, pcb);
-    pthread_mutex_unlock(&mutexColaBloqueados);
+    operando tiempoBloqueado = obtener_tiempo_para_bloquear(pcb);
+	if(tiempoBloqueado > TIEMPO_MAXIMO_BLOQUEADO){
+		log_info(logger,"SUSPENDO EL PROCESO");
+		suspender_proceso(pcb);
+	} else {
+		pthread_mutex_lock(&mutexColaBloqueados);
+		queue_push(BLOCKED, pcb);
+		pthread_mutex_unlock(&mutexColaBloqueados);
 
-    t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
-    if (instruccion->codigo_operacion == IO) {
-        operando tiempoBloqueado = instruccion->parametros[0];
-        if(tiempoBloqueado > TIEMPO_MAXIMO_BLOQUEADO){
-            log_info(logger,"SUSPENDO EL PROCESO");
-            suspender_proceso(pcb);
-        } else {
-        	log_info(logger,string_from_format("BLOQUEO AL PROCESO POR %ds",(tiempoBloqueado/1000)));
-        	usleep(tiempoBloqueado*1000);
-        }
-    }
+		pthread_mutex_lock(&mutexColaBloqueados);
+		t_pcb* pcb_bloquear = queue_pop(BLOCKED);
+		pthread_mutex_unlock(&mutexColaBloqueados);
+		tiempoBloqueado = obtener_tiempo_para_bloquear(pcb_bloquear);
+		log_info(logger,string_from_format("BLOQUEO AL PROCESO POR %ds",(tiempoBloqueado/1000)));
+		usleep(tiempoBloqueado*1000);
+        desbloquear_proceso(pcb_bloquear);
+	}
+}
+
+uint32_t obtener_tiempo_para_bloquear(t_pcb* pcb){
+	t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
+	return (instruccion->parametros[0]);
 }
 
 void desbloquear_proceso(t_pcb* pcb){
@@ -221,51 +236,36 @@ void desbloquear_proceso(t_pcb* pcb){
 	seguir_algoritmo_planificacion(pcb,CONTINUA_PROCESO);
 }
 
-
 void suspender_proceso(t_pcb* pcb) {
-    pthread_mutex_lock(&mutexColaBloqueados);
-    t_pcb * pcb_a_suspended_blocked = queue_pop(BLOCKED);
-    pthread_mutex_unlock(&mutexColaBloqueados);
-
-    pthread_mutex_lock(&mutexColaSuspendedBloqued); 
-    enviarPCB(conexion_memoria,pcb_a_suspended_blocked,SWAPEAR_PROCESO);
-    logear_PCB(logger,pcb,"ENVIADO");
-    list_add(SUSPENDED_BLOCKED, pcb_a_suspended_blocked);
+    pthread_mutex_lock(&mutexColaSuspendedBloqued);
+    queue_push(SUSPENDED_BLOCKED,pcb);
     pthread_mutex_unlock(&mutexColaSuspendedBloqued);
+
+    pthread_mutex_lock(&mutexColaSuspendedBloqued);
+    t_pcb* pcb_suspender = queue_pop(SUSPENDED_BLOCKED);
+    pthread_mutex_unlock(&mutexColaSuspendedBloqued);
+
+    enviarPCB(conexion_memoria,pcb_suspender,SWAPEAR_PROCESO);
+    logear_PCB(logger,pcb_suspender,"ENVIADO SWAPEAR");
     
     incrementar_grado_multiprogramacion();
-    sem_post(&semGradoMultiprogramacion);
 
-    unsigned int tiempo_en_suspendido = tiempo_en_suspended_blocked(pcb_a_suspended_blocked);
-    sleep(tiempo_en_suspendido);
-
-    pthread_mutex_lock(&mutexColaSuspendedBloqued); 
-    t_pcb* pcb_a_suspended_ready = list_get(SUSPENDED_BLOCKED, 0);
-    list_remove(SUSPENDED_BLOCKED, 0);
-    pthread_mutex_unlock(&mutexColaSuspendedBloqued);
-
-    agregar_proceso_SUSPENDED_READY(pcb_a_suspended_ready);    
+    unsigned int tiempo_en_suspendido = tiempo_en_suspended_blocked(pcb_suspender);
+    printf("TIEMPO A SUSPENDER: %d\n",tiempo_en_suspendido);
+    usleep(tiempo_en_suspendido*1000);
+    agregar_proceso_SUSPENDED_READY(pcb_suspender);
 }
 
 void agregar_proceso_SUSPENDED_READY(t_pcb* pcb) {
-
     pthread_mutex_lock(&mutex_cola_suspended_ready);
     queue_push(SUSPENDED_READY, pcb);
     pthread_mutex_unlock(&mutex_cola_suspended_ready);
-
-    //enviar_proceso_SUSPENDED_READY_a_READY();
-}
-
-void enviar_proceso_SUSPENDED_READY_a_READY() {
-    pthread_mutex_lock(&mutexColaReady);
-    t_pcb* pcb_a_ready = queue_pop(SUSPENDED_READY);
-    agregar_proceso_READY(pcb_a_ready,PCB);
-    pthread_mutex_unlock(&mutexColaReady);
+    log_info(logger,"PROCESO EN S.READY");
+    continuar_planificacion();
 }
 
 unsigned int tiempo_en_suspended_blocked(t_pcb* pcb) {
-    t_instruccion * instruccion = ((t_instruccion*) (list_get(pcb->listaInstrucciones,(pcb->programCounter)-1)));
-    operando tiempo_bloqueado = instruccion->parametros[0];
+    operando tiempo_bloqueado = obtener_tiempo_para_bloquear(pcb);
     return tiempo_bloqueado - TIEMPO_MAXIMO_BLOQUEADO;
 }
 

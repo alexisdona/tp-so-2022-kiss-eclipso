@@ -13,9 +13,9 @@
 #include <commons/process.h>
 #include <commons/collections/queue.h>
 
-#include "../../shared/headers/sharedUtils.h"
+#include "../shared/headers/sharedUtils.h"
 
-#define CONFIG_FILE "../kernel/src/config/kernel.config"
+#define CONFIG_FILE "../src/config/kernel.config"
 
 int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd);
 int recibir_opcion();

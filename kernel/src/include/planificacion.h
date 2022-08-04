@@ -10,7 +10,7 @@ t_list* READY;
 t_queue* NEW;
 t_queue* BLOCKED;
 t_queue* SUSPENDED_READY;
-t_list* SUSPENDED_BLOCKED;
+t_queue* SUSPENDED_BLOCKED;
 
 unsigned int GRADO_MULTIPROGRAMACION;
 unsigned int MAX_GRADO_MULTIPROGRAMACION;
@@ -65,5 +65,6 @@ void seguir_algoritmo_planificacion(t_pcb*,op_code);
 void continuar_planificacion();
 void enviar_interrupcion(int, op_code);
 t_pcb* obtener_PCB_segun_prioridad();
+uint32_t obtener_tiempo_para_bloquear(t_pcb* pcb);
 
 #endif //TP_2022_1C_ECLIPSO_PLANIFICACION_H
