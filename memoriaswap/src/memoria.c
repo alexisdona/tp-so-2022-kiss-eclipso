@@ -426,24 +426,21 @@ void imprimir_valores_paginacion_proceso(uint32_t tabla_pagina_primer_nivel_proc
 
 //********************************* ALGORITMOS DE SUSTITUCION DE PAGINAS ***********************************
 
-uint32_t sustitucion_paginas(uint32_t numero_tabla_primer_nivel, uint32_t indice_primer_nivel, uint32_t indice_segundo_nivel, uint32_t numero_pagina, size_t pid) {
+uint32_t sustitucion_paginas(uint32_t numero_tabla_primer_nivel, uint32_t numero_pagina, size_t pid) {
 	t_lista_circular* frames_proceso = obtener_lista_circular_del_proceso(pid);
 
 	if (strcmp("CLOCK", algoritmo_reemplazo)) {
-		return algoritmo_clock(frames_proceso, numero_tabla_primer_nivel, indice_primer_nivel, indice_segundo_nivel, numero_pagina);
+		return algoritmo_clock(frames_proceso, numero_tabla_primer_nivel, numero_pagina);
 	}
 	else if (strcmp("CLOCK-M", algoritmo_reemplazo)) {
-		return algoritmo_clock_modificado(frames_proceso, numero_tabla_primer_nivel, indice_primer_nivel, indice_segundo_nivel, numero_pagina);
+		return algoritmo_clock_modificado(frames_proceso, numero_tabla_primer_nivel, numero_pagina);
 	}
 	log_info(logger, "Algoritmo de reemplazo invalido");
 	return -1;
 }
 
-uint32_t algoritmo_clock(t_lista_circular* frames_proceso, uint32_t numero_tabla_primer_nivel, uint32_t indice_primer_nivel, uint32_t indice_segundo_nivel, uint32_t numero_pagina) {
-	t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, numero_tabla_primer_nivel);
-	t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel, indice_primer_nivel);
-	t_list* tabla_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
-	t_registro_segundo_nivel* registro_segundo_nivel = list_get(tabla_segundo_nivel, indice_segundo_nivel);
+uint32_t algoritmo_clock(t_lista_circular* frames_proceso, uint32_t numero_tabla_primer_nivel, uint32_t numero_pagina) {
+	t_registro_segundo_nivel* registro_segundo_nivel = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, numero_pagina);
 
 	// Variables auxiliares
 	t_frame_lista_circular* frame_puntero;
@@ -473,11 +470,8 @@ uint32_t algoritmo_clock(t_lista_circular* frames_proceso, uint32_t numero_tabla
 	return frame_puntero->info->numero_frame;
 }
 
-uint32_t algoritmo_clock_modificado(t_lista_circular* frames_proceso, uint32_t numero_tabla_primer_nivel, uint32_t indice_primer_nivel, uint32_t indice_segundo_nivel, uint32_t numero_pagina) {
-	t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, numero_tabla_primer_nivel);
-	t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel, indice_primer_nivel);
-	t_list* tabla_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
-	t_registro_segundo_nivel* registro_segundo_nivel = list_get(tabla_segundo_nivel, indice_segundo_nivel);
+uint32_t algoritmo_clock_modificado(t_lista_circular* frames_proceso, uint32_t numero_tabla_primer_nivel, uint32_t numero_pagina) {
+	t_registro_segundo_nivel* registro_segundo_nivel = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, numero_pagina);
 
 	// Variables auxiliares
 	t_frame_lista_circular* frame_puntero;
@@ -582,7 +576,7 @@ int es_lista_circular_del_proceso(size_t pid, t_lista_circular* lista_circular) 
 
 t_lista_circular* obtener_lista_circular_del_proceso(size_t pid) {
 	bool _es_lista_circular_del_proceso(void* elemento) {
-		return es_lista_circular_del_proceso(pid, elemento);
+		return es_lista_circular_del_proceso(pid, (t_lista_circular*) elemento);
 	}
 	return list_find(lista_frames_procesos, _es_lista_circular_del_proceso);
 }
