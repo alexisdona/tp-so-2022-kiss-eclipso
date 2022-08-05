@@ -107,70 +107,89 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 	op_code proceso_respuesta = CONTINUA_PROCESO;
 	switch(instruccion->codigo_operacion){
 		case NO_OP:
-			proceso_respuesta = CONTINUA_PROCESO;
-			operacion_NO_OP();
+			proceso_respuesta = operacion_NO_OP();
 			break;
 		case IO:
-			proceso_respuesta = BLOQUEAR_PROCESO;
-			operacion_IO(proceso_respuesta, instruccion->parametros[0]);
+			proceso_respuesta = operacion_IO(instruccion->parametros[0]);
+			printf("BLOQUEAR: %d\n",proceso_respuesta);
 			break;
 		case READ:
-			proceso_respuesta = CONTINUA_PROCESO;
-			operacion_READ(instruccion->parametros[0]);
+			proceso_respuesta = operacion_READ(instruccion->parametros[0]);
 			break;
 		case WRITE:
-			proceso_respuesta = CONTINUA_PROCESO;
-			operacion_WRITE(instruccion->parametros[0], instruccion->parametros[1]);
+			proceso_respuesta = operacion_WRITE(instruccion->parametros[0], instruccion->parametros[1]);
 			break;
 		case COPY:
-			proceso_respuesta = CONTINUA_PROCESO;
-			operacion_COPY(instruccion->parametros[0], instruccion->parametros[1]);
+			proceso_respuesta = operacion_COPY(instruccion->parametros[0], instruccion->parametros[1]);
 			break;
 		case EXIT:
-			proceso_respuesta = TERMINAR_PROCESO;
-			operacion_EXIT(proceso_respuesta);
+			proceso_respuesta = operacion_EXIT();
 			list_clean(tlb);
 			break;
 	}
 	return proceso_respuesta;
 }
 
-void operacion_NO_OP(){
+op_code operacion_NO_OP(){
 	int retardo_noop_microsegundos = 1000 * retardo_noop;
 	log_info(logger,"Ejecutando NO_OP: %d",retardo_noop_microsegundos);
 	usleep(retardo_noop_microsegundos);
+	return CONTINUA_PROCESO;
 }
 
-void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo){
+op_code operacion_IO(operando tiempo_bloqueo){
 	log_info(logger,"Ejecutando I/O: %d",tiempo_bloqueo);
-    enviarPCB(cliente_dispatch, pcb,  proceso_respuesta);
+    enviarPCB(cliente_dispatch, pcb,  BLOQUEAR_PROCESO);
     logear_PCB(logger,pcb,"ENVIADO PARA BLOQUEAR");
+    return BLOQUEAR_PROCESO;
 }
 
-void operacion_EXIT(op_code proceso_respuesta){
+op_code operacion_EXIT(){
 	log_info(logger,"Ejecutando EXIT");
-    enviarPCB(cliente_dispatch, pcb, proceso_respuesta);
+    enviarPCB(cliente_dispatch, pcb, TERMINAR_PROCESO);
     logear_PCB(logger,pcb,"ENVIADO PARA FINALIZAR");
     pcb=NULL;
+    return TERMINAR_PROCESO;
 }
 
-void operacion_READ(operando dirLogica){
+op_code operacion_READ(operando dirLogica){
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
-	uint32_t valor = leer_en_memoria(dir_fisica);
-    log_info(logger, string_from_format("El valor leido de memoria es %d", valor));
+	if(dir_fisica!=NULL){
+		uint32_t valor = leer_en_memoria(dir_fisica);
+		log_info(logger, string_from_format("El valor leido de memoria es %d", valor));
+		return CONTINUA_PROCESO;
+	}else{
+		return matar_proceso();
+	}
 }
 
-void operacion_COPY(uint32_t direccion_logica_destino, uint32_t direccion_logica_origen){
+op_code operacion_COPY(uint32_t direccion_logica_destino, uint32_t direccion_logica_origen){
     dir_fisica* dir_fisica_destino = obtener_direccion_fisica(direccion_logica_destino);
     dir_fisica* dir_fisica_origen =  obtener_direccion_fisica(direccion_logica_origen);
-    uint32_t valor_en_origen = leer_en_memoria(dir_fisica_origen);
-    escribir_en_memoria(dir_fisica_destino, valor_en_origen);
+    if(dir_fisica_destino!=NULL && dir_fisica_origen!=NULL){
+		uint32_t valor_en_origen = leer_en_memoria(dir_fisica_origen);
+		escribir_en_memoria(dir_fisica_destino, valor_en_origen);
+		return CONTINUA_PROCESO;
+    }else{
+		return matar_proceso();
+	}
 }
 
-void operacion_WRITE(uint32_t direccion_logica, uint32_t valor){
+op_code operacion_WRITE(uint32_t direccion_logica, uint32_t valor){
     dir_fisica* dir_fisica = obtener_direccion_fisica(direccion_logica);
-    escribir_en_memoria(dir_fisica, valor);
+    if(dir_fisica!=NULL){
+    	escribir_en_memoria(dir_fisica, valor);
+    	return CONTINUA_PROCESO;
+    }else{
+		return matar_proceso();
+	}
 }
+
+op_code matar_proceso(){
+    log_error(logger, "Matando proceso...");
+    return operacion_EXIT();
+}
+
 //-----------Ciclo de interrupcion-----------
 void atender_interrupcion() {
     log_info(logger, "ATENDIENDO INTERRUPCION...");
@@ -213,11 +232,9 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         direccion_fisica->indice_tabla_primer_nivel = pcb->tablaPaginas;
         return direccion_fisica;
     }
-
     else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
-        //operacion_EXIT() ? Se lo tiene que matar si intenta acceder a una direccion no valida?
-        return EXIT_FAILURE;
+        return NULL;
     }
 }
 

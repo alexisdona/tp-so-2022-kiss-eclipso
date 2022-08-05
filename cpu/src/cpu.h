@@ -14,7 +14,7 @@
 
 #define LOG_NAME "CPU_LOG"
 #define LOG_FILE "cpu.log"
-#define CONFIG_FILE "../cpu/src/config/cpu.config"
+#define CONFIG_FILE "../src/config/cpu.config"
 
 
 typedef struct {
@@ -32,12 +32,12 @@ t_instruccion* fase_fetch();
 int fase_decode(t_instruccion*);
 operando fase_fetch_operand(operando);
 op_code fase_execute(t_instruccion* instruccion, uint32_t operador);
-void operacion_NO_OP();
-void operacion_IO(op_code proceso_respuesta, operando tiempo_bloqueo);
-void operacion_EXIT(op_code proceso_respuesta);
-void operacion_READ(operando);
-void operacion_WRITE(uint32_t, operando);
-void operacion_COPY(uint32_t, uint32_t);
+op_code operacion_NO_OP();
+op_code operacion_IO(operando tiempo_bloqueo);
+op_code operacion_EXIT();
+op_code operacion_READ(operando);
+op_code operacion_WRITE(uint32_t, operando);
+op_code operacion_COPY(uint32_t, uint32_t);
 void preparar_pcb_respuesta(t_paquete* paquete);
 void atender_interrupcion();
 void loggearPCB(t_pcb* pcb);
@@ -60,6 +60,6 @@ void crear_hilos_cpu();
 op_code chequear_interrupcion(op_code proceso_respuesta);
 void levantar_configs();
 void actualizar_entrada_marco_existente(uint32_t , uint32_t);
-
+op_code matar_proceso();
 
 #endif /* SRC_CPU_H_ */
