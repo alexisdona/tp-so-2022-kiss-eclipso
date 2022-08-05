@@ -20,7 +20,7 @@ void* espacio_usuario_memoria;
 t_bitarray	* frames_disponibles;
 void* bloque_frames_lilbres;
 char* algoritmo_reemplazo;
-
+t_list* lista_frames_procesos;
 
 void crear_espacio_usuario();
 
@@ -59,9 +59,9 @@ void inicializar_mutex_memoria() {
 
 void iniciar_config() {
 
-    config = iniciarConfig(CONFIG_FILE);
-    logger = iniciarLogger("memoria.log", "Memoria");
-    ipMemoria= config_get_string_value(config,"IP_MEMORIA");
+	config = iniciarConfig(CONFIG_FILE);
+	logger = iniciarLogger("memoria.log", "Memoria");
+	ipMemoria= config_get_string_value(config,"IP_MEMORIA");
     puertoMemoria= config_get_string_value(config,"PUERTO_ESCUCHA");
     entradas_por_tabla = config_get_int_value(config,"ENTRADAS_POR_TABLA");
     tamanio_memoria = config_get_int_value(config,"TAM_MEMORIA");
@@ -70,6 +70,8 @@ void iniciar_config() {
     algoritmo_reemplazo = config_get_string_value(config, "ALGORITMO_REEMPLAZO");
     retardo_swap = config_get_int_value(config, "RETARDO_SWAP");
     retardo_memoria = config_get_int_value(config, "RETARDO_MEMORIA");
+    lista_frames_procesos = list_create();
+
 }
 
 void procesar_conexion(void* void_args) {
@@ -89,7 +91,6 @@ void procesar_conexion(void* void_args) {
                     break;
                 case ESCRIBIR_MEMORIA:
                     ;
-
                     usleep(retardo_memoria*1000);
                     void* buffer_escritura = recibirBuffer(cliente_fd);
                     size_t id_proceso;
@@ -165,6 +166,7 @@ void procesar_conexion(void* void_args) {
                     uint32_t entrada_tabla_segundo_nivel;
                     uint32_t numero_pag;
                     uint32_t nro_tabla_segundo_nivel_obtener_marco;
+                    uint32_t nro_tabla_primer_nivel_obtener_marco;
                     int despl = 0;
                     uint32_t marco;
                     memcpy(&id_proceso_marco, buffer_marco+despl, sizeof(size_t));
@@ -174,6 +176,8 @@ void procesar_conexion(void* void_args) {
                     memcpy(&entrada_tabla_segundo_nivel, buffer_marco+despl, sizeof(uint32_t));
                     despl+= sizeof(uint32_t);
                     memcpy(&numero_pag, buffer_marco+despl, sizeof(uint32_t));
+                    despl+= sizeof(uint32_t);
+                    memcpy(&nro_tabla_primer_nivel_obtener_marco, buffer_marco+despl, sizeof(uint32_t));
 
                     t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel_obtener_marco), entrada_tabla_segundo_nivel);
 
@@ -184,18 +188,31 @@ void procesar_conexion(void* void_args) {
                         void *bloque = obtener_bloque_proceso_desde_swap(id_proceso_marco, numero_pag);
 
                         // primero validar que el proceso tenga marcos disponibles
-                        uint32_t cantidad_marcos_ocupados_proceso = obtener_cantidad_marcos_ocupados(entrada_tabla_primer_nivel);
+                        uint32_t cantidad_marcos_ocupados_proceso = obtener_cantidad_marcos_ocupados(nro_tabla_primer_nivel_obtener_marco);
                         if (cantidad_marcos_ocupados_proceso < marcos_por_proceso) {
+                            if(cantidad_marcos_ocupados_proceso == 0) {
+                                t_lista_circular* lista = list_create_circular();
+                                lista->pid = id_proceso_marco;
+                                list_add(lista_frames_procesos, lista);
+                            }
                             uint32_t nro_frame_libre = obtener_numero_frame_libre();
-                            registro_segundo_nivel->presencia = true;
-                            registro_segundo_nivel->usado = true;
+                            registro_segundo_nivel->uso = 1;
+                            registro_segundo_nivel->presencia = 1;
                             registro_segundo_nivel->frame = nro_frame_libre;
                             marco = registro_segundo_nivel->frame;
+                            t_frame* frame_auxiliar = malloc(sizeof(t_frame));
+                            frame_auxiliar->numero_frame = nro_frame_libre;
+                            frame_auxiliar->numero_pagina = numero_pag;
+                            frame_auxiliar->uso = 1;
+                            frame_auxiliar->modificado = registro_segundo_nivel->modificado;
+                            frame_auxiliar->presencia = 1;
+                            t_lista_circular * lista_circular = obtener_lista_circular_del_proceso(id_proceso_marco);
+                            insertar_lista_circular(lista_circular, frame_auxiliar);
 
                         } else {
-                                //marco =  obtener_marco_algoritmo_reemplazo;
-                        	pthread_mutex_lock(&mutex_escritura);
-                            registro_segundo_nivel->presencia = true;
+                            log_info(logger, string_from_format("Ejecutanto %s para reemplazo de página", algoritmo_reemplazo));
+                            marco = sustitucion_paginas(nro_tabla_primer_nivel_obtener_marco, numero_pag, id_proceso_marco);
+                            registro_segundo_nivel->presencia = 1;
                             registro_segundo_nivel->frame = marco;
                             pthread_mutex_unlock(&mutex_escritura);
                         }
@@ -273,9 +290,9 @@ size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso) {
             registro_tabla_segundo_nivel = malloc(sizeof(t_registro_segundo_nivel));
             registro_tabla_segundo_nivel->indice = j;
             registro_tabla_segundo_nivel->frame = 0;
-            registro_tabla_segundo_nivel->modificado=false;
-            registro_tabla_segundo_nivel->usado=false;
-            registro_tabla_segundo_nivel->presencia=false;
+            registro_tabla_segundo_nivel->modificado=0;
+            registro_tabla_segundo_nivel->uso=0;
+            registro_tabla_segundo_nivel->presencia=0;
 
             list_add(lista_registros_segundo_nivel, registro_tabla_segundo_nivel);
             indice_segundo_nivel++;
@@ -378,8 +395,8 @@ void actualizar_bit_modificado_tabla_paginas(size_t nro_tabla_primer_nivel_escri
         for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
             t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
             if(nro_pagina_aux == numero_pagina) {
-                registro_segundo_nivel->usado=true;
-                registro_segundo_nivel->modificado=true;
+                registro_segundo_nivel->uso=1;
+                registro_segundo_nivel->modificado=1;
             }
             nro_pagina_aux+=1;
         }
@@ -399,7 +416,7 @@ void actualizar_bit_usado_tabla_paginas(size_t nro_tabla_primer_nivel, uint32_t 
         for (int j = 0; j < lista_registros_segundo_nivel->elements_count; j++) {
             t_registro_segundo_nivel *registro_segundo_nivel = list_get(lista_registros_segundo_nivel, j);
             if (nro_pagina_aux == numero_pagina) {
-                registro_segundo_nivel->usado = true;
+                registro_segundo_nivel->uso = 1;
             }
             nro_pagina_aux += 1;
         }
@@ -428,9 +445,9 @@ void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t 
             if (registro_segundo_nivel->presencia == 1) {
                 void* bloque = (espacio_usuario_memoria+(registro_segundo_nivel->frame)*tamanio_pagina);
                 memcpy((contenido_swap+(numero_pagina*tamanio_pagina)),bloque,tamanio_pagina);
-                registro_segundo_nivel->presencia=false;
-                registro_segundo_nivel->usado=false;
-                registro_segundo_nivel->modificado=false;
+                registro_segundo_nivel->presencia=0;
+                registro_segundo_nivel->uso=0;
+                registro_segundo_nivel->modificado=0;
                 bitarray_clean_bit(frames_disponibles, registro_segundo_nivel->frame);
             }
             numero_pagina+=1;
@@ -459,7 +476,7 @@ void imprimir_valores_paginacion_proceso(uint32_t tabla_pagina_primer_nivel_proc
                 printf(RED "\nnumero_pagina: %d", numero_pagina, RESET);
                printf(GRN "\nregistro_segundo_nivel->presencia: %d",  registro_segundo_nivel->presencia);
                printf(GRN "\nregistro_segundo_nivel->modificado: %d",  registro_segundo_nivel->modificado);
-               printf(GRN "\nregistro_segundo_nivel->usado: %d",  registro_segundo_nivel->usado, RESET);
+               printf(GRN "\nregistro_segundo_nivel->uso: %d",  registro_segundo_nivel->uso, RESET);
 
             numero_pagina+=1;
         }
@@ -471,80 +488,203 @@ void imprimir_valores_paginacion_proceso(uint32_t tabla_pagina_primer_nivel_proc
 
 //********************************* ALGORITMOS DE SUSTITUCION DE PAGINAS ***********************************
 
-void sustitucion_paginas(uint32_t tabla_primer_nivel, uint32_t numero_tabla_segundo_nivel, uint32_t registro_segundo_nivel) {
-	// Busqueda de primer frame libre en bitarray de frames_disponibles
-	uint32_t frame_libre;
+uint32_t sustitucion_paginas(uint32_t numero_tabla_primer_nivel, uint32_t numero_pagina, size_t pid) {
+	t_lista_circular* frames_proceso = obtener_lista_circular_del_proceso(pid);
 
-	if (strcmp("CLOCK", algoritmo_reemplazo)) {
-		algoritmo_clock(tabla_primer_nivel, numero_tabla_segundo_nivel, registro_segundo_nivel, frame_libre);
+	if (strcmp("CLOCK", algoritmo_reemplazo)==0) {
+		return algoritmo_clock(frames_proceso, numero_tabla_primer_nivel, numero_pagina);
 	}
-	else if (strcmp("CLOCK-M", algoritmo_reemplazo)) {
-		algoritmo_clock_modificado(tabla_primer_nivel, numero_tabla_segundo_nivel, registro_segundo_nivel);
+	else if (strcmp("CLOCK-M", algoritmo_reemplazo)==0) {
+		return algoritmo_clock_modificado(frames_proceso, numero_tabla_primer_nivel, numero_pagina);
 	}
+	log_info(logger, "Algoritmo de reemplazo invalido");
+	return -1;
 }
 
-void algoritmo_clock(uint32_t indice_tabla_primer_nivel, uint32_t indice_primer_nivel, uint32_t indice_segundo_nivel, uint32_t frame_asignado) {
-	t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, indice_tabla_primer_nivel);
-	t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel, indice_primer_nivel);
-	t_list* tabla_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
-	t_registro_segundo_nivel* registro_segundo_nivel = list_get(tabla_segundo_nivel, indice_segundo_nivel);
+uint32_t algoritmo_clock(t_lista_circular* frames_proceso, uint32_t numero_tabla_primer_nivel, uint32_t numero_pagina) {
+	t_registro_segundo_nivel* registro_segundo_nivel = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, numero_pagina);
 
-	// Variables auxiliares para iterar
-	t_registro_primer_nivel* registro_primer_nivel_aux;
-	t_list* tabla_segundo_nivel_aux;
+	// Variables auxiliares
+	t_frame_lista_circular* frame_puntero;
 	t_registro_segundo_nivel* registro_segundo_nivel_victima;
-	int victima_ok = 0;
 
-	for (int i = 0; i < 4; i++) {
-		registro_primer_nivel_aux = list_get(tabla_primer_nivel, i);
-		tabla_segundo_nivel_aux = list_get(lista_tablas_segundo_nivel, registro_primer_nivel_aux->nro_tabla_segundo_nivel);
+	uint hay_victima = 0;
 
-		// Posible mejora para encontrar la pagina victima
-		// t_registro_segundo_nivel* registro_victima = list_find(tabla_segundo_nivel_aux, es_victima_clock());
+	while(hay_victima == 0) {
+		// Al implementar un puntero_algoritmo que se va desplazando dentro de la propia lista circular
+		// 		lo reemplazamos por eso
+		frame_puntero = frames_proceso->puntero_algoritmo;
 
-		for (int j = 0; j < 4; j++) {
-			registro_segundo_nivel_victima = list_get(tabla_segundo_nivel_aux, j);
-			if (registro_segundo_nivel_victima->presencia == 1 && registro_segundo_nivel_victima->usado == 0) {
-				cargar_pagina(frame_asignado);
+		hay_victima = es_victima_clock(frame_puntero->info);
 
-				// Limpieza de registro victima
-				// frames_disponibles ----> registro_segundo_nivel_victima->frame = 0;
-				registro_segundo_nivel_victima->presencia = 0;
-				registro_segundo_nivel_victima->usado = 0;
-				registro_segundo_nivel_victima->modificado = 0;
+		if (hay_victima) {
+			registro_segundo_nivel_victima = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, frame_puntero->info->numero_pagina);
 
-				// Carga de pagina solicitada
-				// frames_disponibles ----> registro_segundo_nivel->frame = 1;
-				registro_segundo_nivel->frame = frame_asignado;
-				registro_segundo_nivel->presencia = 1;
-				registro_segundo_nivel->usado = 1;
+			actualizar_registros(registro_segundo_nivel, registro_segundo_nivel_victima, frame_puntero->info->numero_frame);
 
-				victima_ok = 1;
-				break;
+			frame_puntero->info->numero_pagina = numero_pagina;
+			frame_puntero->info->uso = 1;
+		} else {
+			frame_puntero->info->uso = 0;
+		}
+		frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+	}
+	return frame_puntero->info->numero_frame;
+}
+
+uint32_t algoritmo_clock_modificado(t_lista_circular* frames_proceso, uint32_t numero_tabla_primer_nivel, uint32_t numero_pagina) {
+	t_registro_segundo_nivel* registro_segundo_nivel = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, numero_pagina);
+
+	// Variables auxiliares
+	t_frame_lista_circular* frame_puntero;
+	t_registro_segundo_nivel* registro_segundo_nivel_victima;
+
+	uint hay_victima_um = 0;
+	uint hay_victima_u = 0;
+
+	uint busquedas_um = 0;
+	uint busquedas_u = 0;
+
+	while (hay_victima_um == 0 && hay_victima_u == 0) {
+
+		// Primeras iteraciones en busqueda de una pagina con U=0 && M=0
+		// No se actualiza ningun bit
+		while (hay_victima_um == 0 && busquedas_um < marcos_por_proceso) {
+
+			busquedas_um++;
+
+			frame_puntero = frames_proceso->puntero_algoritmo;
+
+			hay_victima_um = es_victima_clock_modificado_um(frame_puntero->info);
+
+			if (hay_victima_um) {
+				registro_segundo_nivel_victima = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, frame_puntero->info->numero_pagina);
+
+				actualizar_registros(registro_segundo_nivel, registro_segundo_nivel_victima, frame_puntero->info->numero_frame);
+
+				frame_puntero->info->numero_pagina = numero_pagina;
+				frame_puntero->info->uso = 1;
+			}
+
+			frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+		}
+
+		busquedas_um = 0;
+
+		// Si no hay victima de u=0 y m=0
+		if (hay_victima_um == 0) {
+
+			// Segundas iteraciones en busqueda de una pagina con U=0 && M=1
+			// Se actualiza el bit de uso
+			while (hay_victima_u == 0 && busquedas_u < marcos_por_proceso) {
+
+				busquedas_u++;
+
+				frame_puntero = frames_proceso->puntero_algoritmo;
+
+				hay_victima_u = es_victima_clock_modificado_u(frame_puntero->info);
+
+				if (hay_victima_u) {
+					registro_segundo_nivel_victima = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, frame_puntero->info->numero_pagina);
+
+					actualizar_registros(registro_segundo_nivel, registro_segundo_nivel_victima, frame_puntero->info->numero_frame);
+
+					frame_puntero->info->numero_pagina = numero_pagina;
+					frame_puntero->info->uso = 1;
+
+					frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+					break;
+				} else {
+					frame_puntero->info->uso = 0;
+					frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+				}
 			}
 		}
-		if (victima_ok) {
-			break;
-		}
 	}
+	return frame_puntero->info->numero_frame;
 }
 
-void algoritmo_clock_modificado(uint32_t tabla_primer_nivel, uint32_t numero_tabla_segundo_nivel, uint32_t registro_segundo_nivel) {
-
+uint es_victima_clock(t_frame* frame) {
+	return frame->presencia == 1 && frame->uso == 0;
 }
 
-int es_victima_clock(t_registro_segundo_nivel* registro) {
-	return registro->presencia == 1 && registro->usado == 0;
+uint es_victima_clock_modificado_um(t_frame* registro) {
+	return registro->presencia == 1 && registro->uso == 0 && registro->modificado == 0;
 }
 
-int es_victima_clock_modificado_um(t_registro_segundo_nivel* registro) {
-	return registro->presencia == 1 && registro->usado == 0 && registro->modificado == 0;
+uint es_victima_clock_modificado_u(t_frame* registro) {
+	return registro->presencia == 1 && registro->uso == 0 && registro->modificado == 1;
 }
 
-int es_victima_clock_modificado_u(t_registro_segundo_nivel* registro) {
-	return registro->presencia == 1 && registro->usado == 0 && registro->modificado == 1;
+void actualizar_registros(t_registro_segundo_nivel* registro, t_registro_segundo_nivel* registro_victima, uint32_t numero_frame) {
+	// Limpieza de registro victima
+	registro_victima->presencia = 0;
+	registro_victima->uso = 0;
+	if (registro_victima->modificado == 1) {
+		// Actualizar pagina en swap
+		registro_victima->modificado = 0;
+	}
+
+	// Carga de pagina solicitada
+	// Le asigno el frame que fue desocupado y elegido como victima
+	registro->frame = numero_frame;
+	registro->uso = 1;
+	registro->presencia = 1;
 }
 
-void cargar_pagina(uint32_t frame_asignado) {
+int es_lista_circular_del_proceso(size_t pid, t_lista_circular* lista_circular) {
+	return lista_circular->pid == pid;
+}
 
+t_lista_circular* obtener_lista_circular_del_proceso(size_t pid) {
+	bool _es_lista_circular_del_proceso(void* elemento) {
+		return es_lista_circular_del_proceso(pid, (t_lista_circular*) elemento);
+	}
+	return list_find(lista_frames_procesos, _es_lista_circular_del_proceso);
+}
+
+t_registro_segundo_nivel* obtener_registro_segundo_nivel(uint32_t nro_tabla_primer_nivel, uint32_t numero_pagina) {
+	t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
+	double indice_primer_nivel_aux = (double) numero_pagina / (double) entradas_por_tabla;
+	int indice_primer_nivel = floor(indice_primer_nivel_aux);
+	t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel, indice_primer_nivel);
+	t_list* tabla_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+	uint32_t indice_tabla_segundo_nivel = (numero_pagina % entradas_por_tabla);
+	return list_get(tabla_segundo_nivel, indice_tabla_segundo_nivel);
+}
+
+/**************************************** FUNCIONES AUXILIARES LISTA CIRCULAR **********************************************/
+
+t_lista_circular* list_create_circular() {
+	t_lista_circular* lista = malloc(sizeof(t_lista_circular));;
+    lista->inicio = NULL;
+    lista->fin = NULL;
+    lista->tamanio = 0;
+    lista->puntero_algoritmo = NULL;
+    return lista;
+}
+
+void insertar_lista_circular_vacia(t_lista_circular* lista, t_frame* frame) {
+	t_frame_lista_circular* elemento_nuevo = malloc(sizeof(t_frame_lista_circular));
+	elemento_nuevo->info = frame;
+	elemento_nuevo->sgte = elemento_nuevo;
+	lista->inicio = elemento_nuevo;
+	lista->inicio->sgte = elemento_nuevo;
+	lista->fin = elemento_nuevo;
+	lista->tamanio++;
+	lista->puntero_algoritmo = elemento_nuevo;
+	return;
+}
+
+void insertar_lista_circular(t_lista_circular* lista, t_frame* frame) {
+	if (lista->tamanio == 0) {
+		insertar_lista_circular_vacia(lista, frame);
+	}
+	t_frame_lista_circular* elemento_nuevo = malloc(sizeof(t_frame_lista_circular));
+	elemento_nuevo->info = frame;
+	elemento_nuevo->sgte = lista->inicio;
+	lista->fin->sgte = elemento_nuevo;
+	lista->fin = elemento_nuevo;
+	lista->tamanio++;
+	return;
 }

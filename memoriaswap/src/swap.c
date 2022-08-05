@@ -110,10 +110,10 @@ void mostrar_contenido_archivo_swap(size_t id_proceso) {
         void* lectura = malloc(sb.st_size);
         read(archivo_swap, lectura, sb.st_size );
         printf(YEL"\n\nEL CONTENIDO DEL ARCHIVO POST SWAPEO\n\n"RESET);
-        for(int i=0; i< sb.st_size / sizeof (uint32_t); i++) {
+      /*  for(int i=0; i< sb.st_size / sizeof (uint32_t); i++) {
             uint32_t* apuntado=  lectura+ sizeof(uint32_t) *i;
             printf("\nvalor apuntado en posición del arhivo actualizado%d-->%d\n",i, *apuntado);
-        }
+        }*/
     }
 }
 
