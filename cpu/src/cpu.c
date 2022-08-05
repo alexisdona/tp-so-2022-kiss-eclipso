@@ -18,6 +18,8 @@ int puerto_memoria;
 int tiempo_bloqueo;
 int hay_interrupcion;
 pthread_t hilo_dispatch, hilo_interrupt;
+pthread_mutex_t mutex_flag_interrupt;
+pthread_mutex_t mutex_socket_interrupt;
 
 int main(void) {
 
@@ -43,6 +45,9 @@ int main(void) {
 
     handshake_memoria(conexionMemoria);
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
+
+    pthread_mutex_init(&mutex_flag_interrupt,NULL);
+    pthread_mutex_init(&mutex_socket_interrupt,NULL);
 
     crear_hilos_cpu();
     pthread_join(hilo_dispatch,NULL);
@@ -77,7 +82,9 @@ void comenzar_ciclo_instruccion(){
 			operador = fase_fetch_operand(instruccion->parametros[1]);
 		}
 		proceso_respuesta = fase_execute(instruccion, operador);
+		pthread_mutex_lock(&mutex_flag_interrupt);
 		proceso_respuesta = chequear_interrupcion(proceso_respuesta);
+		pthread_mutex_unlock(&mutex_flag_interrupt);
 	}
 
 }
@@ -178,7 +185,6 @@ op_code chequear_interrupcion(op_code proceso_respuesta){
 		atender_interrupcion();
 		return DESALOJAR_PROCESO;
 	}else{
-		printf("INTERRUPCION: %d\n",hay_interrupcion);
 		return proceso_respuesta;
 	}
 }
@@ -395,22 +401,33 @@ void procesar_conexion_interrupt(void* void_args) {
         log_info(logger,string_from_format("CLIENTE_INTERRUPT: [%d]", cliente_interrupt));
         free(attrs);
         while (cliente_interrupt != -1) {
+        	printf("ESPERANDO PARA RECIBIR OPERACION\n");
+        	pthread_mutex_lock(&mutex_socket_interrupt);
             op_code cod_op = recibirOperacion(cliente_interrupt);
+            pthread_mutex_unlock(&mutex_socket_interrupt);
+            printf("OPERACION RECIBIDA: %d	CLIENTE: %d\n",cod_op,cliente_interrupt);
             log_info(logger,string_from_format("OPERACION INTERRUPT: [%d]",cod_op));
             switch (cod_op) {
                 case MENSAJE:
                     recibirMensaje(cliente_interrupt, logger);
                     break;
                 case INTERRUPCION:
+                	;
+                	void* buffer = recibirBuffer(cliente_interrupt);
+                	free(buffer);
                     log_info(logger, "INTERRUPCION RECIBIDA");
+                    pthread_mutex_lock(&mutex_flag_interrupt);
                     hay_interrupcion = 1;
+                    pthread_mutex_unlock(&mutex_flag_interrupt);
                     break;
-                default: ;
+                default:
+                	log_warning(logger,"OJO AL PIOJO");
             }
             if(cod_op == -1) {
             	log_error(logger,"CODIGO OPERACION INTERRUPT -1");
             	break;
             }
+            printf("CLIENTE: %d\n",cliente_interrupt);
         }
     }
 }
@@ -438,7 +455,9 @@ void procesar_conexion_dispatch(void* void_args) {
                     pcb = recibirPCB(cliente_dispatch);
                     logear_PCB(logger, pcb, "RECIBIDO PARA EJECUTAR");
                     list_clean(tlb);
+                    pthread_mutex_lock(&mutex_flag_interrupt);
                     hay_interrupcion = 0;
+                    pthread_mutex_unlock(&mutex_flag_interrupt);
                     comenzar_ciclo_instruccion();
                     break;
                 default: ;

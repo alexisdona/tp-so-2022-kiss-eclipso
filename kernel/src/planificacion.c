@@ -318,6 +318,7 @@ bool hay_proceso_ejecutando(){
 void enviar_interrupcion(int socket, op_code cod_op) {
     t_paquete* paquete = crearPaquete();
     paquete->codigo_operacion = cod_op;
+    //agregarEntero(paquete,cod_op);
     enviarPaquete(paquete, socket);
     eliminarPaquete(paquete);
 }
