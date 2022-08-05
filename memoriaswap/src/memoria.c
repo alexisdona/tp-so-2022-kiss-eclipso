@@ -212,8 +212,6 @@ void procesar_conexion(void* void_args) {
                         } else {
                             log_info(logger, string_from_format("Ejecutanto %s para reemplazo de página", algoritmo_reemplazo));
                             marco = sustitucion_paginas(nro_tabla_primer_nivel_obtener_marco, numero_pag, id_proceso_marco);
-                            registro_segundo_nivel->presencia = 1;
-                            registro_segundo_nivel->frame = marco;
                             pthread_mutex_unlock(&mutex_escritura);
                         }
                         pthread_mutex_lock(&mutex_escritura);
@@ -680,11 +678,12 @@ void insertar_lista_circular(t_lista_circular* lista, t_frame* frame) {
 	if (lista->tamanio == 0) {
 		insertar_lista_circular_vacia(lista, frame);
 	}
-	t_frame_lista_circular* elemento_nuevo = malloc(sizeof(t_frame_lista_circular));
-	elemento_nuevo->info = frame;
-	elemento_nuevo->sgte = lista->inicio;
-	lista->fin->sgte = elemento_nuevo;
-	lista->fin = elemento_nuevo;
-	lista->tamanio++;
-	return;
+	else {
+        t_frame_lista_circular *elemento_nuevo = malloc(sizeof(t_frame_lista_circular));
+        elemento_nuevo->info = frame;
+        elemento_nuevo->sgte = lista->inicio;
+        lista->fin->sgte = elemento_nuevo;
+        lista->fin = elemento_nuevo;
+        lista->tamanio++;
+    }
 }
