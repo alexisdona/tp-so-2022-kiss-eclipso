@@ -21,7 +21,17 @@ pthread_t hilo_dispatch, hilo_interrupt;
 pthread_mutex_t mutex_flag_interrupt;
 pthread_mutex_t mutex_socket_interrupt;
 
-int main(void) {
+int main(int argc, char* argv[]) {
+
+	if(argc<2){
+		printf(RED"");
+		printf("Cantidad de parametros incorrectos.\n");
+		printf("1- Ruta del archivo de configuracion\n");
+		printf(RESET"");
+		return argc;
+	}
+
+	CONFIG_FILE = argv[1];
 
 	logger = iniciarLogger(LOG_FILE,"CPU");
 	config = iniciarConfig(CONFIG_FILE);

@@ -13,22 +13,12 @@
 #include<commons/bitarray.h>
 #include<math.h>
 
-
-/* Para imprimir con colores re loco */
-#define RED   "\x1B[31m"
-#define GRN   "\x1B[32m"
-#define YEL   "\x1B[33m"
-#define BLU   "\x1B[34m"
-#define MAG   "\x1B[35m"
-#define CYN   "\x1B[36m"
-#define WHT   "\x1B[37m"
-#define RESET "\x1B[0m"
-
-
 #define LOG_NAME "MEMORIA_LOG"
 #define LOG_FILE "memoria.log"
-#define CONFIG_FILE "../memoriaswap/src/config/memoria.config"
+//#define CONFIG_FILE "../src/config/memoria.config"
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+
+char* CONFIG_FILE;
 
 typedef struct {
    uint32_t indice;

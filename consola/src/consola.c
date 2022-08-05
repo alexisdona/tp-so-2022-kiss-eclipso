@@ -8,11 +8,16 @@ t_log* logger;
 
 int main(int argc, char* argv[]) {
 
-  if(argc < 3){
-		printf("Cantidad de parametros incorrectos. Debe informar 2 parametros.\n");
-		printf("1- Ruta al archivo con instrucciones a ejecutar.\n2- Tamaño del proceso\n");
+	if(argc < 4){
+		printf(RED"");
+		printf("Cantidad de parametros incorrectos.\n");
+		printf("1- Ruta al archivo con instrucciones a ejecutar.\n2- Tamaño del proceso\n3- Ruta del archivo de configuracion\n");
+		printf(RESET"");
 		return argc;
 	}
+
+	CONFIG_FILE = argv[3];
+
     logger = iniciarLogger(LOG_FILE, LOG_NAME);
     config = iniciarConfig(CONFIG_FILE);
     char* ip = config_get_string_value(config,"IP_KERNEL");

@@ -11,12 +11,22 @@ void sighandler(int s) {
     exit(0);
 }
 
-int main() {
+int main(int argc, char* argv[]){
+
+	if(argc<2){
+		printf(RED"");
+		printf("Cantidad de parametros incorrectos.\n");
+		printf("1- Ruta del archivo de configuracion\n");
+		printf(RESET"");
+		return argc;
+	}
 
 	signal(SIGINT, sighandler);
     if (inicializarMutex() != 0){
         return EXIT_FAILURE;
     }
+
+    CONFIG_FILE = argv[1];
 
     logger = iniciarLogger("kernel.log", "KERNEL");
     config = iniciarConfig(CONFIG_FILE);

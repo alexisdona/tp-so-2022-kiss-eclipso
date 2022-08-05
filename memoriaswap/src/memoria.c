@@ -28,7 +28,17 @@ void iniciar_config();
 
 void inicializar_mutex_memoria();
 
-int main(void) {
+int main(int argc, char* argv[]){
+
+	if(argc<2){
+		printf(RED"");
+		printf("Cantidad de parametros incorrectos.\n");
+		printf("1- Ruta del archivo de configuracion\n");
+		printf(RESET"");
+		return argc;
+	}
+
+	CONFIG_FILE = argv[1];
 
     inicializar_mutex_swap();
     inicializar_mutex_memoria();
