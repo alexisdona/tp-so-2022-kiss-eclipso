@@ -47,7 +47,7 @@ void limpiar_tlb();
 void handshake_memoria(int);
 dir_fisica* obtener_direccion_fisica(uint32_t);
 uint32_t obtener_tabla_segundo_nivel(size_t, uint32_t);
-uint32_t obtener_marco_memoria(uint32_t, uint32_t, uint32_t);
+uint32_t obtener_marco_memoria(uint32_t, uint32_t, uint32_t, uint32_t);
 uint32_t leer_en_memoria(dir_fisica *);
 void escribir_en_memoria(dir_fisica *, uint32_t);
 static bool comparator (void*, void*);
