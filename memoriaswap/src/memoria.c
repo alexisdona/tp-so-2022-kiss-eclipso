@@ -153,6 +153,7 @@ void procesar_conexion(void* void_args) {
                     uint32_t entrada_tabla_segundo_nivel;
                     uint32_t numero_pag;
                     uint32_t nro_tabla_segundo_nivel_obtener_marco;
+                    uint32_t nro_tabla_primer_nivel_obtener_marco;
                     int despl = 0;
                     uint32_t marco;
                     memcpy(&id_proceso_marco, buffer_marco+despl, sizeof(size_t));
@@ -162,6 +163,8 @@ void procesar_conexion(void* void_args) {
                     memcpy(&entrada_tabla_segundo_nivel, buffer_marco+despl, sizeof(uint32_t));
                     despl+= sizeof(uint32_t);
                     memcpy(&numero_pag, buffer_marco+despl, sizeof(uint32_t));
+                    despl+= sizeof(uint32_t);
+                    memcpy(&nro_tabla_segundo_nivel_obtener_marco, buffer_marco+despl, sizeof(uint32_t));
 
                     t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel_obtener_marco), entrada_tabla_segundo_nivel);
 
@@ -183,7 +186,7 @@ void procesar_conexion(void* void_args) {
                             marco = registro_segundo_nivel->frame;
 
                         } else {
-                                //marco =  obtener_marco_algoritmo_reemplazo;
+                            marco = sustitucion_paginas(nro_tabla_primer_nivel_obtener_marco, numero_pag, id_proceso_marco);
                             registro_segundo_nivel->presencia = 1;
                             registro_segundo_nivel->frame = marco;
                         }
