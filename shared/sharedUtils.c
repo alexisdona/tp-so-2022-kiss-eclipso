@@ -369,7 +369,7 @@ void enviar_entero(int cliente_fd, uint32_t valor, op_code opCode) {
 
 void logear_PCB(t_log* logger,t_pcb* pcb, char* enviado_recibido){
 	printf(MAG);
-	log_info(logger,string_from_format("%-30s: PID[%d] PC[%d] TAM[%d]",enviado_recibido,pcb->idProceso,pcb->programCounter,pcb->tamanioProceso));
+	log_info(logger,string_from_format("%-25s: PID[%d] PC[%d] TAM[%d]",enviado_recibido,pcb->idProceso,pcb->programCounter,pcb->tamanioProceso));
 	printf(RESET);
 }
 
