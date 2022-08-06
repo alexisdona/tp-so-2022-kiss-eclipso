@@ -191,7 +191,8 @@ void procesar_conexion(void* void_args) {
                     enviar_entero(cliente_fd, nro_tabla_segundo_nivel, OBTENER_ENTRADA_SEGUNDO_NIVEL);
                     break;
                 case OBTENER_MARCO:
-                    ;
+                	printf(GRN"\n");
+                	log_info(logger,"# OBTENIENDO MARCO #");
                     uint32_t cantidad_marcos_ocupados_proceso=0;
                     usleep(retardo_memoria*1000);
                     void* buffer_marco = recibirBuffer(cliente_fd);
@@ -254,7 +255,11 @@ void procesar_conexion(void* void_args) {
                         memcpy(espacio_usuario_memoria + marco * tamanio_pagina, bloque, tamanio_pagina);
                         pthread_mutex_unlock(&mutex_escritura);
                     }
-
+                	printf(GRN"\n");
+                	log_info(logger,"# ENVIANDO MARCO #");
+                	printf(WHT"\n");
+                	log_info(logger,string_from_format("#MARCO [%d]"));
+                	print(RESET"");
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
                     break;
                 case SWAPEAR_PROCESO:
@@ -445,8 +450,10 @@ void actualizar_bit_modificado_tabla_paginas(size_t nro_tabla_primer_nivel_escri
 
     int nro_pagina_aux = 0;
     for(int i=0; i<tabla_primer_nivel->elements_count; i++){
+    	printf("Tabla 1er Nivel: %d\n indice %d",tabla_primer_nivel->elements_count,i);
 
         t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        printf("Registro 1er Nivel: %d %d\n",registro_primer_nivel->indice,registro_primer_nivel->nro_tabla_segundo_nivel);
         pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
         t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
         pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);

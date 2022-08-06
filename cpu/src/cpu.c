@@ -164,7 +164,7 @@ op_code operacion_READ(operando dirLogica){
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
 	if(dir_fisica!=NULL){
 		uint32_t valor = leer_en_memoria(dir_fisica);
-		log_info(logger, string_from_format("El valor leido de memoria es %d", valor));
+		log_info(logger, string_from_format("El valor leido de la dirección lógica %d memoria es %d", dirLogica, valor));
 		return CONTINUA_PROCESO;
 	}else{
 		return matar_proceso();
@@ -219,6 +219,7 @@ op_code chequear_interrupcion(op_code proceso_respuesta){
 dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
 
     if (direccion_logica < pcb->tamanioProceso) {
+
         uint32_t numero_pagina = floor(direccion_logica / tamanio_pagina);
         uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
         uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
@@ -228,22 +229,35 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         marco = tlb_obtener_marco(numero_pagina);
         if (marco == -1 ) {
          //TLB_MISS
+            log_info(logger, string_from_format(YEL"TLB MISS proceso %zu numero de página %d"RESET,pcb->idProceso, numero_pagina));
             uint32_t tabla_segundo_nivel;
             tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel); //1er acceso
             marco = obtener_marco_memoria(pcb->tablaPaginas, tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina); //2do acceso
             tlb_actualizar(numero_pagina, marco);
+        }
+        else {
+            //TLB HIT
+            log_info(logger, string_from_format(GRN"TLB HIT para tbl en proceso %zu, numero de página %d y marco %d"RESET,pcb->idProceso, numero_pagina, marco));
+
         }
         dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
         direccion_fisica->numero_pagina = numero_pagina;
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
         direccion_fisica->indice_tabla_primer_nivel = pcb->tablaPaginas;
+        logear_direccion_fisica(direccion_fisica);
         return direccion_fisica;
     }
     else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
         return NULL;
     }
+}
+
+void logear_direccion_fisica(dir_fisica* direccion){
+	printf(BLU"");
+	log_info(logger,string_from_format("#PAG [%d] #MARCO [%d] #OFFSET [%d] #Indice 1erNivel [%d]",direccion->numero_pagina,direccion->marco,direccion->desplazamiento,direccion->indice_tabla_primer_nivel));
+	printf(RESET"");
 }
 
 uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabla_1er_nivel) {
@@ -269,7 +283,7 @@ uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabl
 }
 
 uint32_t obtener_marco_memoria(uint32_t entrada_tabla_1er_nivel, uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel, uint32_t numero_pagina) {
-    t_paquete * paquete = crearPaquete();
+	t_paquete * paquete = crearPaquete();
     paquete->codigo_operacion = OBTENER_MARCO;
     agregarEntero(paquete, pcb->idProceso);
     agregarEntero4bytes(paquete, nro_tabla_segundo_nivel);
@@ -282,14 +296,17 @@ uint32_t obtener_marco_memoria(uint32_t entrada_tabla_1er_nivel, uint32_t nro_ta
 
     int obtuve_marco = 0;
     while (conexionMemoria != -1 && obtuve_marco == 0) {
-        op_code cod_op = recibirOperacion(conexionMemoria);
-         if(cod_op == OBTENER_MARCO){                ;
+    	op_code cod_op = recibirOperacion(conexionMemoria);
+        printf("op: %d\n",cod_op);
+    	if(cod_op == OBTENER_MARCO){                ;
 			void* buffer = recibirBuffer(conexionMemoria);
 			memcpy(&marco, buffer, sizeof(uint32_t));
 			printf("\nmarco de memoria: %d\n", marco);
 			obtuve_marco = 1;
         }
+    	if(cod_op == -1) break;
     }
+    printf("FIN MARCO MEMORIA \n");
     return marco;
 }
 ////--------------------------------------------------------TLB------------------------------------------------------------------
@@ -337,11 +354,13 @@ void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
     //si ahora es otra pagina la que referencia al marco porque se reemplazo por el otro
     actualizar_entrada_marco_existente(numero_pagina, marco);
 	if(list_size(tlb) >= entradas_max_tlb){
+	    log_info(logger, string_from_format(GRN"Ejecutando algoritmo de reemplazo %s para entrada en la tlb para proceso %zu, numero de pagina %d y marco %d"RESET,algoritmo_reemplazo_tlb, pcb->idProceso, numero_pagina, marco));
 	        reemplazar_entrada_tlb(tlb_entrada);
         }
 	else
 	{
-		list_add(tlb, tlb_entrada);
+        log_info(logger, string_from_format(GRN"Agregando entrada en la tlb para proceso %zu, numero de pagina %d y marco %d"RESET, pcb->idProceso, numero_pagina, marco));
+        list_add(tlb, tlb_entrada);
 	}
 }
 

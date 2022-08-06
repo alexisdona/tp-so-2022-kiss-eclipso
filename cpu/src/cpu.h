@@ -61,5 +61,6 @@ op_code chequear_interrupcion(op_code proceso_respuesta);
 void levantar_configs();
 void actualizar_entrada_marco_existente(uint32_t , uint32_t);
 op_code matar_proceso();
+void logear_direccion_fisica(dir_fisica*);
 
 #endif /* SRC_CPU_H_ */
