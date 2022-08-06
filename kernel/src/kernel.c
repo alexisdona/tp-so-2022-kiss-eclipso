@@ -149,7 +149,7 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso, int so
     pcb->idProceso = process_get_thread_id();
     pcb->tamanioProceso = tamanioProceso;
     pcb->listaInstrucciones = listaInstrucciones;
-    pcb->programCounter= instruccion->codigo_operacion;
+    pcb->programCounter= 0;
     pcb->estimacionRafaga = estimacionInicial; 
     pcb->consola_fd = socketConsola;
     pcb->kernel_fd = kernel_fd;
