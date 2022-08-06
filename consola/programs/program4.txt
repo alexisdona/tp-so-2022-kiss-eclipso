@@ -1,4 +1,0 @@
-NO_OP 2
-WRITE 4 45500
-EXIT
-

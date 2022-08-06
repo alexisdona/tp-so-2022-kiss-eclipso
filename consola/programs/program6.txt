@@ -1,4 +1,0 @@
-NO_OP 2
-I/O 5000
-NO_OP 4
-EXIT
