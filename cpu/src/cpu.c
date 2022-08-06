@@ -15,7 +15,6 @@ char* algoritmo_reemplazo_tlb;
 uint32_t entradas_max_tlb;
 char* ip, *ip_memoria, *puerto_dispatch, *puerto_interrupt;
 int puerto_memoria;
-int tiempo_bloqueo;
 int hay_interrupcion;
 pthread_t hilo_dispatch, hilo_interrupt;
 pthread_mutex_t mutex_flag_interrupt;
@@ -73,7 +72,6 @@ void levantar_configs() {
     puerto_dispatch = config_get_string_value(config,"PUERTO_ESCUCHA_DISPATCH");
     puerto_interrupt = config_get_string_value(config,"PUERTO_ESCUCHA_INTERRUPT");
     retardo_noop = config_get_int_value(config,"RETARDO_NOOP");
-    tiempo_bloqueo = config_get_int_value(config,"TIEMPO_MAXIMO_BLOQUEADO");
     algoritmo_reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
     entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
 }
@@ -121,7 +119,6 @@ op_code fase_execute(t_instruccion* instruccion, uint32_t operador){
 			break;
 		case IO:
 			proceso_respuesta = operacion_IO(instruccion->parametros[0]);
-			printf("BLOQUEAR: %d\n",proceso_respuesta);
 			break;
 		case READ:
 			proceso_respuesta = operacion_READ(instruccion->parametros[0]);
