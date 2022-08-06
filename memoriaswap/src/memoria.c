@@ -259,7 +259,7 @@ void procesar_conexion(void* void_args) {
                 	log_info(logger,"# ENVIANDO MARCO #");
                 	printf(WHT"\n");
                 	log_info(logger,string_from_format("#MARCO [%d]"));
-                	print(RESET"");
+                	printf(RESET"");
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
                     break;
                 case SWAPEAR_PROCESO:
@@ -427,13 +427,13 @@ uint32_t obtener_cantidad_marcos_ocupados(size_t nro_tabla_primer_nivel) {
     pthread_mutex_lock(&mutex_lista_tablas_primer_nivel);
     t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
     pthread_mutex_unlock(&mutex_lista_tablas_primer_nivel);
-    for(int i=0; i<entradas_por_tabla; i++){
+    for(int i=0; i<tabla_primer_nivel->elements_count; i++){
         t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
         pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
         t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
         pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
 
-        for(int j=0; j<entradas_por_tabla; j++){
+        for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
             t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
             if(registro_segundo_nivel->presencia == 1) {
                 cantidad_marcos_ocupados+=1;
