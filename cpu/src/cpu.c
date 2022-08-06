@@ -42,15 +42,16 @@ int main(int argc, char* argv[]) {
 	entradas_max_tlb = config_get_int_value(config, "ENTRADAS_TLB");
 
     cpu_dispatch = iniciarServidor(ip, puerto_dispatch, logger);
-    log_info(logger,string_from_format("CPU-DISPATCH: \t[%d]\tPUERTO: [%s]\tIP: [%s]",cpu_dispatch,puerto_dispatch,ip));
+	printf(CYN"");
+    log_info(logger,string_from_format("CPU-DISPATCH:      [%d] PUERTO: [%s] IP: [%s]",cpu_dispatch,puerto_dispatch,ip));
 
     cpu_interrupt = iniciarServidor(ip, puerto_interrupt, logger);
-    log_info(logger,string_from_format("CPU-INT: \t[%d]\tPUERTO: [%s]\tIP: [%s]", cpu_interrupt,puerto_interrupt,ip));
-
-    log_info(logger, "CPU listo para recibir un kernel");
+    printf(CYN"");
+    log_info(logger,string_from_format("CPU-INT:           [%d] PUERTO: [%s] IP: [%s]", cpu_interrupt,puerto_interrupt,ip));
 
     conexionMemoria = crearConexion(ip_memoria, puerto_memoria, "Memoria");
-    log_info(logger,string_from_format("MEMORIA: \t[%d]\tPUERTO: [%d]\tIP: [%s]", conexionMemoria,puerto_memoria,ip_memoria));
+    printf(CYN"");
+    log_info(logger,string_from_format("MEMORIA:           [%d] PUERTO: [%d] IP: [%s]", conexionMemoria,puerto_memoria,ip_memoria));
 
     handshake_memoria(conexionMemoria);
     enviarMensaje("Hola MEMORIA soy el CPU", conexionMemoria);
@@ -307,7 +308,7 @@ uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
 }
 
 void reemplazar_entrada_tlb(tlb_entrada* entrada) {
-    if (string_equals_ignore_case(algoritmo_reemplazo_tlb, "FIFO")==0){
+    if (strcmp(algoritmo_reemplazo_tlb, "FIFO") ==0){
         list_remove(tlb, 0);
         list_add(tlb, entrada);
     }
@@ -418,20 +419,19 @@ void crear_hilo_interrupt() {
 }
 
 void procesar_conexion_interrupt(void* void_args) {
-    printf("Hilo interrupt\n");
     t_procesar_conexion_attrs *attrs = (t_procesar_conexion_attrs *) void_args;
     t_log *logger = attrs->log;
     while(1) {
         cliente_interrupt = esperarCliente(cpu_interrupt, logger);
+        printf(CYN"");
         log_info(logger,string_from_format("CLIENTE_INTERRUPT: [%d]", cliente_interrupt));
         free(attrs);
         while (cliente_interrupt != -1) {
-        	printf("ESPERANDO PARA RECIBIR OPERACION\n");
         	pthread_mutex_lock(&mutex_socket_interrupt);
             op_code cod_op = recibirOperacion(cliente_interrupt);
             pthread_mutex_unlock(&mutex_socket_interrupt);
-            printf("OPERACION RECIBIDA: %d	CLIENTE: %d\n",cod_op,cliente_interrupt);
-            log_info(logger,string_from_format("OPERACION INTERRUPT: [%d]",cod_op));
+            //printf(MAG"");
+            //log_info(logger,string_from_format("OPERACION INTERRUPT: [%d]",cod_op));
             switch (cod_op) {
                 case MENSAJE:
                     recibirMensaje(cliente_interrupt, logger);
@@ -440,42 +440,43 @@ void procesar_conexion_interrupt(void* void_args) {
                 	;
                 	void* buffer = recibirBuffer(cliente_interrupt);
                 	free(buffer);
+                	printf(GRN"\n");
                     log_info(logger, "INTERRUPCION RECIBIDA");
                     pthread_mutex_lock(&mutex_flag_interrupt);
                     hay_interrupcion = 1;
                     pthread_mutex_unlock(&mutex_flag_interrupt);
                     break;
                 default:
-                	log_warning(logger,"OJO AL PIOJO");
+                	log_warning(logger,"CODIGO DE OPERACION DESCONOCIDO");
             }
             if(cod_op == -1) {
             	log_error(logger,"CODIGO OPERACION INTERRUPT -1");
             	break;
             }
-            printf("CLIENTE: %d\n",cliente_interrupt);
         }
     }
 }
 
 
 void procesar_conexion_dispatch(void* void_args) {
-    printf("Hilo dispatch\n");
     t_procesar_conexion_attrs* attrs = (t_procesar_conexion_attrs*) void_args;
     t_log* logger = attrs->log;
     while(1) {
         cliente_dispatch = esperarCliente(cpu_dispatch, logger);
-        log_info(logger,string_from_format("CLIENTE_DISPATCH: [%d]", cliente_dispatch));
+        printf(CYN"");
+        log_info(logger,string_from_format("CLIENTE_DISPATCH:  [%d]", cliente_dispatch));
         free(attrs);
 
         while (cliente_dispatch != -1) {
             op_code cod_op = recibirOperacion(cliente_dispatch);
-            log_info(logger,string_from_format("OPERACION DISPATCH: [%d]",cod_op));
+            //printf(YEL"");
+            //log_info(logger,string_from_format("OPERACION DISPATCH: [%d]",cod_op));
             switch (cod_op) {
                 case MENSAJE:
                     recibirMensaje(cliente_dispatch, logger);
                     break;
                 case PCB:
-                    printf("\n");
+                	printf(GRN"\n");
                     log_info(logger, "RECIBI PCB");
                     pcb = recibirPCB(cliente_dispatch);
                     logear_PCB(logger, pcb, "RECIBIDO PARA EJECUTAR");

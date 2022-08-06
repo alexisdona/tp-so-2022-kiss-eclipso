@@ -21,6 +21,11 @@ t_bitarray	* frames_disponibles;
 void* bloque_frames_lilbres;
 char* algoritmo_reemplazo;
 t_list* lista_frames_procesos;
+pthread_mutex_t mutex_lista_tablas_primer_nivel;
+pthread_mutex_t mutex_lista_tablas_segundo_nivel;
+pthread_mutex_t mutex_lista_registros_primer_nivel;
+pthread_mutex_t mutex_lista_registros_segundo_nivel;
+
 
 void crear_espacio_usuario();
 
@@ -65,6 +70,19 @@ void inicializar_mutex_memoria() {
     if(pthread_mutex_init(&mutex_escritura, NULL) != 0) {
         perror("Mutex swap falló: ");
     }
+    if(pthread_mutex_init(&mutex_lista_tablas_primer_nivel, NULL) != 0) {
+        perror("Mutex lista tablas primer nivel falló: ");
+    }
+    if(pthread_mutex_init(&mutex_lista_tablas_segundo_nivel, NULL) != 0) {
+        perror("Mutex lista tablas segundo nivel falló: ");
+    }
+    if(pthread_mutex_init(&mutex_lista_registros_primer_nivel, NULL) != 0) {
+        perror("mutex lista registros primer nivel fallo: ");
+    }
+    if(pthread_mutex_init(&mutex_lista_registros_segundo_nivel, NULL) != 0) {
+        perror("Mutex lita registros segundo nivel falló: ");
+    }
+
 }
 
 void iniciar_config() {
@@ -154,6 +172,7 @@ void procesar_conexion(void* void_args) {
                     usleep(retardo_memoria*1000);
                     t_pcb* pcb_kernel = recibirPCB(cliente_fd);
                     crear_archivo_swap(pcb_kernel->idProceso, pcb_kernel->tamanioProceso);
+                //    imprimir_valores_paginacion_proceso(pcb_kernel->tablaPaginas);
                     pcb_kernel->tablaPaginas = crear_estructuras_administrativas_proceso(pcb_kernel->tamanioProceso) - 1;
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
                     break;
@@ -165,17 +184,20 @@ void procesar_conexion(void* void_args) {
                     uint32_t entrada_tabla_primer_nivel;
                     memcpy(&nro_tabla_primer_nivel, buffer_tabla_segundo_nivel, sizeof(size_t));
                     memcpy(&entrada_tabla_primer_nivel, buffer_tabla_segundo_nivel + sizeof(size_t), sizeof(uint32_t));
+                    pthread_mutex_lock(&mutex_lista_tablas_primer_nivel);
                     t_registro_primer_nivel* registro_primer_nivel = (list_get(list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel), entrada_tabla_primer_nivel)) ;
+                    pthread_mutex_unlock(&mutex_lista_tablas_primer_nivel);
                     uint32_t nro_tabla_segundo_nivel = registro_primer_nivel->nro_tabla_segundo_nivel;
                     enviar_entero(cliente_fd, nro_tabla_segundo_nivel, OBTENER_ENTRADA_SEGUNDO_NIVEL);
                     break;
                 case OBTENER_MARCO:
                     ;
+                    uint32_t cantidad_marcos_ocupados_proceso=0;
                     usleep(retardo_memoria*1000);
                     void* buffer_marco = recibirBuffer(cliente_fd);
                     size_t id_proceso_marco;
                     uint32_t entrada_tabla_segundo_nivel;
-                    uint32_t numero_pag;
+                    uint32_t numero_pag_obtener_marco;
                     uint32_t nro_tabla_segundo_nivel_obtener_marco;
                     uint32_t nro_tabla_primer_nivel_obtener_marco;
                     int despl = 0;
@@ -186,20 +208,21 @@ void procesar_conexion(void* void_args) {
                     despl+= sizeof(uint32_t);
                     memcpy(&entrada_tabla_segundo_nivel, buffer_marco+despl, sizeof(uint32_t));
                     despl+= sizeof(uint32_t);
-                    memcpy(&numero_pag, buffer_marco+despl, sizeof(uint32_t));
+                    memcpy(&numero_pag_obtener_marco, buffer_marco + despl, sizeof(uint32_t));
                     despl+= sizeof(uint32_t);
                     memcpy(&nro_tabla_primer_nivel_obtener_marco, buffer_marco+despl, sizeof(uint32_t));
-
+                    pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
                     t_registro_segundo_nivel* registro_segundo_nivel = list_get(list_get(lista_tablas_segundo_nivel, nro_tabla_segundo_nivel_obtener_marco), entrada_tabla_segundo_nivel);
+                    pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
 
                     if(registro_segundo_nivel->presencia) {
                         marco = registro_segundo_nivel->frame;
                     }
                     else {
-                        void *bloque = obtener_bloque_proceso_desde_swap(id_proceso_marco, numero_pag);
+                        void *bloque = obtener_bloque_proceso_desde_swap(id_proceso_marco, numero_pag_obtener_marco);
 
                         // primero validar que el proceso tenga marcos disponibles
-                        uint32_t cantidad_marcos_ocupados_proceso = obtener_cantidad_marcos_ocupados(nro_tabla_primer_nivel_obtener_marco);
+                        cantidad_marcos_ocupados_proceso = obtener_cantidad_marcos_ocupados(nro_tabla_primer_nivel_obtener_marco);
                         if (cantidad_marcos_ocupados_proceso < marcos_por_proceso) {
                             if(cantidad_marcos_ocupados_proceso == 0) {
                                 t_lista_circular* lista = list_create_circular();
@@ -213,16 +236,18 @@ void procesar_conexion(void* void_args) {
                             marco = registro_segundo_nivel->frame;
                             t_frame* frame_auxiliar = malloc(sizeof(t_frame));
                             frame_auxiliar->numero_frame = nro_frame_libre;
-                            frame_auxiliar->numero_pagina = numero_pag;
+                            frame_auxiliar->numero_pagina = numero_pag_obtener_marco;
                             frame_auxiliar->uso = 1;
-                            frame_auxiliar->modificado = registro_segundo_nivel->modificado;
+                          //  frame_auxiliar->modificado = registro_segundo_nivel->modificado;
                             frame_auxiliar->presencia = 1;
                             t_lista_circular * lista_circular = obtener_lista_circular_del_proceso(id_proceso_marco);
                             insertar_lista_circular(lista_circular, frame_auxiliar);
 
                         } else {
                             log_info(logger, string_from_format("Ejecutanto %s para reemplazo de página", algoritmo_reemplazo));
-                            marco = sustitucion_paginas(nro_tabla_primer_nivel_obtener_marco, numero_pag, id_proceso_marco);
+                           printf(BLU"\n\nANTES DE ALGORITMO DE REEMPLAZO\n\n"RESET);
+                            imprimir_valores_paginacion_proceso(nro_tabla_primer_nivel_obtener_marco);
+                            marco = sustitucion_paginas(nro_tabla_primer_nivel_obtener_marco, numero_pag_obtener_marco, id_proceso_marco);
                             pthread_mutex_unlock(&mutex_escritura);
                         }
                         pthread_mutex_lock(&mutex_escritura);
@@ -292,8 +317,13 @@ size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso) {
     while(indice_segundo_nivel < cantidad_entradas_tabla_segundo_nivel) {
         registro_tabla_primer_nivel = malloc(sizeof(t_registro_primer_nivel));
         registro_tabla_primer_nivel->indice = indice_primer_nivel;
+        pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
         registro_tabla_primer_nivel->nro_tabla_segundo_nivel = list_size(lista_tablas_segundo_nivel);
+        pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
+
+        pthread_mutex_lock(&mutex_lista_registros_primer_nivel);
         list_add(lista_registros_primer_nivel, registro_tabla_primer_nivel);
+        pthread_mutex_unlock(&mutex_lista_registros_primer_nivel);
 
         for (int j=0; j<entradas_por_tabla; j++){
             registro_tabla_segundo_nivel = malloc(sizeof(t_registro_segundo_nivel));
@@ -303,14 +333,25 @@ size_t crear_estructuras_administrativas_proceso(size_t tamanio_proceso) {
             registro_tabla_segundo_nivel->uso=0;
             registro_tabla_segundo_nivel->presencia=0;
 
+            pthread_mutex_lock(&mutex_lista_registros_segundo_nivel);
             list_add(lista_registros_segundo_nivel, registro_tabla_segundo_nivel);
+            pthread_mutex_unlock(&mutex_lista_registros_segundo_nivel);
             indice_segundo_nivel++;
         }
         indice_primer_nivel++;
+        pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
         list_add(lista_tablas_segundo_nivel, list_duplicate(lista_registros_segundo_nivel));
+        pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
+
+        pthread_mutex_lock(&mutex_lista_registros_segundo_nivel);
         list_clean(lista_registros_segundo_nivel);
+        pthread_mutex_unlock(&mutex_lista_registros_segundo_nivel);
+
     }
-    list_add(lista_tablas_primer_nivel, lista_registros_primer_nivel);
+    pthread_mutex_lock(&mutex_lista_registros_primer_nivel);
+    list_add(lista_tablas_primer_nivel, list_duplicate(lista_registros_primer_nivel));
+    pthread_mutex_unlock(&mutex_lista_registros_primer_nivel);
+    list_clean(lista_registros_primer_nivel);
     return list_size(lista_tablas_primer_nivel);
 }
 
@@ -377,13 +418,16 @@ uint32_t obtener_numero_frame_libre() {
 
 uint32_t obtener_cantidad_marcos_ocupados(size_t nro_tabla_primer_nivel) {
     uint32_t cantidad_marcos_ocupados = 0;
+    pthread_mutex_lock(&mutex_lista_tablas_primer_nivel);
     t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
-
-    for(int i=0; i<tabla_primer_nivel->elements_count; i++){
+    pthread_mutex_unlock(&mutex_lista_tablas_primer_nivel);
+    for(int i=0; i<entradas_por_tabla; i++){
         t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
         t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+        pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
 
-        for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
+        for(int j=0; j<entradas_por_tabla; j++){
             t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
             if(registro_segundo_nivel->presencia == 1) {
                 cantidad_marcos_ocupados+=1;
@@ -394,12 +438,17 @@ uint32_t obtener_cantidad_marcos_ocupados(size_t nro_tabla_primer_nivel) {
 }
 
 void actualizar_bit_modificado_tabla_paginas(size_t nro_tabla_primer_nivel_escritura, uint32_t numero_pagina){
+    pthread_mutex_lock(&mutex_lista_tablas_primer_nivel);
     t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel_escritura);
+    pthread_mutex_unlock(&mutex_lista_tablas_primer_nivel);
+
     int nro_pagina_aux = 0;
     for(int i=0; i<tabla_primer_nivel->elements_count; i++){
 
         t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
         t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+        pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
 
         for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
             t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
@@ -419,7 +468,10 @@ void actualizar_bit_modificado_tabla_circular(uint32_t numero_pagina, size_t pid
 }
 
 void actualizar_bit_usado_tabla_paginas(size_t nro_tabla_primer_nivel, uint32_t numero_pagina) {
+    pthread_mutex_lock(&mutex_lista_tablas_primer_nivel);
     t_list *tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
+    pthread_mutex_unlock(&mutex_lista_tablas_primer_nivel);
+
     int nro_pagina_aux = 0;
     for (int i = 0; i < tabla_primer_nivel->elements_count; i++) {
 
@@ -438,8 +490,10 @@ void actualizar_bit_usado_tabla_paginas(size_t nro_tabla_primer_nivel, uint32_t 
 }
 
 void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t id_proceso) {
-
+    pthread_mutex_lock(&mutex_lista_tablas_primer_nivel);
     t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, tabla_pagina_primer_nivel_proceso);
+    pthread_mutex_unlock(&mutex_lista_tablas_primer_nivel);
+
     int numero_pagina=0;
     char* ruta = obtener_path_archivo(id_proceso);
     int archivo_swap = open(ruta, O_RDWR);
@@ -448,11 +502,13 @@ void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t 
         perror(string_from_format("No se pudo obtener el size del archivo swap: %d", id_proceso));
     }
     void* contenido_swap = mmap(NULL, sb.st_size, PROT_WRITE , MAP_SHARED, archivo_swap, 0);
-    printf(BLU"\nAntes de actualizar tabla de paginas del proceso\n",RESET);
+    printf(MAG"\n\nDESPUES DE EJECUTAR EL ALGORITMO DE REEMPLAZO\n\n"RESET);
     imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
     for(int i=0; i<tabla_primer_nivel->elements_count; i++){
         t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
         t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+        pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
 
         for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
             t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
@@ -470,8 +526,7 @@ void liberar_memoria_proceso(uint32_t tabla_pagina_primer_nivel_proceso, size_t 
     munmap(contenido_swap, sb.st_size);
     msync(contenido_swap, sb.st_size, MS_SYNC);
     close(archivo_swap);
-    printf(BLU"\nDespués de actualizar tabla de páginas del proceso\n",RESET);
-    imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
+  //  imprimir_valores_paginacion_proceso(tabla_pagina_primer_nivel_proceso);
 
 }
 
@@ -482,7 +537,9 @@ void imprimir_valores_paginacion_proceso(uint32_t tabla_pagina_primer_nivel_proc
 
     for(int i=0; i<tabla_primer_nivel->elements_count; i++){
         t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel,i);
+        pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
         t_list* lista_registros_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+        pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
 
         for(int j=0; j<lista_registros_segundo_nivel->elements_count; j++){
             t_registro_segundo_nivel* registro_segundo_nivel = list_get(lista_registros_segundo_nivel,j);
@@ -671,12 +728,16 @@ t_frame_lista_circular* obtener_elemento_lista_circular(t_lista_circular* lista,
 }
 
 t_registro_segundo_nivel* obtener_registro_segundo_nivel(uint32_t nro_tabla_primer_nivel, uint32_t numero_pagina) {
-	t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
-	double indice_primer_nivel_aux = (double) numero_pagina / (double) entradas_por_tabla;
+    pthread_mutex_lock(&mutex_lista_tablas_primer_nivel);
+    t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
+    pthread_mutex_unlock(&mutex_lista_tablas_primer_nivel);
+    double indice_primer_nivel_aux = (double) numero_pagina / (double) entradas_por_tabla;
 	int indice_primer_nivel = floor(indice_primer_nivel_aux);
 	t_registro_primer_nivel* registro_primer_nivel = list_get(tabla_primer_nivel, indice_primer_nivel);
-	t_list* tabla_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
-	uint32_t indice_tabla_segundo_nivel = (numero_pagina % entradas_por_tabla);
+    pthread_mutex_lock(&mutex_lista_tablas_segundo_nivel);
+    t_list* tabla_segundo_nivel = list_get(lista_tablas_segundo_nivel, registro_primer_nivel->nro_tabla_segundo_nivel);
+    pthread_mutex_unlock(&mutex_lista_tablas_segundo_nivel);
+    uint32_t indice_tabla_segundo_nivel = (numero_pagina % entradas_por_tabla);
 	return list_get(tabla_segundo_nivel, indice_tabla_segundo_nivel);
 }
 

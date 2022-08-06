@@ -47,24 +47,31 @@ int main(int argc, char* argv[]){
     ALFA = config_get_double_value(config, "ALFA");
 
     /* CONEXIONES A MODULOS */
+    printf(CYN"");
     log_info(logger,"### INICIANDO CONEXIONES A MODULOS ###");
 
     conexion_memoria = crearConexion(IP_MEMORIA, PUERTO_MEMORIA, "Kernel");
-    log_info(logger,string_from_format("MEMORIA:\tSOCKET [%d] IP [%s] PUERTO [%d]",conexion_memoria,IP_MEMORIA,PUERTO_MEMORIA));
+    printf(CYN"");
+    log_info(logger,string_from_format("MEMORIA:       SOCKET [%d] IP [%s] PUERTO [%d]",conexion_memoria,IP_MEMORIA,PUERTO_MEMORIA));
 
     conexion_cpu_dispatch = crearConexion(IP_CPU, PUERTO_CPU_DISPATCH, "Kernel");
-    log_info(logger,string_from_format("CPU-DISPATCH:\tSOCKET [%d] IP [%s] PUERTO [%d]",conexion_cpu_dispatch,IP_CPU,PUERTO_CPU_DISPATCH));
+    printf(CYN"");
+    log_info(logger,string_from_format("CPU-DISPATCH:  SOCKET [%d] IP [%s] PUERTO [%d]",conexion_cpu_dispatch,IP_CPU,PUERTO_CPU_DISPATCH));
 
     conexion_cpu_interrupt = crearConexion(IP_CPU, PUERTO_CPU_INTERRUPT, "Kernel");
-    log_info(logger,string_from_format("CPU-INTERRUPT:SOCKET [%d] IP [%s] PUERTO [%d]",conexion_cpu_interrupt,IP_CPU,PUERTO_CPU_INTERRUPT));
+    printf(CYN"");
+    log_info(logger,string_from_format("CPU-INTERRUPT: SOCKET [%d] IP [%s] PUERTO [%d]",conexion_cpu_interrupt,IP_CPU,PUERTO_CPU_INTERRUPT));
 
     kernel_fd = iniciarServidor(IP_KERNEL, PUERTO_KERNEL, logger);
-    log_info(logger,string_from_format("KERNEL:\tSOCKET [%d] IP [%s] PUERTO [%s]",kernel_fd,IP_KERNEL,PUERTO_KERNEL));
+    printf(CYN"");
+    log_info(logger,string_from_format("KERNEL:        SOCKET [%d] IP [%s] PUERTO [%s]",kernel_fd,IP_KERNEL,PUERTO_KERNEL));
     printf("\n");
+    printf(CYN"");
     log_info(logger, "### ESPERANDO CONSOLAS ###");
 
     enviarMensaje("CPU, soy el Kernel", conexion_cpu_dispatch);
     enviarMensaje("MEMORIA, soy el kernel", conexion_memoria);
+
     /* CONEXIONES A MODULOS */
 
     /* INICIALIZACION DE COLAS Y LISTAS */
@@ -119,55 +126,6 @@ void procesar_conexion(void* void_args) {
 	}
 }
 
-int recibir_opcion() {
-	char* opcion = malloc(4);
-	log_info(logger, "Ingrese una opcion: ");
-	scanf("%s",opcion);
-	int op = atoi(opcion);
-	free(opcion);
-	return op;
-}
-
-int validar_y_ejecutar_opcion_consola(int opcion, int consola_fd, int kernel_fd) {
-
-	int continuar = 1;
-
-	switch(opcion) {
-		case 1:
-			log_info(logger,"kernel continua corriendo, esperando nueva consola.");
-			consola_fd = esperarCliente(kernel_fd, logger);
-			break;
-		case 0:
-			log_info(logger,"Terminando kernel...");
-			close(kernel_fd);
-			continuar = 0;
-			break;
-		default:
-			log_error(logger,"Opcion invalida. Volve a intentarlo");
-			recibir_opcion();
-	}
-
-	return continuar;
-
-}
-
-
-int accion_kernel(int consola_fd, int kernel_fd) {
-
-	log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
-	int opcion = recibir_opcion();
-
-	if (recibirOperacion(consola_fd) == SIN_CONSOLAS) {
-	  log_info(logger, "No hay mas clientes conectados.");
-	  log_info(logger, "¿Desea mantener el kernel corriendo? 1- Si 0- No");
-	  opcion = recibir_opcion();
-	  return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
-	}
-
-	return validar_y_ejecutar_opcion_consola(opcion, consola_fd, kernel_fd);
-
-}
-
 int escuchar_cliente(char *nombre_kernel) {
     int cliente = esperarCliente(kernel_fd, logger);
     if (cliente != -1) {
@@ -191,7 +149,7 @@ t_pcb* crearEstructuraPcb(t_list* listaInstrucciones, int tamanioProceso, int so
     pcb->idProceso = process_get_thread_id();
     pcb->tamanioProceso = tamanioProceso;
     pcb->listaInstrucciones = listaInstrucciones;
-    pcb->programCounter= instruccion->codigo_operacion;
+    pcb->programCounter= 0;
     pcb->estimacionRafaga = estimacionInicial; 
     pcb->consola_fd = socketConsola;
     pcb->kernel_fd = kernel_fd;

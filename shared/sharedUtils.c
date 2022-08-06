@@ -105,7 +105,7 @@ void liberarConexion(int fd)
 
 void terminarPrograma(uint32_t conexion, t_log* logger, t_config* config) {
 
-    log_info(logger, "Consola: Terminando programa...");
+    //log_info(logger, "Consola: Terminando programa...");
     log_destroy(logger);
     if(config!=NULL) {
         config_destroy(config);
@@ -368,6 +368,8 @@ void enviar_entero(int cliente_fd, uint32_t valor, op_code opCode) {
 }
 
 void logear_PCB(t_log* logger,t_pcb* pcb, char* enviado_recibido){
-	log_debug(logger,string_from_format("%s: PID[%d] CONSOLA[%d] KERNEL[%d] PC[%d] TAM[%d]",enviado_recibido,pcb->idProceso,pcb->consola_fd,pcb->kernel_fd,pcb->programCounter,pcb->tamanioProceso));
+	printf(MAG);
+	log_info(logger,string_from_format("%-30s: PID[%d] PC[%d] TAM[%d]",enviado_recibido,pcb->idProceso,pcb->programCounter,pcb->tamanioProceso));
+	printf(RESET);
 }
 
