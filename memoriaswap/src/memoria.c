@@ -25,7 +25,7 @@ pthread_mutex_t mutex_lista_tablas_primer_nivel;
 pthread_mutex_t mutex_lista_tablas_segundo_nivel;
 pthread_mutex_t mutex_lista_registros_primer_nivel;
 pthread_mutex_t mutex_lista_registros_segundo_nivel;
-
+pthread_mutex_t mutex_operacion;
 
 void crear_espacio_usuario();
 
@@ -83,6 +83,11 @@ void inicializar_mutex_memoria() {
         perror("Mutex lita registros segundo nivel falló: ");
     }
 
+    if(pthread_mutex_init(&mutex_operacion, NULL) != 0) {
+        perror("Mutex mutex operacion  falló: ");
+    }
+
+
 }
 
 void iniciar_config() {
@@ -115,12 +120,16 @@ void procesar_conexion(void* void_args) {
             switch (cod_op) {
                 case MENSAJE:
                     log_info(logger, "antes del sleep");
+                    pthread_mutex_lock(&mutex_operacion);
                     recibirMensaje(cliente_fd, logger);
+                    pthread_mutex_unlock(&mutex_operacion);
                     break;
                 case ESCRIBIR_MEMORIA:
                     ;
                     usleep(retardo_memoria*1000);
+                    pthread_mutex_lock(&mutex_operacion);
                     void* buffer_escritura = recibirBuffer(cliente_fd);
+                    pthread_mutex_unlock(&mutex_operacion);
                     size_t id_proceso;
                     uint32_t numero_pagina;
                     uint32_t marco_escritura;
@@ -148,12 +157,17 @@ void procesar_conexion(void* void_args) {
                     actualizar_bit_modificado_tabla_circular(numero_pagina, id_proceso);
                     pthread_mutex_unlock(&mutex_escritura);
                     usleep(retardo_swap*1000); //retardo de escritura de memoria a disco
+                    pthread_mutex_lock(&mutex_operacion);
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
+                    pthread_mutex_unlock(&mutex_operacion);
                     break;
                 case LEER_MEMORIA:
                     ;
                     usleep(retardo_memoria*1000);
+                    pthread_mutex_lock(&mutex_operacion);
+
                     void* buffer_lectura = recibirBuffer(cliente_fd);
+                    pthread_mutex_unlock(&mutex_operacion);
                     uint32_t marco_lectura;
                     uint32_t desplazamiento;
                     size_t nro_tabla_primer_nivel_lectura;
@@ -165,21 +179,32 @@ void procesar_conexion(void* void_args) {
                     uint32_t desplazamiento_final_lectura = (marco_lectura*tamanio_pagina+desplazamiento);
                     uint32_t* valor = (uint32_t*) (espacio_usuario_memoria + desplazamiento_final_lectura);
                     actualizar_bit_usado_tabla_paginas(nro_tabla_primer_nivel_lectura, numero_pagina_lectura);
+                    pthread_mutex_lock(&mutex_operacion);
                     enviar_entero(cliente_fd, *valor, LEER_MEMORIA);
+                    pthread_mutex_unlock(&mutex_operacion);
+
                     break;
                 case CREAR_ESTRUCTURAS_ADMIN:
                     ;
                     usleep(retardo_memoria*1000);
+                    pthread_mutex_lock(&mutex_operacion);
+
                     t_pcb* pcb_kernel = recibirPCB(cliente_fd);
+                    pthread_mutex_unlock(&mutex_operacion);
                     crear_archivo_swap(pcb_kernel->idProceso, pcb_kernel->tamanioProceso);
                 //    imprimir_valores_paginacion_proceso(pcb_kernel->tablaPaginas);
                     pcb_kernel->tablaPaginas = crear_estructuras_administrativas_proceso(pcb_kernel->tamanioProceso) - 1;
+                    pthread_mutex_lock(&mutex_operacion);
                     enviarPCB(cliente_fd,pcb_kernel, ACTUALIZAR_INDICE_TABLA_PAGINAS);
+                    pthread_mutex_unlock(&mutex_operacion);
                     break;
                 case OBTENER_ENTRADA_SEGUNDO_NIVEL:
                     ;
                     usleep(retardo_memoria*1000);
+                    pthread_mutex_lock(&mutex_operacion);
+
                     void* buffer_tabla_segundo_nivel = recibirBuffer(cliente_fd);
+                    pthread_mutex_unlock(&mutex_operacion);
                     size_t nro_tabla_primer_nivel;
                     uint32_t entrada_tabla_primer_nivel;
                     memcpy(&nro_tabla_primer_nivel, buffer_tabla_segundo_nivel, sizeof(size_t));
@@ -188,14 +213,19 @@ void procesar_conexion(void* void_args) {
                     t_registro_primer_nivel* registro_primer_nivel = (list_get(list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel), entrada_tabla_primer_nivel)) ;
                     pthread_mutex_unlock(&mutex_lista_tablas_primer_nivel);
                     uint32_t nro_tabla_segundo_nivel = registro_primer_nivel->nro_tabla_segundo_nivel;
+                    pthread_mutex_lock(&mutex_operacion);
                     enviar_entero(cliente_fd, nro_tabla_segundo_nivel, OBTENER_ENTRADA_SEGUNDO_NIVEL);
+                    pthread_mutex_unlock(&mutex_operacion);
                     break;
                 case OBTENER_MARCO:
                 	printf(GRN"\n");
                 	log_info(logger,"# OBTENIENDO MARCO #");
                     uint32_t cantidad_marcos_ocupados_proceso=0;
                     usleep(retardo_memoria*1000);
+                    pthread_mutex_lock(&mutex_operacion);
+
                     void* buffer_marco = recibirBuffer(cliente_fd);
+                    pthread_mutex_unlock(&mutex_operacion);
                     size_t id_proceso_marco;
                     uint32_t entrada_tabla_segundo_nivel;
                     uint32_t numero_pag_obtener_marco;
@@ -260,19 +290,27 @@ void procesar_conexion(void* void_args) {
                 	printf(WHT"\n");
                 	log_info(logger,string_from_format("#MARCO [%d]"));
                 	printf(RESET"");
+                    pthread_mutex_lock(&mutex_operacion);
                     enviar_entero(cliente_fd, marco, OBTENER_MARCO);
+                    pthread_mutex_unlock(&mutex_operacion);
+
                     break;
                 case SWAPEAR_PROCESO:
                     ;
                     printf(BLU"\n\n\n VOY A SWAPPEAR PROCESO"RESET);
+                    pthread_mutex_lock(&mutex_operacion);
+
                     t_pcb* pcb_swapped = recibirPCB(cliente_fd);
+                    pthread_mutex_unlock(&mutex_operacion);
                     size_t id_proceso_suspension = pcb_swapped->idProceso;
                     uint32_t tabla_primer_nivel_suspension = pcb_swapped->tablaPaginas;
                     liberar_memoria_proceso(tabla_primer_nivel_suspension, id_proceso_suspension);
                     break;
                 case TERMINAR_PROCESO:
                     ;
+                    pthread_mutex_lock(&mutex_operacion);
                     t_pcb* pcb_terminado = recibirPCB(cliente_fd);
+                    pthread_mutex_unlock(&mutex_operacion);
                     liberar_memoria_proceso(pcb_terminado->tablaPaginas, pcb_terminado->idProceso);
                     eliminar_archivo_swap(pcb_terminado->idProceso);
                     usleep(retardo_swap*1000);
@@ -283,6 +321,7 @@ void procesar_conexion(void* void_args) {
                     cliente_fd = -1;
                     break;
                 default:
+                    printf(RED"codigo operacion %d"RESET,cod_op);
                     log_warning(logger, "Operacion desconocida.");
                     break;
             }
