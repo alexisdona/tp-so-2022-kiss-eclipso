@@ -219,6 +219,7 @@ op_code chequear_interrupcion(op_code proceso_respuesta){
 dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
 
     if (direccion_logica < pcb->tamanioProceso) {
+
         uint32_t numero_pagina = floor(direccion_logica / tamanio_pagina);
         uint32_t entrada_tabla_1er_nivel = floor(numero_pagina / entradas_por_tabla);
         uint32_t entrada_tabla_2do_nivel = numero_pagina % entradas_por_tabla;
@@ -238,12 +239,19 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         direccion_fisica->marco = marco;
         direccion_fisica->desplazamiento = desplazamiento;
         direccion_fisica->indice_tabla_primer_nivel = pcb->tablaPaginas;
+        logear_direccion_fisica(direccion_fisica);
         return direccion_fisica;
     }
     else {
         log_error(logger, "El proceso intento acceder a una direccion logica invalida");
         return NULL;
     }
+}
+
+void logear_direccion_fisica(dir_fisica* direccion){
+	printf(BLU"");
+	log_info(logger,string_from_format("#PAG [%d] #MARCO [%d] #OFFSET [%d] #Indice 1erNivel [%d]",direccion->numero_pagina,direccion->marco,direccion->desplazamiento,direccion->indice_tabla_primer_nivel));
+	printf(RESET"");
 }
 
 uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabla_1er_nivel) {
@@ -269,7 +277,7 @@ uint32_t obtener_tabla_segundo_nivel(size_t tabla_paginas, uint32_t entrada_tabl
 }
 
 uint32_t obtener_marco_memoria(uint32_t entrada_tabla_1er_nivel, uint32_t nro_tabla_segundo_nivel, uint32_t entrada_tabla_2do_nivel, uint32_t numero_pagina) {
-    t_paquete * paquete = crearPaquete();
+	t_paquete * paquete = crearPaquete();
     paquete->codigo_operacion = OBTENER_MARCO;
     agregarEntero(paquete, pcb->idProceso);
     agregarEntero4bytes(paquete, nro_tabla_segundo_nivel);
@@ -282,14 +290,17 @@ uint32_t obtener_marco_memoria(uint32_t entrada_tabla_1er_nivel, uint32_t nro_ta
 
     int obtuve_marco = 0;
     while (conexionMemoria != -1 && obtuve_marco == 0) {
-        op_code cod_op = recibirOperacion(conexionMemoria);
-         if(cod_op == OBTENER_MARCO){                ;
+    	op_code cod_op = recibirOperacion(conexionMemoria);
+        printf("op: %d\n",cod_op);
+    	if(cod_op == OBTENER_MARCO){                ;
 			void* buffer = recibirBuffer(conexionMemoria);
 			memcpy(&marco, buffer, sizeof(uint32_t));
 			printf("\nmarco de memoria: %d\n", marco);
 			obtuve_marco = 1;
         }
+    	if(cod_op == -1) break;
     }
+    printf("FIN MARCO MEMORIA \n");
     return marco;
 }
 ////--------------------------------------------------------TLB------------------------------------------------------------------
