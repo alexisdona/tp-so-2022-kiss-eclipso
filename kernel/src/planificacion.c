@@ -2,17 +2,17 @@
 #include "include/planificacion.h"
 
 void iniciarPlanificacion(t_pcb* pcb){
-	printf("\n");
+	printf(GRN"\n");
     log_info(logger, "### INICIANDO PLANIFICACION ###");
     pthread_mutex_lock(&mutexColaNew);
     queue_push(NEW,pcb);
-    log_info(logger,string_from_format("PCB ENCOLADO [%d] - TAMAÑO COLA NEW [%d]",pcb->idProceso,queue_size(NEW)));
+    log_info(logger,string_from_format("ENCOLADO [%d] - NEW [%d]",pcb->idProceso,queue_size(NEW)));
     pthread_mutex_unlock(&mutexColaNew);
     iniciarPlanificacionCortoPlazo();
 }
 
 void iniciarPlanificacionCortoPlazo(){
-	printf("\n");
+	printf(GRN"\n");
 	log_info(logger,"## INICIANDO CORTO PLAZO ##");
     sem_wait(&semGradoMultiprogramacion);
     t_pcb* pcb_a_ready = obtener_PCB_segun_prioridad();
@@ -26,12 +26,11 @@ void iniciarPlanificacionCortoPlazo(){
     while(conexion_cpu_dispatch != -1){
     	pthread_mutex_lock(&mutex_dispatch);
     	op_code cod_op = recibirOperacion(conexion_cpu_dispatch);
-    	//pthread_mutex_unlock(&mutex_dispatch);
     	if(cod_op != -1) {
             switch(cod_op){
 				case TERMINAR_PROCESO:
-					log_info(logger, "TERMINANDO PROCESO");
-					//pthread_mutex_lock(&mutex_dispatch);
+					printf(GRN"\n");
+					log_info(logger, "# TERMINANDO PROCESO #");
 					t_pcb* pcbFinalizado = recibirPCB(conexion_cpu_dispatch);
 					pthread_mutex_unlock(&mutex_dispatch);
 					proceso_ejecutando=0;
@@ -44,8 +43,8 @@ void iniciarPlanificacionCortoPlazo(){
 					continuar_planificacion();
 					break;
                 case BLOQUEAR_PROCESO:
-                	log_info(logger,"BLOQUEANDO PROCESO");
-                	//pthread_mutex_lock(&mutex_dispatch);
+                	printf(GRN"\n");
+                	log_info(logger,"# BLOQUEANDO PROCESO #");
                     t_pcb* pcb = recibirPCB(conexion_cpu_dispatch);
                     pthread_mutex_unlock(&mutex_dispatch);
                     logear_PCB(logger,pcb,"RECIBIDO PARA BLOQUEAR");
@@ -62,8 +61,8 @@ void iniciarPlanificacionCortoPlazo(){
                     bloquearProceso(pcb);
                     break;
                 case DESALOJAR_PROCESO:
-                	log_info(logger,"DESALOJANDO PROCESO");
-                	//pthread_mutex_lock(&mutex_dispatch);
+                	printf(GRN"\n");
+                	log_info(logger,"# DESALOJANDO PROCESO #");
                     t_pcb* pcb_desalojada = recibirPCB(conexion_cpu_dispatch);
                     pthread_mutex_unlock(&mutex_dispatch);
                     proceso_ejecutando=0;
@@ -87,13 +86,13 @@ t_pcb* obtener_PCB_segun_prioridad(){
 	if(queue_size(SUSPENDED_READY) > 0){
 	    pthread_mutex_lock(&mutex_cola_suspended_ready);
 	    pcb_a_ready = queue_pop(SUSPENDED_READY);
-	    log_info(logger,string_from_format("PCB DESENCOLADO [%d]- TAMAÑO COLA S.Ready [%d]",pcb_a_ready->idProceso,queue_size(SUSPENDED_READY)));
+	    log_info(logger,string_from_format("DESENCOLADO [%d] - S.Ready [%d]",pcb_a_ready->idProceso,queue_size(SUSPENDED_READY)));
 	    pthread_mutex_unlock(&mutex_cola_suspended_ready);
 	}
 	else if(queue_size(NEW) > 0){
 	    pthread_mutex_lock(&mutexColaNew);
 	    pcb_a_ready = queue_pop(NEW);
-	    log_info(logger,string_from_format("PCB DESENCOLADO [%d]- TAMAÑO COLA NEW [%d]",pcb_a_ready->idProceso,queue_size(NEW)));
+	    log_info(logger,string_from_format("DESENCOLADO [%d] - NEW [%d]",pcb_a_ready->idProceso,queue_size(NEW)));
 	    pthread_mutex_unlock(&mutexColaNew);
 	}else{
 		pcb_a_ready = NULL;
@@ -103,7 +102,7 @@ t_pcb* obtener_PCB_segun_prioridad(){
 
 void eliminar_proceso_de_READY() {
     free(list_remove(READY, 0));
-    log_info(logger,string_from_format("PROCESOS EN READY: [%d]",list_size(READY)));
+    log_info(logger,string_from_format("READY-1: [%d]",list_size(READY)));
 }
 
 time_t calcular_tiempo_en_exec(time_t tiempo_inicial) {
@@ -114,14 +113,14 @@ time_t calcular_tiempo_en_exec(time_t tiempo_inicial) {
 void decrementar_grado_multiprogramacion() {
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
     GRADO_MULTIPROGRAMACION--;
-    log_info(logger,string_from_format("GRADO MULTIPROGRAMACION [%d]",GRADO_MULTIPROGRAMACION));
+    log_info(logger,string_from_format("GRADO MULTIPROGRAMACION-1 [%d]",GRADO_MULTIPROGRAMACION));
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
 }
 
 void incrementar_grado_multiprogramacion() {
     pthread_mutex_lock(&mutexGradoMultiprogramacion);
     GRADO_MULTIPROGRAMACION++;
-    log_info(logger,string_from_format("GRADO MULTIPROGRAMACION [%d]",GRADO_MULTIPROGRAMACION));
+    log_info(logger,string_from_format("GRADO MULTIPROGRAMACION+1 [%d]",GRADO_MULTIPROGRAMACION));
     sem_post(&semGradoMultiprogramacion);
     pthread_mutex_unlock(&mutexGradoMultiprogramacion);
 }
@@ -149,12 +148,12 @@ void agregar_proceso_READY(t_pcb* pcb, op_code tipo_proceso) {
 	log_info(logger,"AGREGANDO PROCESO A READY...");
     list_add(READY, pcb);
     if(altera_grado_multiprogramacion(tipo_proceso)) decrementar_grado_multiprogramacion();
-    log_info(logger,string_from_format("PROCESOS EN READY: [%d]",list_size(READY)));
+    log_info(logger,string_from_format("READY+1: [%d]",list_size(READY)));
 }
 
 bool interrupcion_por_proceso_en_ready(){
     if(hay_proceso_ejecutando()) {
-    	printf("\n");
+    	printf(GRN"\n");
     	log_info(logger, "### ENVIANDO INTERRUPCION ###");
     	enviar_interrupcion(conexion_cpu_interrupt, INTERRUPCION);
     	return true;
@@ -300,32 +299,15 @@ void estimar_proxima_rafaga(uint32_t tiempo, t_pcb* pcb){
 
 void calcular_rafagas_restantes_proceso_desalojado(uint32_t tiempo_en_ejecucion, t_pcb* pcb_desalojada) {
 	tiempo_en_ejecucion = tiempo_en_ejecucion * 1000;
-	printf("INICIAL: %d\n",pcb_desalojada->estimacionRafaga);
-	printf("EXEC: %d\n",tiempo_en_ejecucion);
 	uint32_t rafagas_restantes = pcb_desalojada->estimacionRafaga - tiempo_en_ejecucion;
-	printf("RESTANTES: %d\n",rafagas_restantes);
     pcb_desalojada->estimacionRafaga = rafagas_restantes;
 }
 
 void ordenar_procesos_lista_READY() {
 	log_info(logger,"ORDENANDO PROCESOS EN LISTA READY");
+
 	if(list_size(READY)>1){
-
-		printf("READY:\n");
-
-		for(int i=0; i<list_size(READY); i++){
-			t_pcb* pcb = list_get(READY,i);
-			printf("PID: %d     ESTIMADO: %d\n",pcb->idProceso,pcb->estimacionRafaga);
-		}
-
 		list_sort(READY, sort_by_rafaga);
-	}
-
-	printf("READY ORDENADO:\n");
-
-	for(int i=0; i<list_size(READY); i++){
-		t_pcb* pcb = list_get(READY,i);
-		printf("PID: %d     ESTIMADO: %d\n",pcb->idProceso,pcb->estimacionRafaga);
 	}
 
 	t_pcb* pcb_ready = obtener_proceso_en_READY();
@@ -364,7 +346,6 @@ bool hay_proceso_ejecutando(){
 void enviar_interrupcion(int socket, op_code cod_op) {
     t_paquete* paquete = crearPaquete();
     paquete->codigo_operacion = cod_op;
-    //agregarEntero(paquete,cod_op);
     enviarPaquete(paquete, socket);
     eliminarPaquete(paquete);
 }
@@ -372,14 +353,13 @@ void enviar_interrupcion(int socket, op_code cod_op) {
 uint32_t hay_procesos_pendientes(){
 	uint32_t procesos_pendientes=0;
 	procesos_pendientes+=list_size(READY)+queue_size(NEW)+queue_size(BLOCKED)+queue_size(SUSPENDED_BLOCKED)+queue_size(SUSPENDED_READY);
-	printf("*********** Procesos pendientes: %d\n",procesos_pendientes);
 	return procesos_pendientes;
 }
 
 /* ---------> MEMORIA <--------- */
 
 void crear_estructuras_memoria(t_pcb* pcb) {
-	printf("\n");
+	printf(GRN"\n");
 	log_info(logger,"### CREANDO ESTRUCTURAS DE MEMORIA###");
     int pcb_actualizado = 0;
     enviarPCB(conexion_memoria, pcb, CREAR_ESTRUCTURAS_ADMIN );
@@ -392,7 +372,6 @@ void crear_estructuras_memoria(t_pcb* pcb) {
                 t_pcb* pcb_aux = recibirPCB(conexion_memoria);
                 logear_PCB(logger,pcb,"RECIBIDO DE MEMORIA");
                 pcb->tablaPaginas = pcb_aux->tablaPaginas;
-                //printf("\nACTUALIZAR_TABLA_PAGINAS: PCB->idProceso: %ld, PCB->tablaPaginas:%ld\n", pcb->idProceso, pcb->tablaPaginas);
                 pcb_actualizado=1;
                 break;
             default: ;
