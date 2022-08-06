@@ -164,7 +164,7 @@ op_code operacion_READ(operando dirLogica){
 	dir_fisica* dir_fisica = obtener_direccion_fisica(dirLogica);
 	if(dir_fisica!=NULL){
 		uint32_t valor = leer_en_memoria(dir_fisica);
-		log_info(logger, string_from_format("El valor leido de memoria es %d", valor));
+		log_info(logger, string_from_format("El valor leido de la dirección lógica %d memoria es %d", dirLogica, valor));
 		return CONTINUA_PROCESO;
 	}else{
 		return matar_proceso();
@@ -229,10 +229,16 @@ dir_fisica* obtener_direccion_fisica(uint32_t direccion_logica) {
         marco = tlb_obtener_marco(numero_pagina);
         if (marco == -1 ) {
          //TLB_MISS
+            log_info(logger, string_from_format(YEL"TLB MISS proceso %zu numero de página %d"RESET,pcb->idProceso, numero_pagina));
             uint32_t tabla_segundo_nivel;
             tabla_segundo_nivel = obtener_tabla_segundo_nivel(pcb->tablaPaginas, entrada_tabla_1er_nivel); //1er acceso
             marco = obtener_marco_memoria(pcb->tablaPaginas, tabla_segundo_nivel, entrada_tabla_2do_nivel, numero_pagina); //2do acceso
             tlb_actualizar(numero_pagina, marco);
+        }
+        else {
+            //TLB HIT
+            log_info(logger, string_from_format(GRN"TLB HIT para tbl en proceso %zu, numero de página %d y marco %d"RESET,pcb->idProceso, numero_pagina, marco));
+
         }
         dir_fisica * direccion_fisica = malloc(sizeof(dir_fisica));
         direccion_fisica->numero_pagina = numero_pagina;
@@ -348,11 +354,13 @@ void tlb_actualizar(uint32_t numero_pagina, uint32_t marco){
     //si ahora es otra pagina la que referencia al marco porque se reemplazo por el otro
     actualizar_entrada_marco_existente(numero_pagina, marco);
 	if(list_size(tlb) >= entradas_max_tlb){
+	    log_info(logger, string_from_format(GRN"Ejecutando algoritmo de reemplazo %s para entrada en la tlb para proceso %zu, numero de pagina %d y marco %d"RESET,algoritmo_reemplazo_tlb, pcb->idProceso, numero_pagina, marco));
 	        reemplazar_entrada_tlb(tlb_entrada);
         }
 	else
 	{
-		list_add(tlb, tlb_entrada);
+        log_info(logger, string_from_format(GRN"Agregando entrada en la tlb para proceso %zu, numero de pagina %d y marco %d"RESET, pcb->idProceso, numero_pagina, marco));
+        list_add(tlb, tlb_entrada);
 	}
 }
 
