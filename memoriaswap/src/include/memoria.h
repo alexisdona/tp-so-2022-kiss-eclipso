@@ -73,6 +73,7 @@ uint es_victima_clock_modificado_u(t_frame*);
 void actualizar_registros(t_registro_segundo_nivel*, t_registro_segundo_nivel*, uint32_t);
 t_lista_circular* obtener_lista_circular_del_proceso(size_t);
 int es_lista_circular_del_proceso(size_t, t_lista_circular*);
+t_frame_lista_circular* obtener_elemento_lista_circular(t_lista_circular*, uint32_t);
 t_registro_segundo_nivel* obtener_registro_segundo_nivel(uint32_t, uint32_t);
 t_lista_circular* list_create_circular();
 void insertar_lista_circular_vacia(t_lista_circular*, t_frame*);
@@ -80,6 +81,7 @@ void insertar_lista_circular(t_lista_circular*, t_frame*);
 void liberar_memoria_proceso(uint32_t, size_t);
 void imprimir_valores_paginacion_proceso(uint32_t);
 void actualizar_bit_modificado_tabla_paginas(size_t, uint32_t);
+void actualizar_bit_modificado_tabla_circular(uint32_t, size_t);
 void actualizar_bit_usado_tabla_paginas(size_t , uint32_t );
 void inicializar_mutex_memoria();
 

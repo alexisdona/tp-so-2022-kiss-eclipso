@@ -127,6 +127,7 @@ void procesar_conexion(void* void_args) {
                     actualizar_archivo_swap(id_proceso, numero_pagina, desplazamiento_escritura, tamanio_pagina, valor_a_escribir );
                     pthread_mutex_lock(&mutex_escritura);
                     actualizar_bit_modificado_tabla_paginas(nro_tabla_primer_nivel_escritura, numero_pagina);
+                    actualizar_bit_modificado_tabla_circular(numero_pagina, id_proceso);
                     pthread_mutex_unlock(&mutex_escritura);
                     usleep(retardo_swap*1000); //retardo de escritura de memoria a disco
                     enviarMensaje("Ya escribí en memoria!", cliente_fd);
@@ -409,7 +410,12 @@ void actualizar_bit_modificado_tabla_paginas(size_t nro_tabla_primer_nivel_escri
             nro_pagina_aux+=1;
         }
     }
+}
 
+void actualizar_bit_modificado_tabla_circular(uint32_t numero_pagina, size_t pid) {
+	t_lista_circular* frames_proceso = obtener_lista_circular_del_proceso(pid);
+	t_frame_lista_circular* elemento_frame = obtener_elemento_lista_circular(frames_proceso, numero_pagina);
+	elemento_frame->info->modificado=1;
 }
 
 void actualizar_bit_usado_tabla_paginas(size_t nro_tabla_primer_nivel, uint32_t numero_pagina) {
@@ -649,6 +655,19 @@ t_lista_circular* obtener_lista_circular_del_proceso(size_t pid) {
 		return es_lista_circular_del_proceso(pid, (t_lista_circular*) elemento);
 	}
 	return list_find(lista_frames_procesos, _es_lista_circular_del_proceso);
+}
+
+t_frame_lista_circular* obtener_elemento_lista_circular(t_lista_circular* lista, uint32_t numero_pagina) {
+	int actualizacion_ok = 0;
+	t_frame_lista_circular* frame_elemento_aux = lista->inicio;
+	while (actualizacion_ok == 0) {
+		if (frame_elemento_aux->info->numero_pagina == numero_pagina) {
+			actualizacion_ok = 1;
+		} else {
+			frame_elemento_aux = frame_elemento_aux->sgte;
+		}
+	}
+	return frame_elemento_aux;
 }
 
 t_registro_segundo_nivel* obtener_registro_segundo_nivel(uint32_t nro_tabla_primer_nivel, uint32_t numero_pagina) {
