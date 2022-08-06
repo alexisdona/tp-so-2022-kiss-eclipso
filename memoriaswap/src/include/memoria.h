@@ -67,6 +67,7 @@ uint32_t obtener_cantidad_marcos_ocupados(size_t);
 uint32_t sustitucion_paginas(uint32_t, uint32_t, size_t);
 uint32_t algoritmo_clock(t_lista_circular*, uint32_t, uint32_t);
 uint32_t algoritmo_clock_modificado(t_lista_circular*, uint32_t, uint32_t);
+uint32_t algoritmo_clock_modificado_v2(t_lista_circular*, uint32_t, uint32_t);
 uint es_victima_clock(t_frame*);
 uint es_victima_clock_modificado_um(t_frame*);
 uint es_victima_clock_modificado_u(t_frame*);

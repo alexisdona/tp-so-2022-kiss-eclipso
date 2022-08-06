@@ -417,6 +417,7 @@ uint32_t obtener_numero_frame_libre() {
 }
 
 uint32_t obtener_cantidad_marcos_ocupados(size_t nro_tabla_primer_nivel) {
+
     uint32_t cantidad_marcos_ocupados = 0;
     pthread_mutex_lock(&mutex_lista_tablas_primer_nivel);
     t_list* tabla_primer_nivel = list_get(lista_tablas_primer_nivel, nro_tabla_primer_nivel);
@@ -566,7 +567,7 @@ uint32_t sustitucion_paginas(uint32_t numero_tabla_primer_nivel, uint32_t numero
 		return algoritmo_clock(frames_proceso, numero_tabla_primer_nivel, numero_pagina);
 	}
 	else if (strcmp("CLOCK-M", algoritmo_reemplazo)==0) {
-		return algoritmo_clock_modificado(frames_proceso, numero_tabla_primer_nivel, numero_pagina);
+		return algoritmo_clock_modificado_v2(frames_proceso, numero_tabla_primer_nivel, numero_pagina);
 	}
 	log_info(logger, "Algoritmo de reemplazo invalido");
 	return -1;
@@ -613,16 +614,20 @@ uint32_t algoritmo_clock_modificado(t_lista_circular* frames_proceso, uint32_t n
 	uint hay_victima_um = 0;
 	uint hay_victima_u = 0;
 
-	uint busquedas_um = 0;
-	uint busquedas_u = 0;
+	uint busquedas_um;
+	uint busquedas_u;
 
 	while (hay_victima_um == 0 && hay_victima_u == 0) {
 
+		busquedas_um = 0;
+		busquedas_u = 0;
+
 		// Primeras iteraciones en busqueda de una pagina con U=0 && M=0
 		// No se actualiza ningun bit
-		while (hay_victima_um == 0 && busquedas_um < marcos_por_proceso) {
+		// while (hay_victima_um == 0 && busquedas_um < marcos_por_proceso) {
+		for (int i = 0; i < marcos_por_proceso; i++) {
 
-			busquedas_um++;
+			// busquedas_um++;
 
 			frame_puntero = frames_proceso->puntero_algoritmo;
 
@@ -635,21 +640,24 @@ uint32_t algoritmo_clock_modificado(t_lista_circular* frames_proceso, uint32_t n
 
 				frame_puntero->info->numero_pagina = numero_pagina;
 				frame_puntero->info->uso = 1;
+
+				frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+				break;
 			}
 
 			frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
 		}
-
-		busquedas_um = 0;
+		// busquedas_um = 0;
 
 		// Si no hay victima de u=0 y m=0
 		if (hay_victima_um == 0) {
 
 			// Segundas iteraciones en busqueda de una pagina con U=0 && M=1
 			// Se actualiza el bit de uso
-			while (hay_victima_u == 0 && busquedas_u < marcos_por_proceso) {
+			// while (hay_victima_u == 0 && busquedas_u < marcos_por_proceso) {
+			for (int j = 0; j < marcos_por_proceso; j++) {
 
-				busquedas_u++;
+				// busquedas_u++;
 
 				frame_puntero = frames_proceso->puntero_algoritmo;
 
@@ -670,6 +678,77 @@ uint32_t algoritmo_clock_modificado(t_lista_circular* frames_proceso, uint32_t n
 					frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
 				}
 			}
+		}
+	}
+	return frame_puntero->info->numero_frame;
+}
+
+uint32_t algoritmo_clock_modificado_v2(t_lista_circular* frames_proceso, uint32_t numero_tabla_primer_nivel, uint32_t numero_pagina) {
+	t_registro_segundo_nivel* registro_segundo_nivel = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, numero_pagina);
+
+	// Variables auxiliares
+	t_frame_lista_circular* frame_puntero;
+	t_registro_segundo_nivel* registro_segundo_nivel_victima;
+
+	uint hay_victima_um;
+	uint hay_victima_u;
+
+	// Primeras iteraciones en busqueda de una pagina con U=0 && M=0
+	// No se actualiza ningun bit
+	for (int i = 0; i < marcos_por_proceso; i++) {
+
+		// busquedas_um++;
+
+		frame_puntero = frames_proceso->puntero_algoritmo;
+
+		hay_victima_um = es_victima_clock_modificado_um(frame_puntero->info);
+
+		if (hay_victima_um) {
+			registro_segundo_nivel_victima = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, frame_puntero->info->numero_pagina);
+
+			actualizar_registros(registro_segundo_nivel, registro_segundo_nivel_victima, frame_puntero->info->numero_frame);
+
+			frame_puntero->info->numero_pagina = numero_pagina;
+			frame_puntero->info->uso = 1;
+
+			frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+			break;
+		}
+
+		frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+	}
+	// busquedas_um = 0;
+
+	// Si no hay victima de u=0 y m=0
+	if (hay_victima_um == 0) {
+
+		// Segundas iteraciones en busqueda de una pagina con U=0 && M=1
+		// Se actualiza el bit de uso
+		for (int j = 0; j < marcos_por_proceso; j++) {
+
+			// busquedas_u++;
+
+			frame_puntero = frames_proceso->puntero_algoritmo;
+
+			hay_victima_u = es_victima_clock_modificado_u(frame_puntero->info);
+
+			if (hay_victima_u) {
+				registro_segundo_nivel_victima = obtener_registro_segundo_nivel(numero_tabla_primer_nivel, frame_puntero->info->numero_pagina);
+
+				actualizar_registros(registro_segundo_nivel, registro_segundo_nivel_victima, frame_puntero->info->numero_frame);
+
+				frame_puntero->info->numero_pagina = numero_pagina;
+				frame_puntero->info->uso = 1;
+
+				frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+				break;
+			} else {
+				frame_puntero->info->uso = 0;
+				frames_proceso->puntero_algoritmo = frames_proceso->puntero_algoritmo->sgte;
+			}
+		}
+		if (hay_victima_u == 0) {
+			return algoritmo_clock_modificado_v2(frames_proceso, numero_tabla_primer_nivel, numero_pagina);
 		}
 	}
 	return frame_puntero->info->numero_frame;
@@ -759,7 +838,7 @@ void insertar_lista_circular_vacia(t_lista_circular* lista, t_frame* frame) {
 	lista->inicio = elemento_nuevo;
 	lista->inicio->sgte = elemento_nuevo;
 	lista->fin = elemento_nuevo;
-	lista->tamanio++;
+	lista->tamanio=1;
 	lista->puntero_algoritmo = elemento_nuevo;
 	return;
 }
