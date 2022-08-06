@@ -307,7 +307,15 @@ void ordenar_procesos_lista_READY() {
 	log_info(logger,"ORDENANDO PROCESOS EN LISTA READY");
 
 	if(list_size(READY)>1){
+        for(int i=0;i< list_size(READY);i++){
+            t_pcb* pcbloco = list_get(READY, i);
+            printf("pid %d estimado %d", pcbloco->idProceso, pcbloco->estimacionRafaga);
+        }
 		list_sort(READY, sort_by_rafaga);
+        for(int i=0;i< list_size(READY);i++){
+            t_pcb* pcbloco = list_get(READY, i);
+            printf("pid %d estimado %d", pcbloco->idProceso, pcbloco->estimacionRafaga);
+        }
 	}
 
 	t_pcb* pcb_ready = obtener_proceso_en_READY();
