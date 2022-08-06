@@ -54,8 +54,8 @@ void iniciarPlanificacionCortoPlazo(){
                     	t_pcb* pcb_ready = obtener_proceso_en_READY();
                     	logear_PCB(logger,pcb_ready,"PROCESO A EJECUTAR");
                     	enviarPCB(conexion_cpu_dispatch,pcb_ready,PCB);
+                    	eliminar_proceso_de_READY();
                     	proceso_ejecutando=1;
-                    	logear_PCB(logger,pcb_ready,"ENVIADO");
                     }
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     estimar_proxima_rafaga(tiempo_en_ejecucion, pcb);
@@ -136,8 +136,8 @@ void planificacion_FIFO(t_pcb* pcb) {
 	if(!hay_proceso_ejecutando() && (hay_procesos_pendientes()>0)){
 		enviarPCB(conexion_cpu_dispatch, pcb, PCB);
 		proceso_ejecutando=1;
-		logear_PCB(logger,pcb,"ENVIADO");
-	    eliminar_proceso_de_READY(pcb);
+		logear_PCB(logger,pcb,"ENVIADO POR FIFO");
+	    eliminar_proceso_de_READY();
 	}
 }
 
@@ -333,7 +333,7 @@ void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
     enviarPCB(conexion_cpu_dispatch, pcbNueva, PCB);
     proceso_ejecutando=1;
     logear_PCB(logger,pcbNueva,"ENVIADO A EJECUTAR");
-    eliminar_proceso_de_READY(pcbNueva);
+    eliminar_proceso_de_READY();
     planificacion_SJF(pcbEnExec);
 }
 
