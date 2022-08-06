@@ -24,30 +24,38 @@ void iniciarPlanificacionCortoPlazo(){
     time_t tiempo_inicial = time(NULL);
 
     while(conexion_cpu_dispatch != -1){
-    	sem_wait(&sem_comunicacion);
+    	pthread_mutex_lock(&mutex_dispatch);
     	op_code cod_op = recibirOperacion(conexion_cpu_dispatch);
+    	//pthread_mutex_unlock(&mutex_dispatch);
     	if(cod_op != -1) {
             switch(cod_op){
 				case TERMINAR_PROCESO:
 					log_info(logger, "TERMINANDO PROCESO");
+					//pthread_mutex_lock(&mutex_dispatch);
 					t_pcb* pcbFinalizado = recibirPCB(conexion_cpu_dispatch);
-					sem_post(&sem_comunicacion);
+					pthread_mutex_unlock(&mutex_dispatch);
+					proceso_ejecutando=0;
 					logear_PCB(logger,pcbFinalizado,"RECIBIDO PARA TERMINAR");
+					pthread_mutex_lock(&mutex_memoria);
                     enviarPCB(conexion_memoria, pcbFinalizado, TERMINAR_PROCESO);
+                    pthread_mutex_unlock(&mutex_memoria);
 					avisarProcesoTerminado(pcbFinalizado->consola_fd);
 					incrementar_grado_multiprogramacion();
 					continuar_planificacion();
 					break;
                 case BLOQUEAR_PROCESO:
                 	log_info(logger,"BLOQUEANDO PROCESO");
+                	//pthread_mutex_lock(&mutex_dispatch);
                     t_pcb* pcb = recibirPCB(conexion_cpu_dispatch);
-                    sem_post(&sem_comunicacion);
+                    pthread_mutex_unlock(&mutex_dispatch);
                     logear_PCB(logger,pcb,"RECIBIDO PARA BLOQUEAR");
+                    proceso_ejecutando=0;
                     if(list_size(READY)>0){
                     	t_pcb* pcb_ready = obtener_proceso_en_READY();
                     	logear_PCB(logger,pcb_ready,"PROCESO A EJECUTAR");
                     	enviarPCB(conexion_cpu_dispatch,pcb_ready,PCB);
-                    	logear_PCB(logger,pcb_ready,"ENVIADO");
+                    	eliminar_proceso_de_READY();
+                    	proceso_ejecutando=1;
                     }
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     estimar_proxima_rafaga(tiempo_en_ejecucion, pcb);
@@ -55,8 +63,10 @@ void iniciarPlanificacionCortoPlazo(){
                     break;
                 case DESALOJAR_PROCESO:
                 	log_info(logger,"DESALOJANDO PROCESO");
+                	pthread_mutex_lock(&mutex_dispatch);
                     t_pcb* pcb_desalojada = recibirPCB(conexion_cpu_dispatch);
-                    sem_post(&sem_comunicacion);
+                    pthread_mutex_unlock(&mutex_dispatch);
+                    proceso_ejecutando=0;
                     logear_PCB(logger,pcb_desalojada,"RECIBIDO DESALOJADO");
                     tiempo_en_ejecucion = calcular_tiempo_en_exec(tiempo_inicial);
                     calcular_rafagas_restantes_proceso_desalojado(tiempo_en_ejecucion,pcb_desalojada);
@@ -123,9 +133,12 @@ void iniciar_algoritmo_planificacion(t_pcb* pcb) {
 
 void planificacion_FIFO(t_pcb* pcb) {
 	log_info(logger,"ALGORITMO: FIFO");
-    enviarPCB(conexion_cpu_dispatch, pcb, PCB);
-    logear_PCB(logger,pcb,"ENVIADO");
-    eliminar_proceso_de_READY(pcb);
+	if(!hay_proceso_ejecutando() && (hay_procesos_pendientes()>0)){
+		enviarPCB(conexion_cpu_dispatch, pcb, PCB);
+		proceso_ejecutando=1;
+		logear_PCB(logger,pcb,"ENVIADO POR FIFO");
+	    eliminar_proceso_de_READY();
+	}
 }
 
 bool altera_grado_multiprogramacion(op_code tipo_proceso){
@@ -197,6 +210,17 @@ int inicializarMutex() {
         perror("Mutex cola de bloqueados fallo: ");
         error+=1;
     }
+
+    if(pthread_mutex_init(&mutex_dispatch, NULL) != 0){
+    	perror("Mutex conexion dispatch: ");
+    	error+=1;
+    }
+
+    if(pthread_mutex_init(&mutex_memoria, NULL) != 0){
+    	perror("Mutex conexion dispatch: ");
+    	error+=1;
+    }
+
     return error;
 }
 
@@ -290,6 +314,7 @@ void ordenar_procesos_lista_READY() {
 	}
 	t_pcb* pcb_ready = obtener_proceso_en_READY();
 	enviarPCB(conexion_cpu_dispatch,pcb_ready,PCB);
+	proceso_ejecutando=1;
 	logear_PCB(logger,pcb_ready,"ENVIADO A EJECUTAR");
 	eliminar_proceso_de_READY();
 }
@@ -306,13 +331,14 @@ void checkear_proceso_y_replanificar(t_pcb* pcbEnExec) {
 void replanificar_y_enviar_nuevo_proceso(t_pcb* pcbNueva, t_pcb* pcbEnExec) {
 	log_info(logger,"ENVIO PCB PROCESO MAS CORTO");
     enviarPCB(conexion_cpu_dispatch, pcbNueva, PCB);
-    logear_PCB(logger,pcbNueva,"ENVIADO");
-    eliminar_proceso_de_READY(pcbNueva);
+    proceso_ejecutando=1;
+    logear_PCB(logger,pcbNueva,"ENVIADO A EJECUTAR");
+    eliminar_proceso_de_READY();
     planificacion_SJF(pcbEnExec);
 }
 
 bool hay_proceso_ejecutando(){
-	return (list_size(READY)+queue_size(BLOCKED)+GRADO_MULTIPROGRAMACION < MAX_GRADO_MULTIPROGRAMACION);
+	return (proceso_ejecutando!=0);
 }
 
 void enviar_interrupcion(int socket, op_code cod_op) {
@@ -321,6 +347,13 @@ void enviar_interrupcion(int socket, op_code cod_op) {
     //agregarEntero(paquete,cod_op);
     enviarPaquete(paquete, socket);
     eliminarPaquete(paquete);
+}
+
+uint32_t hay_procesos_pendientes(){
+	uint32_t procesos_pendientes=0;
+	procesos_pendientes+=list_size(READY)+queue_size(NEW)+queue_size(BLOCKED)+queue_size(SUSPENDED_BLOCKED)+queue_size(SUSPENDED_READY);
+	printf("*********** Procesos pendientes: %d\n",procesos_pendientes);
+	return procesos_pendientes;
 }
 
 /* ---------> MEMORIA <--------- */
