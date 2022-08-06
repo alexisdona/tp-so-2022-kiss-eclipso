@@ -32,6 +32,7 @@ int kernel_fd, conexion_cpu_dispatch, conexion_cpu_interrupt, conexion_memoria;
 char* ALGORITMO_PLANIFICACION;
 double ALFA;
 uint32_t proceso_ejecutando;
+time_t tiempo_inicial;
 
 void iniciarPlanificacionCortoPlazo();
 void iniciarPlanificacion(t_pcb* pcb);

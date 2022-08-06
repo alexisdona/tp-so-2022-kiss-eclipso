@@ -21,7 +21,7 @@ void iniciarPlanificacionCortoPlazo(){
     iniciar_algoritmo_planificacion(pcb_a_ready);
     pthread_mutex_unlock(&mutexColaReady);
 
-    time_t tiempo_inicial = time(NULL);
+    if(hay_proceso_ejecutando()) tiempo_inicial = time(NULL);
 
     while(conexion_cpu_dispatch != -1){
     	pthread_mutex_lock(&mutex_dispatch);
@@ -63,7 +63,7 @@ void iniciarPlanificacionCortoPlazo(){
                     break;
                 case DESALOJAR_PROCESO:
                 	log_info(logger,"DESALOJANDO PROCESO");
-                	pthread_mutex_lock(&mutex_dispatch);
+                	//pthread_mutex_lock(&mutex_dispatch);
                     t_pcb* pcb_desalojada = recibirPCB(conexion_cpu_dispatch);
                     pthread_mutex_unlock(&mutex_dispatch);
                     proceso_ejecutando=0;
@@ -310,8 +310,24 @@ void calcular_rafagas_restantes_proceso_desalojado(uint32_t tiempo_en_ejecucion,
 void ordenar_procesos_lista_READY() {
 	log_info(logger,"ORDENANDO PROCESOS EN LISTA READY");
 	if(list_size(READY)>1){
+
+		printf("READY:\n");
+
+		for(int i=0; i<list_size(READY); i++){
+			t_pcb* pcb = list_get(READY,i);
+			printf("PID: %d     ESTIMADO: %d\n",pcb->idProceso,pcb->estimacionRafaga);
+		}
+
 		list_sort(READY, sort_by_rafaga);
 	}
+
+	printf("READY ORDENADO:\n");
+
+	for(int i=0; i<list_size(READY); i++){
+		t_pcb* pcb = list_get(READY,i);
+		printf("PID: %d     ESTIMADO: %d\n",pcb->idProceso,pcb->estimacionRafaga);
+	}
+
 	t_pcb* pcb_ready = obtener_proceso_en_READY();
 	enviarPCB(conexion_cpu_dispatch,pcb_ready,PCB);
 	proceso_ejecutando=1;
@@ -320,7 +336,11 @@ void ordenar_procesos_lista_READY() {
 }
 
 static bool sort_by_rafaga(void* pcb1, void* pcb2) {
-    return (((t_pcb*) pcb1)->estimacionRafaga) < (((t_pcb*) pcb2)->estimacionRafaga);
+	t_pcb* pcb_a = (t_pcb*) pcb1;
+	t_pcb* pcb_b = (t_pcb*) pcb2;
+    bool igual_estimacion = pcb_a->estimacionRafaga == pcb_b->estimacionRafaga;
+    if(igual_estimacion) return pcb_a->idProceso < pcb_b->idProceso;
+    else return pcb_a->estimacionRafaga < pcb_b->estimacionRafaga;
 }
 
 void checkear_proceso_y_replanificar(t_pcb* pcbEnExec) {
