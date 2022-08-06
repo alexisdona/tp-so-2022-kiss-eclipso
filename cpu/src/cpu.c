@@ -308,7 +308,7 @@ uint32_t tlb_obtener_marco(uint32_t numero_pagina) {
 }
 
 void reemplazar_entrada_tlb(tlb_entrada* entrada) {
-    if (string_equals_ignore_case(algoritmo_reemplazo_tlb, "FIFO")==0){
+    if (strcmp(algoritmo_reemplazo_tlb, "FIFO") ==0){
         list_remove(tlb, 0);
         list_add(tlb, entrada);
     }
